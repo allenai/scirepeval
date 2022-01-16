@@ -1,6 +1,6 @@
 from typing import Iterator, Tuple, List, Dict, Union
 
-from torch.utils.data import IterableDataset, DataLoader
+from torch.utils.data import IterableDataset, DataLoader, get_worker_info
 from torch.utils.data.dataset import T_co
 from transformers import PreTrainedTokenizer, BatchEncoding, AutoTokenizer
 import ijson
@@ -14,7 +14,7 @@ import itertools
 
 class AbstractMultiTaskDataset(ABC, IterableDataset):
     def __init__(self, task_name: str, json_file: str, tokenizer: PreTrainedTokenizer, fields: List[str],
-                 sample_size, ctrl_token: str, max_len: int):
+                 sample_size, ctrl_token: str, max_len: int, block_size=100):
         self.task_name = task_name
         self.data_file = json_file
         self.tokenizer = tokenizer
@@ -22,6 +22,7 @@ class AbstractMultiTaskDataset(ABC, IterableDataset):
         self.sample_size = sample_size
         self.ctrl_token = ctrl_token
         self.max_len = max_len
+        self.block_size = block_size
 
     @abstractmethod
     def sub_sample(self, json_parse: List[Dict]) -> Iterator:
@@ -31,6 +32,11 @@ class AbstractMultiTaskDataset(ABC, IterableDataset):
     def preprocess(self, line: Dict[str, str]) -> Union[
         Tuple[str, BatchEncoding, int], List[Tuple[str, List[BatchEncoding]]]]:
         pass
+
+    def iter_slice(self, curr_iter, worker_info):
+        for idx, data_instance in enumerate(curr_iter):
+            if not worker_info or (idx // self.block_size) % worker_info.num_workers == worker_info.id:
+                yield data_instance
 
     def __iter__(self) -> Iterator[T_co]:
         # data is assumed to be a json file
@@ -42,10 +48,16 @@ class AbstractMultiTaskDataset(ABC, IterableDataset):
         except:
             file_iter = open(self.data_file, "rb")
             json_parse = ijson.items(file_iter, '', multiple_values=True)
+
         if self.sample_size == -1:
             map_itr = map(self.preprocess, json_parse)
         else:
             map_itr = map(self.preprocess, self.sub_sample(list(json_parse)))
+
+        worker_info = get_worker_info()
+        if worker_info:
+            print(worker_info.id)
+            map_itr = self.iter_slice(map_itr, worker_info)
         return map_itr
 
     def tokenized_input(self, input_map: Dict[str, str]) -> BatchEncoding:
@@ -137,23 +149,22 @@ class TripletDataset(AbstractMultiTaskDataset):
 
 if __name__ == '__main__':
     tokenizer = AutoTokenizer.from_pretrained("allenai/specter")
-    # with open("sample_data/mesh_descriptors.txt", "r") as f:
-    #     labels = f.readlines()
-    # labels = {l.strip(): i for i, l in enumerate(labels)}
-    # dataset = ClassificationDataset(task_name="mesh", json_file="sample_data/mesh_small.json", tokenizer=tokenizer,
-    #                                 fields=["title", "abstract"],
-    #                                 label_field="descriptor", labels=labels, sample_size=100)
-    # dataset = TripletDataset(task_name="s2and", json_file="/net/nfs2.s2-research/scidocs/data/s2and/train.jsonl", tokenizer=tokenizer,
-    #                         fields=["title", "abstract"], sample_size=100)
-    with open("../fos_labels.txt", "r") as f:
+    with open("sample_data/mesh_descriptors.txt", "r") as f:
         labels = f.readlines()
     labels = {l.strip(): i for i, l in enumerate(labels)}
-
-    dataset = MultiLabelClassificationDataset(task_name="fos", json_file="../fos/fos_train.json", tokenizer=tokenizer,
-                                              fields=["title", "abstract"],
-                                              label_field="labels_text", labels=labels, sample_size=100)
-    dataloader = DataLoader(dataset, batch_size=32)
+    dataset = ClassificationDataset(task_name="mesh", json_file="sample_data/mesh_small.json", tokenizer=tokenizer,
+                                    fields=["title", "abstract"],
+                                    label_field="descriptor", labels=labels, sample_size=100)
+    # dataset = TripletDataset(task_name="s2and", json_file="/net/nfs2.s2-research/scidocs/data/s2and/train.jsonl", tokenizer=tokenizer,
+    #                         fields=["title", "abstract"], sample_size=100)
+    # with open("../fos_labels.txt", "r") as f:
+    #     labels = f.readlines()
+    # labels = {l.strip(): i for i, l in enumerate(labels)}
+    #
+    # dataset = MultiLabelClassificationDataset(task_name="fos", json_file="../fos/fos_train.json", tokenizer=tokenizer,
+    #                                           fields=["title", "abstract"],
+    #                                           label_field="labels_text", labels=labels, sample_size=100)
+    dataloader = DataLoader(dataset, batch_size=32, num_workers=4)
     for name, X, y in dataloader:
         print(len(X))
         print(len(y))
-        print(y[0])

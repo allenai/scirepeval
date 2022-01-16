@@ -34,8 +34,14 @@ class AbstractMultiTaskDataset(ABC, IterableDataset):
 
     def __iter__(self) -> Iterator[T_co]:
         # data is assumed to be a json file
-        file_iter = open(self.data_file, "rb")
-        json_parse = ijson.items(file_iter, 'item')
+        try:
+            file_iter = open(self.data_file, "rb")
+            json_parse = ijson.items(file_iter, 'item')
+            peek = next(json_parse)
+            json_parse = itertools.chain([peek], json_parse)
+        except:
+            file_iter = open(self.data_file, "rb")
+            json_parse = ijson.items(file_iter, '', multiple_values=True)
         if self.sample_size == -1:
             map_itr = map(self.preprocess, json_parse)
         else:
@@ -45,10 +51,11 @@ class AbstractMultiTaskDataset(ABC, IterableDataset):
     def tokenized_input(self, input_map: Dict[str, str]) -> BatchEncoding:
         text = "" if not self.ctrl_token else self.ctrl_token
         for field in self.fields:
-            text += " " + input_map[field]
+            if input_map[field]:
+                text += " " + input_map[field]
         input_ids = self.tokenizer(text, padding="max_length", truncation=True, return_tensors="pt",
                                    max_length=self.max_len)
-        return input_ids
+        return input_ids["input_ids"].flatten()
 
 
 class ClassificationDataset(AbstractMultiTaskDataset):
@@ -62,7 +69,7 @@ class ClassificationDataset(AbstractMultiTaskDataset):
         # Splits the line into text and label and applies preprocessing to the text
         label = line[self.label_field]
         input_ids = self.tokenized_input(line)
-        return self.task_name, input_ids["input_ids"].flatten(), self.labels[label]
+        return self.task_name, input_ids, self.labels[label]
 
     def sub_sample(self, json_parse: List[Dict]) -> Iterator:
         X_ids = np.array([d["corpus_id"] for d in json_parse])
@@ -79,11 +86,12 @@ class MultiLabelClassificationDataset(ClassificationDataset):
         super().__init__(task_name, json_file, tokenizer, fields, label_field, labels, sample_size, ctrl_token, max_len)
         self.labels = dict(sorted(labels.items()))
         self.mlb = MultiLabelBinarizer()
-        self.mlb.fit([list(self.labels.values())])
+        self.mlb.fit([list(self.labels.keys())])
 
     def preprocess(self, line: Dict[str, str]) -> Tuple[str, BatchEncoding, int]:
-        task, X, y = super().preprocess(line)
-        return task, X, self.mlb.transform(y)
+        label = line[self.label_field]
+        input_ids = self.tokenized_input(line)
+        return self.task_name, input_ids, self.mlb.transform([label])
 
     def sub_sample(self, json_parse: List[Dict]) -> Iterator:
         X_ids = np.array([d["corpus_id"] for d in json_parse])
@@ -92,7 +100,7 @@ class MultiLabelClassificationDataset(ClassificationDataset):
         sub_sample_ratio = self.sample_size / len(json_parse)
         stratifier = IterativeStratification(n_splits=2, order=1, sample_distribution_per_fold=[sub_sample_ratio,
                                                                                                 1 - sub_sample_ratio, ])
-        indices, _ = next(stratifier.split(X_ids, y))
+        _, indices = next(stratifier.split(X_ids, y))
         ids = X_ids[indices]
         X = [d for d in json_parse if d["corpus_id"] in ids]
         return X
@@ -106,8 +114,8 @@ class TripletDataset(AbstractMultiTaskDataset):
     def preprocess(self, line: Dict[str, str]) -> List[Tuple[str, List[BatchEncoding]]]:
         # Splits the line into text and label and applies preprocessing to the text
         query, candidates = line["query"], line["candidates"]
-        pos_candidates, neg_candidates = {c for c in candidates if c["score"]}, {c for c in candidates if
-                                                                                 not c["score"]}
+        pos_candidates, neg_candidates = [c for c in candidates if c["score"]], [c for c in candidates if
+                                                                                 not c["score"]]
         tokenized_input_list = []
         tokenized_query = self.tokenized_input(query)
         for pos in pos_candidates:
@@ -121,7 +129,7 @@ class TripletDataset(AbstractMultiTaskDataset):
         return tokenized_input_list
 
     def sub_sample(self, json_parse: List[Dict]) -> Iterator:
-        return json_parse[:self.sample_size//10]
+        return json_parse[:self.sample_size // 5]
 
     def __iter__(self):
         return itertools.chain(*super().__iter__())
@@ -129,13 +137,23 @@ class TripletDataset(AbstractMultiTaskDataset):
 
 if __name__ == '__main__':
     tokenizer = AutoTokenizer.from_pretrained("allenai/specter")
-    with open("sample_data/mesh_descriptors.txt", "r") as f:
+    # with open("sample_data/mesh_descriptors.txt", "r") as f:
+    #     labels = f.readlines()
+    # labels = {l.strip(): i for i, l in enumerate(labels)}
+    # dataset = ClassificationDataset(task_name="mesh", json_file="sample_data/mesh_small.json", tokenizer=tokenizer,
+    #                                 fields=["title", "abstract"],
+    #                                 label_field="descriptor", labels=labels, sample_size=100)
+    # dataset = TripletDataset(task_name="s2and", json_file="/net/nfs2.s2-research/scidocs/data/s2and/train.jsonl", tokenizer=tokenizer,
+    #                         fields=["title", "abstract"], sample_size=100)
+    with open("../fos_labels.txt", "r") as f:
         labels = f.readlines()
     labels = {l.strip(): i for i, l in enumerate(labels)}
-    dataset = ClassificationDataset(task_name="mesh", json_file="sample_data/mesh_small.json", tokenizer=tokenizer,
-                                    fields=["title", "abstract"],
-                                    label_field="descriptor", labels=labels, sample_size=100)
+
+    dataset = MultiLabelClassificationDataset(task_name="fos", json_file="../fos/fos_train.json", tokenizer=tokenizer,
+                                              fields=["title", "abstract"],
+                                              label_field="labels_text", labels=labels, sample_size=100)
     dataloader = DataLoader(dataset, batch_size=32)
-    for task, X, y in dataloader:
+    for name, X, y in dataloader:
         print(len(X))
         print(len(y))
+        print(y[0])

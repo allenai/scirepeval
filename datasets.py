@@ -1,7 +1,7 @@
-from typing import Iterator, Tuple, List, Dict, Union, Any
+from typing import Iterator, Tuple, List, Dict, Union, Any, Iterable
 import torch
 from torch.utils.data import IterableDataset, DataLoader, ChainDataset, get_worker_info
-from torch.utils.data.dataset import T_co
+from torch.utils.data.dataset import T_co, Dataset
 from transformers import PreTrainedTokenizer, BatchEncoding, AutoTokenizer
 import ijson
 import numpy as np
@@ -12,6 +12,10 @@ from abc import ABC, abstractmethod
 import itertools
 from torch.utils.data._utils.collate import default_collate
 from collections import defaultdict
+from strategies import BatchingStrategy
+import random
+
+random.seed(42)
 
 
 class AbstractMultiTaskDataset(ABC, IterableDataset):
@@ -86,7 +90,7 @@ class ClassificationDataset(AbstractMultiTaskDataset):
 
     def sub_sample(self, json_parse: List[Dict]) -> Iterator:
         X_ids = np.array([d["corpus_id"] for d in json_parse])
-        y = np.array([labels[d[self.label_field]] for d in json_parse])
+        y = np.array([self.labels[d[self.label_field]] for d in json_parse])
         ids, _, _, _ = train_test_split(X_ids, y, train_size=self.sample_size, random_state=42,
                                         stratify=y)
         X = [d for d in json_parse if d["corpus_id"] in ids]
@@ -104,7 +108,7 @@ class MultiLabelClassificationDataset(ClassificationDataset):
     def preprocess(self, line: Dict[str, str]) -> Tuple[str, BatchEncoding, np.ndarray]:
         label = line[self.label_field]
         input_ids = self.tokenized_input(line)
-        return self.task_name, input_ids, self.mlb.transform([label]).flatten()
+        return self.task_name, input_ids, self.mlb.transform([label]).flatten().astype(float)
 
     def sub_sample(self, json_parse: List[Dict]) -> Iterator:
         X_ids = np.array([d["corpus_id"] for d in json_parse])
@@ -148,6 +152,42 @@ class TripletDataset(AbstractMultiTaskDataset):
         return itertools.chain(*super().__iter__())
 
 
+class CustomChainDataset(ChainDataset):
+    def __init__(self, datasets: Iterable[Dataset], batch_size, batching_strategy=BatchingStrategy.TASK_PER_BATCH):
+        super().__init__(datasets)
+        self.batch_size = batch_size
+        self.batching = batching_strategy
+
+    def __iter__(self):
+        if self.batching == BatchingStrategy.MIXED_RANDOM:
+            iters = list(map(iter, self.datasets))
+            while iters:
+                it = random.choice(iters)
+                try:
+                    yield next(it)
+                except StopIteration:
+                    iters.remove(it)
+        elif self.batching == BatchingStrategy.TASK_PER_BATCH:
+            iters = list(map(iter, self.datasets))
+            di = 0
+            while iters:
+                it = iters[di]
+                i = -1
+                for x in it:
+                    i += 1
+                    if i < self.batch_size:
+                        yield x
+                    else:
+                        di = (di + 1) % len(iters)
+                        break
+                if i == -1:
+                    iters.remove(it)
+                    if di >= len(iters):
+                        di = 0
+        else:
+            yield from super().__iter__()
+
+
 def multi_collate(batch: List[Any]) -> Dict[str, List[Any]]:
     task_sub_batch = defaultdict(list)
     for b in batch:
@@ -174,8 +214,9 @@ if __name__ == '__main__':
                                                      tokenizer=tokenizer,
                                                      fields=["title", "abstract"],
                                                      label_field="labels_text", labels=mlc_labels, sample_size=100)
-    multi_dataset = ChainDataset([cls_dataset, trip_dataset, ml_cls_dataset])
+    multi_dataset = CustomChainDataset([cls_dataset, trip_dataset, ml_cls_dataset], batch_size=32)
     dataloader = DataLoader(multi_dataset, batch_size=32, collate_fn=multi_collate, num_workers=4)
-    for data in dataloader:
+    for i, data in enumerate(dataloader):
+        print(i)
         for task, batch in data.items():
             print(task, len(batch[0]))

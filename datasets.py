@@ -1,6 +1,6 @@
-from typing import Iterator, Tuple, List, Dict, Union
-
-from torch.utils.data import IterableDataset, DataLoader, get_worker_info
+from typing import Iterator, Tuple, List, Dict, Union, Any
+import torch
+from torch.utils.data import IterableDataset, DataLoader, ChainDataset, get_worker_info
 from torch.utils.data.dataset import T_co
 from transformers import PreTrainedTokenizer, BatchEncoding, AutoTokenizer
 import ijson
@@ -10,6 +10,8 @@ from sklearn.preprocessing import MultiLabelBinarizer
 from skmultilearn.model_selection import IterativeStratification
 from abc import ABC, abstractmethod
 import itertools
+from torch.utils.data._utils.collate import default_collate
+from collections import defaultdict
 
 
 class AbstractMultiTaskDataset(ABC, IterableDataset):
@@ -30,7 +32,7 @@ class AbstractMultiTaskDataset(ABC, IterableDataset):
 
     @abstractmethod
     def preprocess(self, line: Dict[str, str]) -> Union[
-        Tuple[str, BatchEncoding, int], List[Tuple[str, List[BatchEncoding]]]]:
+        Tuple[str, BatchEncoding, torch.Tensor], List[Tuple[str, List[BatchEncoding]]]]:
         pass
 
     def iter_slice(self, curr_iter, worker_info):
@@ -56,7 +58,6 @@ class AbstractMultiTaskDataset(ABC, IterableDataset):
 
         worker_info = get_worker_info()
         if worker_info:
-            print(worker_info.id)
             map_itr = self.iter_slice(map_itr, worker_info)
         return map_itr
 
@@ -100,18 +101,18 @@ class MultiLabelClassificationDataset(ClassificationDataset):
         self.mlb = MultiLabelBinarizer()
         self.mlb.fit([list(self.labels.keys())])
 
-    def preprocess(self, line: Dict[str, str]) -> Tuple[str, BatchEncoding, int]:
+    def preprocess(self, line: Dict[str, str]) -> Tuple[str, BatchEncoding, np.ndarray]:
         label = line[self.label_field]
         input_ids = self.tokenized_input(line)
-        return self.task_name, input_ids, self.mlb.transform([label])
+        return self.task_name, input_ids, self.mlb.transform([label]).flatten()
 
     def sub_sample(self, json_parse: List[Dict]) -> Iterator:
         X_ids = np.array([d["corpus_id"] for d in json_parse])
-        mlb = MultiLabelBinarizer()
-        y = mlb.fit_transform([tuple(d[self.label_field]) for d in json_parse])
+        y = self.mlb.transform([tuple(d[self.label_field]) for d in json_parse])
         sub_sample_ratio = self.sample_size / len(json_parse)
-        stratifier = IterativeStratification(n_splits=2, order=1, sample_distribution_per_fold=[sub_sample_ratio,
-                                                                                                1 - sub_sample_ratio, ])
+        stratifier = IterativeStratification(n_splits=2, order=1,
+                                             sample_distribution_per_fold=[sub_sample_ratio,
+                                                                           1 - sub_sample_ratio, ])
         _, indices = next(stratifier.split(X_ids, y))
         ids = X_ids[indices]
         X = [d for d in json_parse if d["corpus_id"] in ids]
@@ -147,24 +148,34 @@ class TripletDataset(AbstractMultiTaskDataset):
         return itertools.chain(*super().__iter__())
 
 
+def multi_collate(batch: List[Any]) -> Dict[str, List[Any]]:
+    task_sub_batch = defaultdict(list)
+    for b in batch:
+        task_sub_batch[b[0]].append(b[1:])
+    return {task: default_collate(sub_batch) for task, sub_batch in task_sub_batch.items()}
+
+
 if __name__ == '__main__':
     tokenizer = AutoTokenizer.from_pretrained("allenai/specter")
     with open("sample_data/mesh_descriptors.txt", "r") as f:
         labels = f.readlines()
     labels = {l.strip(): i for i, l in enumerate(labels)}
-    dataset = ClassificationDataset(task_name="mesh", json_file="sample_data/mesh_small.json", tokenizer=tokenizer,
-                                    fields=["title", "abstract"],
-                                    label_field="descriptor", labels=labels, sample_size=100)
-    # dataset = TripletDataset(task_name="s2and", json_file="/net/nfs2.s2-research/scidocs/data/s2and/train.jsonl", tokenizer=tokenizer,
-    #                         fields=["title", "abstract"], sample_size=100)
-    # with open("../fos_labels.txt", "r") as f:
-    #     labels = f.readlines()
-    # labels = {l.strip(): i for i, l in enumerate(labels)}
-    #
-    # dataset = MultiLabelClassificationDataset(task_name="fos", json_file="../fos/fos_train.json", tokenizer=tokenizer,
-    #                                           fields=["title", "abstract"],
-    #                                           label_field="labels_text", labels=labels, sample_size=100)
-    dataloader = DataLoader(dataset, batch_size=32, num_workers=4)
-    for name, X, y in dataloader:
-        print(len(X))
-        print(len(y))
+    cls_dataset = ClassificationDataset(task_name="mesh", json_file="sample_data/mesh_small.json", tokenizer=tokenizer,
+                                        fields=["title", "abstract"],
+                                        label_field="descriptor", labels=labels, sample_size=100)
+    trip_dataset = TripletDataset(task_name="s2and", json_file="sample_data/s2and_small.json",
+                                  tokenizer=tokenizer,
+                                  fields=["title", "abstract"], sample_size=100)
+    with open("sample_data/fos_labels.txt", "r") as f:
+        mlc_labels = f.readlines()
+    mlc_labels = {l.strip(): i for i, l in enumerate(mlc_labels)}
+
+    ml_cls_dataset = MultiLabelClassificationDataset(task_name="fos", json_file="sample_data/fos_small.json",
+                                                     tokenizer=tokenizer,
+                                                     fields=["title", "abstract"],
+                                                     label_field="labels_text", labels=mlc_labels, sample_size=100)
+    multi_dataset = ChainDataset([cls_dataset, trip_dataset, ml_cls_dataset])
+    dataloader = DataLoader(multi_dataset, batch_size=32, collate_fn=multi_collate, num_workers=4)
+    for data in dataloader:
+        for task, batch in data.items():
+            print(task, len(batch[0]))

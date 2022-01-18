@@ -20,7 +20,7 @@ random.seed(42)
 
 class AbstractMultiTaskDataset(ABC, IterableDataset):
     def __init__(self, task_name: str, json_file: str, tokenizer: PreTrainedTokenizer, fields: List[str],
-                 sample_size, ctrl_token: str, max_len: int, block_size=100):
+                 sample_size, ctrl_token: str, max_len: int):
         self.task_name = task_name
         self.data_file = json_file
         self.tokenizer = tokenizer
@@ -28,7 +28,6 @@ class AbstractMultiTaskDataset(ABC, IterableDataset):
         self.sample_size = sample_size
         self.ctrl_token = ctrl_token
         self.max_len = max_len
-        self.block_size = block_size
 
     @abstractmethod
     def sub_sample(self, json_parse: List[Dict]) -> Iterator:
@@ -39,10 +38,8 @@ class AbstractMultiTaskDataset(ABC, IterableDataset):
         Tuple[str, BatchEncoding, torch.Tensor], List[Tuple[str, List[BatchEncoding]]]]:
         pass
 
-    def iter_slice(self, curr_iter, worker_info):
-        for idx, data_instance in enumerate(curr_iter):
-            if not worker_info or (idx // self.block_size) % worker_info.num_workers == worker_info.id:
-                yield data_instance
+    def postprocess_iter(self, curr_iter):
+        return curr_iter
 
     def __iter__(self) -> Iterator[T_co]:
         # data is assumed to be a json file
@@ -59,10 +56,7 @@ class AbstractMultiTaskDataset(ABC, IterableDataset):
             map_itr = map(self.preprocess, json_parse)
         else:
             map_itr = map(self.preprocess, self.sub_sample(list(json_parse)))
-
-        worker_info = get_worker_info()
-        if worker_info:
-            map_itr = self.iter_slice(map_itr, worker_info)
+        map_itr = self.postprocess_iter(map_itr)
         return map_itr
 
     def tokenized_input(self, input_map: Dict[str, str]) -> BatchEncoding:
@@ -148,17 +142,22 @@ class TripletDataset(AbstractMultiTaskDataset):
     def sub_sample(self, json_parse: List[Dict]) -> Iterator:
         return json_parse[:self.sample_size // 5]
 
-    def __iter__(self):
-        return itertools.chain(*super().__iter__())
+    def postprocess_iter(self, curr_iter):
+        return itertools.chain(*curr_iter)
 
 
 class CustomChainDataset(ChainDataset):
-    def __init__(self, datasets: Iterable[Dataset], batch_size, batching_strategy=BatchingStrategy.TASK_PER_BATCH):
+    def __init__(self, datasets: Iterable[Dataset], batch_size, batching_strategy=BatchingStrategy.SEQUENTIAL):
         super().__init__(datasets)
         self.batch_size = batch_size
         self.batching = batching_strategy
 
-    def __iter__(self):
+    def iter_slice(self, curr_iter, worker_info):
+        for idx, data_instance in enumerate(curr_iter):
+            if not worker_info or (idx // self.batch_size) % worker_info.num_workers == worker_info.id:
+                yield data_instance + (worker_info.id,)
+
+    def get_batch_iter(self):
         if self.batching == BatchingStrategy.MIXED_RANDOM:
             iters = list(map(iter, self.datasets))
             while iters:
@@ -167,6 +166,23 @@ class CustomChainDataset(ChainDataset):
                     yield next(it)
                 except StopIteration:
                     iters.remove(it)
+        elif self.batching == BatchingStrategy.MIXED_PROPORTIONAL:
+            iters = list(map(iter, self.datasets))
+            di = 0
+            while iters:
+                it = iters[di]
+                i = -1
+                for x in it:
+                    i += 1
+                    if i < self.batch_size//len(list(self.datasets)):
+                        yield x
+                    else:
+                        di = (di + 1) % len(iters)
+                        break
+                if i == -1:
+                    iters.remove(it)
+                    if di >= len(iters):
+                        di = 0
         elif self.batching == BatchingStrategy.TASK_PER_BATCH:
             iters = list(map(iter, self.datasets))
             di = 0
@@ -186,6 +202,13 @@ class CustomChainDataset(ChainDataset):
                         di = 0
         else:
             yield from super().__iter__()
+
+    def __iter__(self):
+        batch_itr = self.get_batch_iter()
+        worker_info = get_worker_info()
+        if worker_info:
+            batch_itr = self.iter_slice(batch_itr, worker_info)
+        return batch_itr
 
 
 def multi_collate(batch: List[Any]) -> Dict[str, List[Any]]:
@@ -215,8 +238,8 @@ if __name__ == '__main__':
                                                      fields=["title", "abstract"],
                                                      label_field="labels_text", labels=mlc_labels, sample_size=100)
     multi_dataset = CustomChainDataset([cls_dataset, trip_dataset, ml_cls_dataset], batch_size=32)
-    dataloader = DataLoader(multi_dataset, batch_size=32, collate_fn=multi_collate, num_workers=4)
+    dataloader = DataLoader(multi_dataset, batch_size=32, collate_fn=multi_collate, num_workers=2)
     for i, data in enumerate(dataloader):
         print(i)
         for task, batch in data.items():
-            print(task, len(batch[0]))
+            print(task, batch[-1].shape, batch[-1].unique())

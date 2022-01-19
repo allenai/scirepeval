@@ -4,7 +4,7 @@ import pytorch_lightning as pl
 import torch
 from pytorch_lightning.utilities.types import TRAIN_DATALOADERS
 import torch.nn
-from torch.utils.data import DataLoader, ChainDataset
+from torch.utils.data import DataLoader
 from transformers import AutoTokenizer, AutoModel
 
 from datasets import ClassificationDataset, multi_collate, MultiLabelClassificationDataset, TripletDataset, \
@@ -83,10 +83,10 @@ class PhantasmLight(pl.LightningModule):
                                                    tokenizer=self.tokenizer, fields=["title", "abstract"],
                                                    sample_size=100))
         if stage in (None, "fit"):
-            self.multi_train = CustomChainDataset(dataset_list)
+            self.multi_train = CustomChainDataset(dataset_list, batch_size=self.batch_size)
 
     def train_dataloader(self) -> TRAIN_DATALOADERS:
-        dataloader = DataLoader(self.multi_train, batch_size=self.batch_size, collate_fn=multi_collate, num_workers=2)
+        dataloader = DataLoader(self.multi_train, batch_size=self.batch_size, collate_fn=multi_collate, num_workers=1)
         return dataloader
 
 

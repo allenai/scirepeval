@@ -76,11 +76,14 @@ class ClassificationDataset(AbstractMultiTaskDataset):
         self.labels = labels
         self.label_field = label_field
 
+    def label_transform(self, label_raw: str) -> Union[int, np.ndarray]:
+        return self.labels[label_raw]
+
     def preprocess(self, line: Dict[str, str]) -> Tuple[str, BatchEncoding, int]:
         # Splits the line into text and label and applies preprocessing to the text
         label = line[self.label_field]
         input_ids = self.tokenized_input(line)
-        return self.task_name, input_ids, self.labels[label]
+        return self.task_name, input_ids, self.label_transform(label)
 
     def sub_sample(self, json_parse: List[Dict]) -> Iterator:
         X_ids = np.array([d["corpus_id"] for d in json_parse])
@@ -99,10 +102,8 @@ class MultiLabelClassificationDataset(ClassificationDataset):
         self.mlb = MultiLabelBinarizer()
         self.mlb.fit([list(self.labels.keys())])
 
-    def preprocess(self, line: Dict[str, str]) -> Tuple[str, BatchEncoding, np.ndarray]:
-        label = line[self.label_field]
-        input_ids = self.tokenized_input(line)
-        return self.task_name, input_ids, self.mlb.transform([label]).flatten().astype(float)
+    def label_transform(self, label_raw: List[str]) -> Union[int, np.ndarray]:
+        return self.mlb.transform([label_raw]).flatten().astype(float)
 
     def sub_sample(self, json_parse: List[Dict]) -> Iterator:
         X_ids = np.array([d["corpus_id"] for d in json_parse])
@@ -155,7 +156,7 @@ class CustomChainDataset(ChainDataset):
     def iter_slice(self, curr_iter, worker_info):
         for idx, data_instance in enumerate(curr_iter):
             if not worker_info or (idx // self.batch_size) % worker_info.num_workers == worker_info.id:
-                yield data_instance + (worker_info.id,)
+                yield data_instance
 
     def get_batch_iter(self):
         if self.batching == BatchingStrategy.MIXED_RANDOM:
@@ -171,15 +172,15 @@ class CustomChainDataset(ChainDataset):
             di = 0
             while iters:
                 it = iters[di]
-                i = -1
-                for x in it:
-                    i += 1
-                    if i < self.batch_size//len(list(self.datasets)):
+                i = 0
+                try:
+                    while i < self.batch_size // len(iters):
+                        x = next(it)
+                        i += 1
                         yield x
                     else:
                         di = (di + 1) % len(iters)
-                        break
-                if i == -1:
+                except StopIteration:
                     iters.remove(it)
                     if di >= len(iters):
                         di = 0
@@ -188,15 +189,15 @@ class CustomChainDataset(ChainDataset):
             di = 0
             while iters:
                 it = iters[di]
-                i = -1
-                for x in it:
-                    i += 1
-                    if i < self.batch_size:
+                i = 0
+                try:
+                    while i < self.batch_size:
+                        x = next(it)
+                        i += 1
                         yield x
                     else:
                         di = (di + 1) % len(iters)
-                        break
-                if i == -1:
+                except StopIteration:
                     iters.remove(it)
                     if di >= len(iters):
                         di = 0
@@ -237,9 +238,12 @@ if __name__ == '__main__':
                                                      tokenizer=tokenizer,
                                                      fields=["title", "abstract"],
                                                      label_field="labels_text", labels=mlc_labels, sample_size=100)
-    multi_dataset = CustomChainDataset([cls_dataset, trip_dataset, ml_cls_dataset], batch_size=32)
-    dataloader = DataLoader(multi_dataset, batch_size=32, collate_fn=multi_collate, num_workers=2)
+
+    batch_size = 32
+    multi_dataset = CustomChainDataset([cls_dataset, trip_dataset, ml_cls_dataset], batch_size=batch_size, batching_strategy=BatchingStrategy.SEQUENTIAL)
+    dataloader = DataLoader(multi_dataset, batch_size=batch_size, collate_fn=multi_collate, num_workers=4)
     for i, data in enumerate(dataloader):
         print(i)
         for task, batch in data.items():
-            print(task, batch[-1].shape, batch[-1].unique())
+            d = batch[-1][-1] if task == "s2and" else batch[-1]
+            print(task, d.shape[0])

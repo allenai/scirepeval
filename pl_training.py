@@ -39,7 +39,7 @@ class PhantasmLight(pl.LightningModule):
         return embedding
 
     def configure_optimizers(self):
-        optimizer = torch.optim.Adam(self.parameters(), lr=1e-3)
+        optimizer = torch.optim.Adam(self.parameters(), lr=5e-3)
         return optimizer
 
     def training_step(self, train_batch, batch_idx):
@@ -51,6 +51,7 @@ class PhantasmLight(pl.LightningModule):
                 query_emb, pos_emb, neg_emb = self(query), self(pos), self(neg)
                 curr_loss = task.loss(query_emb.pooler_output, pos_emb.pooler_output, neg_emb.pooler_output)
             else:
+                print(self.heads[name].linear.weight)
                 x, y = batch[0], batch[1]
                 encoding = self(x)
                 logits = self.heads[name](encoding.pooler_output)

@@ -30,13 +30,6 @@ class TaskHead(nn.Module):
         return self.linear(encoding)
 
 
-# BCE for FoS, CE for MeSH
-class Classification(TaskFamily):
-    def __init__(self, name, num_labels, loss, dataset, dim=768, ctrl_token="[CLS]"):
-        super().__init__(name, loss, dataset, ctrl_token)
-        self.head = nn.Linear(dim, num_labels)
-
-
 # Triplet will be an object of TaskFamily as no separate head needed
 class TripletLoss(nn.Module):
     """

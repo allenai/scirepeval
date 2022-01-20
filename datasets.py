@@ -158,54 +158,8 @@ class CustomChainDataset(ChainDataset):
             if not worker_info or (idx // self.batch_size) % worker_info.num_workers == worker_info.id:
                 yield data_instance
 
-    def get_batch_iter(self):
-        if self.batching == BatchingStrategy.MIXED_RANDOM:
-            iters = list(map(iter, self.datasets))
-            while iters:
-                it = random.choice(iters)
-                try:
-                    yield next(it)
-                except StopIteration:
-                    iters.remove(it)
-        elif self.batching == BatchingStrategy.MIXED_PROPORTIONAL:
-            iters = list(map(iter, self.datasets))
-            di = 0
-            while iters:
-                it = iters[di]
-                i = 0
-                try:
-                    while i < self.batch_size // len(iters):
-                        x = next(it)
-                        i += 1
-                        yield x
-                    else:
-                        di = (di + 1) % len(iters)
-                except StopIteration:
-                    iters.remove(it)
-                    if di >= len(iters):
-                        di = 0
-        elif self.batching == BatchingStrategy.TASK_PER_BATCH:
-            iters = list(map(iter, self.datasets))
-            di = 0
-            while iters:
-                it = iters[di]
-                i = 0
-                try:
-                    while i < self.batch_size:
-                        x = next(it)
-                        i += 1
-                        yield x
-                    else:
-                        di = (di + 1) % len(iters)
-                except StopIteration:
-                    iters.remove(it)
-                    if di >= len(iters):
-                        di = 0
-        else:
-            yield from super().__iter__()
-
     def __iter__(self):
-        batch_itr = self.get_batch_iter()
+        batch_itr = self.batching.value.get_batch_iter(self.datasets, self.batch_size)
         worker_info = get_worker_info()
         if worker_info:
             batch_itr = self.iter_slice(batch_itr, worker_info)
@@ -239,9 +193,10 @@ if __name__ == '__main__':
                                                      fields=["title", "abstract"],
                                                      label_field="labels_text", labels=mlc_labels, sample_size=100)
 
-    batch_size = 32
-    multi_dataset = CustomChainDataset([cls_dataset, trip_dataset, ml_cls_dataset], batch_size=batch_size, batching_strategy=BatchingStrategy.SEQUENTIAL)
-    dataloader = DataLoader(multi_dataset, batch_size=batch_size, collate_fn=multi_collate, num_workers=4)
+    batch_size = 16
+    multi_dataset = CustomChainDataset([cls_dataset, ml_cls_dataset, trip_dataset], batch_size=batch_size,
+                                       batching_strategy=BatchingStrategy.TASK_PER_BATCH)
+    dataloader = DataLoader(multi_dataset, batch_size=batch_size, collate_fn=multi_collate, num_workers=2)
     for i, data in enumerate(dataloader):
         print(i)
         for task, batch in data.items():

@@ -8,10 +8,14 @@ from pytorch_lightning.utilities.types import TRAIN_DATALOADERS, EVAL_DATALOADER
 import torch.nn
 from torch.utils.data import DataLoader
 from transformers import AutoTokenizer, AutoModel
+from pytorch_lightning.plugins import DDPPlugin
 
 from datasets import ClassificationDataset, multi_collate, MultiLabelClassificationDataset, TripletDataset, \
     CustomChainDataset
 from tasks import TaskFamily, load_tasks
+from strategies import BatchingStrategy
+
+pl.seed_everything(42, workers=True)
 
 
 def init_weights(modules):
@@ -44,7 +48,7 @@ class PhantasmLight(pl.LightningModule):
         return embedding
 
     def configure_optimizers(self):
-        optimizer = torch.optim.Adam(self.parameters(), lr=5e-3)
+        optimizer = torch.optim.Adam(self.parameters(), lr=2e-6)
         return optimizer
 
     def calc_loss(self, train_batch, batch_idx, mode="train"):
@@ -56,7 +60,6 @@ class PhantasmLight(pl.LightningModule):
                 query_emb, pos_emb, neg_emb = self(query), self(pos), self(neg)
                 curr_loss = task.loss(query_emb.pooler_output, pos_emb.pooler_output, neg_emb.pooler_output)
             else:
-                print(self.heads[name].linear.weight)
                 x, y = batch[0], batch[1]
                 encoding = self(x)
                 logits = self.heads[name](encoding.pooler_output)
@@ -66,8 +69,8 @@ class PhantasmLight(pl.LightningModule):
             losses.append(curr_loss)
         loss = torch.mean(torch.cat(losses))
         loss_key = "{}_loss".format(mode)
-        self.log(loss_key, loss)
-        return {loss_key: loss}
+        self.log(loss_key, loss, on_step=True, on_epoch=False, prog_bar=True, logger=True)
+        return {loss_key if mode != "train" else "loss": loss}
 
     def training_step(self, train_batch, batch_idx):
         return self.calc_loss(train_batch, batch_idx)
@@ -77,7 +80,7 @@ class PhantasmLight(pl.LightningModule):
 
     def _eval_end(self, outputs) -> tuple:
         avg_loss = torch.stack([x['val_loss'] for x in outputs]).mean()
-        if self.trainer.use_ddp:
+        if self.trainer.data_parallel:
             torch.distributed.all_reduce(avg_loss, op=torch.distributed.ReduceOp.SUM)
             avg_loss /= self.trainer.world_size
         results = {"avg_val_loss": avg_loss}
@@ -88,11 +91,10 @@ class PhantasmLight(pl.LightningModule):
 
     def validation_epoch_end(self, outputs: list) -> dict:
         ret = self._eval_end(outputs)
-        self.log('avg_val_loss', ret["avg_val_loss"], on_epoch=True, prog_bar=True)
+        self.log('avg_val_loss', ret["avg_val_loss"], on_epoch=True, prog_bar=True, sync_dist=True)
 
-    def setup(self, stage: Optional[str] = None) -> None:
+    def load_data(self, split) -> CustomChainDataset:
         dataset_list = []
-        split = pl_to_split_map.get(stage, "train")
         for t_name, task in self.task_dict.items():
             if task.type == "classification":
                 if task.multi_label:
@@ -101,31 +103,38 @@ class PhantasmLight(pl.LightningModule):
                                                         tokenizer=self.tokenizer,
                                                         fields=["title", "abstract"],
                                                         label_field=task.labels_field,
-                                                        labels=task.labels, sample_size=100))
+                                                        labels=task.labels))
                 else:
                     dataset_list.append(ClassificationDataset(task_name=t_name, json_file=task.data_files[split],
                                                               tokenizer=self.tokenizer,
+                                                              sample_size=400000 if split == "train" else 80000,
                                                               fields=["title", "abstract"],
                                                               label_field=task.labels_field,
-                                                              labels=task.labels, sample_size=100))
+                                                              labels=task.labels))
             else:
                 dataset_list.append(TripletDataset(task_name=t_name, json_file=task.data_files[split],
-                                                   tokenizer=self.tokenizer, fields=["title", "abstract"],
-                                                   sample_size=100))
+                                                   sample_size=400000 if split == "train" else 80000,
+                                                   tokenizer=self.tokenizer, fields=["title", "abstract"]))
+        multi_dataset = CustomChainDataset(dataset_list, batch_size=self.batch_size,
+                                           device_rank=self.trainer.global_rank, num_devices=self.trainer.world_size,
+                                           batching_strategy=BatchingStrategy.SEQUENTIAL)
         if split == "train":
-            self.multi_train = CustomChainDataset(dataset_list, batch_size=self.batch_size)
+            self.multi_train = multi_dataset
         elif split == "dev":
-            self.multi_val = CustomChainDataset(dataset_list, batch_size=self.batch_size)
+            self.multi_val = multi_dataset
+
+    def setup(self, stage: Optional[str] = None) -> None:
+        self.load_data("train")
 
     def train_dataloader(self) -> TRAIN_DATALOADERS:
-        return DataLoader(self.multi_train, batch_size=self.batch_size, collate_fn=multi_collate, num_workers=1)
+        return DataLoader(self.multi_train, batch_size=self.batch_size, collate_fn=multi_collate, num_workers=3)
 
     def val_dataloader(self) -> EVAL_DATALOADERS:
-        return DataLoader(self.multi_val, batch_size=self.batch_size, collate_fn=multi_collate, num_workers=1)
+        self.load_data("dev")
+        return DataLoader(self.multi_val, batch_size=self.batch_size, collate_fn=multi_collate, num_workers=3)
 
 
 if __name__ == '__main__':
-    pl.seed_everything(42, workers=True)
     log_dir = "./lightning_logs/full_run/"
     logger = TensorBoardLogger(
         save_dir="./lightning_logs/full_run/",
@@ -141,15 +150,16 @@ if __name__ == '__main__':
         save_top_k=1,
         verbose=True,
         monitor='avg_val_loss',  # monitors metrics logged by self.log.
-        mode='min',
-        prefix=''
+        mode='min'
     )
 
-    model = PhantasmLight(batch_size=32)
+    model = PhantasmLight(batch_size=16)
     trainer = pl.Trainer(logger=logger,
-                         checkpoint_callback=True,
+                         gpus=[0, 1, 2],
+                         strategy=DDPPlugin(find_unused_parameters=True),
+                         enable_checkpointing=True,
                          callbacks=[checkpoint_callback],
-                         val_check_interval=1.0,
-                         fast_dev_run=2,
-                         num_sanity_val_steps=3)
+                         val_check_interval=10000,
+                         num_sanity_val_steps=3,
+                         max_epochs=2)
     trainer.fit(model)

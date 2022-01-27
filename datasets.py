@@ -41,6 +41,10 @@ class AbstractMultiTaskDataset(ABC, IterableDataset):
     def postprocess_iter(self, curr_iter):
         return curr_iter
 
+    @property
+    def effective_sample_size(self):
+        return self.sample_size
+
     def __iter__(self) -> Iterator[T_co]:
         # data is assumed to be a json file
         try:
@@ -55,9 +59,10 @@ class AbstractMultiTaskDataset(ABC, IterableDataset):
         if self.sample_size == -1:
             map_itr = map(self.preprocess, json_parse)
         else:
-            map_itr = map(self.preprocess, self.sub_sample(list(json_parse)))
-        map_itr = self.postprocess_iter(map_itr)
-        return map_itr
+            json_list = list(json_parse)
+            self.sample_size = min(self.effective_sample_size, len(json_list))
+            map_itr = map(self.preprocess, self.sub_sample(json_list))
+        return self.postprocess_iter(map_itr)
 
     def tokenized_input(self, input_map: Dict[str, str]) -> BatchEncoding:
         text = "" if not self.ctrl_token else self.ctrl_token
@@ -90,8 +95,9 @@ class ClassificationDataset(AbstractMultiTaskDataset):
         y = np.array([self.labels[d[self.label_field]] for d in json_parse])
         ids, _, _, _ = train_test_split(X_ids, y, train_size=self.sample_size, random_state=42,
                                         stratify=y)
-        X = [d for d in json_parse if d["corpus_id"] in ids]
-        return X
+        for d in json_parse:
+            if d["corpus_id"] in ids:
+                yield d
 
 
 class MultiLabelClassificationDataset(ClassificationDataset):
@@ -114,8 +120,9 @@ class MultiLabelClassificationDataset(ClassificationDataset):
                                                                            1 - sub_sample_ratio, ])
         _, indices = next(stratifier.split(X_ids, y))
         ids = X_ids[indices]
-        X = [d for d in json_parse if d["corpus_id"] in ids]
-        return X
+        for d in json_parse:
+            if d["corpus_id"] in ids:
+                yield d
 
 
 class TripletDataset(AbstractMultiTaskDataset):
@@ -137,29 +144,38 @@ class TripletDataset(AbstractMultiTaskDataset):
             if neg:
                 tokenized_pos = self.tokenized_input(pos)
                 tokenized_neg = self.tokenized_input(neg)
-                tokenized_input_list.append((self.task_name, [tokenized_query, tokenized_pos, tokenized_neg]))
-        return tokenized_input_list
+                yield (self.task_name, [tokenized_query, tokenized_pos, tokenized_neg])
 
     def sub_sample(self, json_parse: List[Dict]) -> Iterator:
-        return json_parse[:self.sample_size // 5]
+        for idx in range(self.effective_sample_size):
+            yield json_parse[idx]
 
     def postprocess_iter(self, curr_iter):
         return itertools.chain(*curr_iter)
 
+    @property
+    def effective_sample_size(self):
+        return self.sample_size // 5
+
 
 class CustomChainDataset(ChainDataset):
-    def __init__(self, datasets: Iterable[Dataset], batch_size, batching_strategy=BatchingStrategy.SEQUENTIAL):
+    def __init__(self, datasets: Iterable[Dataset], batch_size, device_rank=-1, num_devices=1,
+                 batching_strategy=BatchingStrategy.SEQUENTIAL):
         super().__init__(datasets)
         self.batch_size = batch_size
         self.batching = batching_strategy
+        self.device_rank = device_rank
+        self.num_devices = num_devices
+        self.effective_batch_size = batch_size * num_devices
 
     def iter_slice(self, curr_iter, worker_info):
         for idx, data_instance in enumerate(curr_iter):
-            if not worker_info or (idx // self.batch_size) % worker_info.num_workers == worker_info.id:
-                yield data_instance
+            if (idx // self.batch_size) % self.num_devices == self.device_rank:
+                if (idx // self.effective_batch_size) % worker_info.num_workers == worker_info.id:
+                    yield data_instance
 
     def __iter__(self):
-        batch_itr = self.batching.value.get_batch_iter(self.datasets, self.batch_size)
+        batch_itr = self.batching.value.get_batch_iter(self.datasets, self.effective_batch_size)
         worker_info = get_worker_info()
         if worker_info:
             batch_itr = self.iter_slice(batch_itr, worker_info)
@@ -195,7 +211,7 @@ if __name__ == '__main__':
 
     batch_size = 16
     multi_dataset = CustomChainDataset([cls_dataset, ml_cls_dataset, trip_dataset], batch_size=batch_size,
-                                       batching_strategy=BatchingStrategy.TASK_PER_BATCH)
+                                       batching_strategy=BatchingStrategy.SEQUENTIAL)
     dataloader = DataLoader(multi_dataset, batch_size=batch_size, collate_fn=multi_collate, num_workers=2)
     for i, data in enumerate(dataloader):
         print(i)

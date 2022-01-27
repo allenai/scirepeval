@@ -24,10 +24,11 @@ class TaskHead(nn.Module):
         super().__init__()
         self.dim = dim
         self.num_labels = num_labels
+        self.dropout = nn.Dropout(0.2)
         self.linear = nn.Linear(dim, num_labels)
 
     def forward(self, encoding):
-        return self.linear(encoding)
+        return self.linear(self.dropout(encoding))
 
 
 # Triplet will be an object of TaskFamily as no separate head needed

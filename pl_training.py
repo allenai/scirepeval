@@ -8,8 +8,9 @@ from pytorch_lightning.utilities.types import TRAIN_DATALOADERS, EVAL_DATALOADER
 import torch.nn
 from torch.utils.data import DataLoader
 from transformers import AutoTokenizer, AutoModel
+from transformers import AdamW
 from pytorch_lightning.plugins import DDPPlugin
-
+from schedulers import InverseSquareRootSchedule, InverseSquareRootScheduleConfig
 from datasets import ClassificationDataset, multi_collate, MultiLabelClassificationDataset, TripletDataset, \
     CustomChainDataset
 from tasks import TaskFamily, load_tasks
@@ -42,14 +43,40 @@ class PhantasmLight(pl.LightningModule):
         self.encoder = AutoModel.from_pretrained("allenai/specter")
         self.tokenizer = AutoTokenizer.from_pretrained("allenai/specter")
         self.batch_size = batch_size
+        self.lr = 5e-7
 
     def forward(self, x):
         embedding = self.encoder(x)
         return embedding
 
     def configure_optimizers(self):
-        optimizer = torch.optim.Adam(self.parameters(), lr=2e-6)
-        return optimizer
+        """Prepare optimizer and schedule (linear warmup and decay)"""
+        no_decay = ["bias", "LayerNorm.weight"]
+        optimizer_grouped_parameters = [
+            {
+                "params": [p for n, p in self.named_parameters() if not any(nd in n for nd in no_decay)],
+                "weight_decay": 0.0,
+            },
+            {
+                "params": [p for n, p in self.named_parameters() if any(nd in n for nd in no_decay)],
+                "weight_decay": 0.0,
+            }
+        ]
+        optimizer = AdamW(
+            optimizer_grouped_parameters, lr=self.lr, eps=1e-8
+        )
+
+        self.opt = optimizer
+        scheduler_config = InverseSquareRootScheduleConfig(warmup_updates=50, warmup_init_lr=self.lr, lr=5e-5)
+        scheduler = InverseSquareRootSchedule(scheduler_config, optimizer)
+
+        return {
+            "optimizer": optimizer,
+            "lr_scheduler": {
+                "scheduler": scheduler,
+                "interval": "step",
+                "frequency": 1}
+        }
 
     def calc_loss(self, train_batch, batch_idx, mode="train"):
         losses = []
@@ -73,7 +100,9 @@ class PhantasmLight(pl.LightningModule):
         return {loss_key if mode != "train" else "loss": loss}
 
     def training_step(self, train_batch, batch_idx):
-        return self.calc_loss(train_batch, batch_idx)
+        loss = self.calc_loss(train_batch, batch_idx)
+        self.log('lr', self.lr_schedulers().lr, on_step=True, on_epoch=False, prog_bar=True, logger=True)
+        return loss
 
     def validation_step(self, train_batch, batch_idx) -> Optional[STEP_OUTPUT]:
         return self.calc_loss(train_batch, batch_idx, mode="val")
@@ -135,15 +164,15 @@ class PhantasmLight(pl.LightningModule):
 
 
 if __name__ == '__main__':
-    log_dir = "./lightning_logs/full_run/"
+    log_dir = "./lightning_logs/"
     logger = TensorBoardLogger(
-        save_dir="./lightning_logs/full_run/",
-        version=0,
-        name='pl-logs'
+        save_dir=log_dir,
+        version="seq_batch",
+        name='full_run'
     )
 
     # second part of the path shouldn't be f-string
-    filepath = f'{log_dir}/version_{logger.version}/checkpoints/'
+    filepath = f'{log_dir}/{logger.name}/{logger.version}/checkpoints/'
     checkpoint_callback = ModelCheckpoint(
         dirpath=filepath,
         filename='ep-{epoch}_avg_val_loss-{avg_val_loss:.3f}',
@@ -159,7 +188,8 @@ if __name__ == '__main__':
                          strategy=DDPPlugin(find_unused_parameters=True),
                          enable_checkpointing=True,
                          callbacks=[checkpoint_callback],
-                         val_check_interval=10000,
+                         val_check_interval=9310,
                          num_sanity_val_steps=3,
-                         max_epochs=2)
+                         max_epochs=2,
+                         auto_lr_find=True)
     trainer.fit(model)

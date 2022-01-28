@@ -6,10 +6,10 @@ import torch.nn.functional as F
 
 
 class TaskFamily:
-    def __init__(self, name, loss, data_file, type, multi_label=False, labels_field=None, labels=None,
+    def __init__(self, name, loss, data_files, type, multi_label=False, labels_field=None, labels=None,
                  ctrl_token="[CLS]", head=None):
         self.name = name
-        self.data_file = data_file
+        self.data_files = data_files
         self.type = type
         self.multi_label = multi_label
         self.loss = loss
@@ -24,10 +24,11 @@ class TaskHead(nn.Module):
         super().__init__()
         self.dim = dim
         self.num_labels = num_labels
+        self.dropout = nn.Dropout(0.2)
         self.linear = nn.Linear(dim, num_labels)
 
     def forward(self, encoding):
-        return self.linear(encoding)
+        return self.linear(self.dropout(encoding))
 
 
 # Triplet will be an object of TaskFamily as no separate head needed

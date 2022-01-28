@@ -101,7 +101,7 @@ class PhantasmLight(pl.LightningModule):
 
     def training_step(self, train_batch, batch_idx):
         loss = self.calc_loss(train_batch, batch_idx)
-        self.log('lr', self.lr_schedulers().lr, on_step=True, on_epoch=False, prog_bar=True, logger=True)
+        self.log('lr', self.lr_schedulers().get_last_lr()[-1], on_step=True, on_epoch=False, prog_bar=True, logger=True)
         return loss
 
     def validation_step(self, train_batch, batch_idx) -> Optional[STEP_OUTPUT]:

@@ -135,7 +135,6 @@ class TripletDataset(AbstractMultiTaskDataset):
         query, candidates = line["query"], line["candidates"]
         pos_candidates, neg_candidates = [c for c in candidates if c["score"]], [c for c in candidates if
                                                                                  not c["score"]]
-        tokenized_input_list = []
         tokenized_query = self.tokenized_input(query)
         for pos in pos_candidates:
             neg = None
@@ -147,11 +146,24 @@ class TripletDataset(AbstractMultiTaskDataset):
                 yield (self.task_name, [tokenized_query, tokenized_pos, tokenized_neg])
 
     def sub_sample(self, json_parse: List[Dict]) -> Iterator:
-        for idx in range(self.effective_sample_size):
+        for idx in range(self.sample_size):
             yield json_parse[idx]
 
     def postprocess_iter(self, curr_iter):
-        return itertools.chain(*curr_iter)
+        chained_iter = itertools.chain(*curr_iter)
+        batched_list = []
+        try:
+            while True:
+                for _ in range(min(5000, self.sample_size)):
+                    batched_list.append(next(chained_iter))
+                random.shuffle(batched_list)
+                for x in batched_list:
+                    yield x
+                batched_list.clear()
+        except StopIteration:
+            random.shuffle(batched_list)
+            for x in batched_list:
+                yield x
 
     @property
     def effective_sample_size(self):
@@ -212,7 +224,7 @@ if __name__ == '__main__':
     batch_size = 16
     multi_dataset = CustomChainDataset([cls_dataset, ml_cls_dataset, trip_dataset], batch_size=batch_size,
                                        batching_strategy=BatchingStrategy.SEQUENTIAL)
-    dataloader = DataLoader(multi_dataset, batch_size=batch_size, collate_fn=multi_collate, num_workers=2)
+    dataloader = DataLoader(multi_dataset, batch_size=batch_size, collate_fn=multi_collate)
     for i, data in enumerate(dataloader):
         print(i)
         for task, batch in data.items():

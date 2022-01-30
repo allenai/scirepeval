@@ -1,4 +1,4 @@
-from typing import Dict, Optional
+from typing import Dict, Optional, Any
 
 import pytorch_lightning as pl
 import torch
@@ -26,9 +26,6 @@ def init_weights(modules):
             module.linear.bias.data.zero_()
 
 
-pl_to_split_map = {"fit": "train", "validate": "dev", "test": "test", "predict": "test"}
-
-
 class PhantasmLight(pl.LightningModule):
     def __init__(self, batch_size: int, task_dict: Dict[str, TaskFamily] = None):
         super().__init__()
@@ -42,8 +39,16 @@ class PhantasmLight(pl.LightningModule):
         self.multi_val = None
         self.encoder = AutoModel.from_pretrained("allenai/specter")
         self.tokenizer = AutoTokenizer.from_pretrained("allenai/specter")
+        spl_ctrl_tokens = set([t.ctrl_token for t in self.task_dict.values() if t.ctrl_token])
+        if spl_ctrl_tokens:
+            special_tokens_dict = {'additional_special_tokens': list(spl_ctrl_tokens)}
+            num_added_toks = self.tokenizer.add_special_tokens(special_tokens_dict)
+            if num_added_toks:
+                self.encoder.resize_token_embeddings(len(self.tokenizer))
+                self.encoder.embeddings.word_embeddings.weight[-num_added_toks,
+                :] = self.encoder.embeddings.word_embeddings.weight[self.tokenizer.cls_token_id, :]
         self.batch_size = batch_size
-        self.lr = 5e-7
+        self.lr = 1e-6
 
     def forward(self, x):
         embedding = self.encoder(x)
@@ -67,7 +72,7 @@ class PhantasmLight(pl.LightningModule):
         )
 
         self.opt = optimizer
-        scheduler_config = InverseSquareRootScheduleConfig(warmup_updates=50, warmup_init_lr=self.lr, lr=5e-5)
+        scheduler_config = InverseSquareRootScheduleConfig(warmup_updates=100, warmup_init_lr=self.lr, lr=5e-5)
         scheduler = InverseSquareRootSchedule(scheduler_config, optimizer)
 
         return {
@@ -136,17 +141,15 @@ class PhantasmLight(pl.LightningModule):
                 else:
                     dataset_list.append(ClassificationDataset(task_name=t_name, json_file=task.data_files[split],
                                                               tokenizer=self.tokenizer,
-                                                              sample_size=400000 if split == "train" else 80000,
                                                               fields=["title", "abstract"],
                                                               label_field=task.labels_field,
                                                               labels=task.labels))
             else:
                 dataset_list.append(TripletDataset(task_name=t_name, json_file=task.data_files[split],
-                                                   sample_size=400000 if split == "train" else 80000,
                                                    tokenizer=self.tokenizer, fields=["title", "abstract"]))
         multi_dataset = CustomChainDataset(dataset_list, batch_size=self.batch_size,
                                            device_rank=self.trainer.global_rank, num_devices=self.trainer.world_size,
-                                           batching_strategy=BatchingStrategy.SEQUENTIAL)
+                                           batching_strategy=BatchingStrategy.MIXED_PROPORTIONAL)
         if split == "train":
             self.multi_train = multi_dataset
         elif split == "dev":
@@ -162,13 +165,18 @@ class PhantasmLight(pl.LightningModule):
         self.load_data("dev")
         return DataLoader(self.multi_val, batch_size=self.batch_size, collate_fn=multi_collate, num_workers=3)
 
+    def on_save_checkpoint(self, checkpoint: Dict[str, Any]) -> None:
+        self.encoder.save_pretrained("./lightning_logs/trial/mixed_prop/checkpoints/model/")
+        self.tokenizer.save_pretrained("./lightning_logs/trial/mixed_prop/checkpoints/tokenizer/")
+        self.tokenizer.save_vocabulary("./lightning_logs/trial/mixed_prop/checkpoints/tokenizer/")
+
 
 if __name__ == '__main__':
     log_dir = "./lightning_logs/"
     logger = TensorBoardLogger(
         save_dir=log_dir,
-        version="seq_batch",
-        name='full_run'
+        version="mixed_prop",
+        name='trial'
     )
 
     # second part of the path shouldn't be f-string
@@ -188,8 +196,7 @@ if __name__ == '__main__':
                          strategy=DDPPlugin(find_unused_parameters=True),
                          enable_checkpointing=True,
                          callbacks=[checkpoint_callback],
-                         val_check_interval=9310,
+                         val_check_interval=10,
                          num_sanity_val_steps=3,
-                         max_epochs=2,
-                         auto_lr_find=True)
+                         max_epochs=2)
     trainer.fit(model)

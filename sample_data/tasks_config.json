@@ -22,7 +22,7 @@
     "name": "s2and",
     "type": "triplet",
     "data_files": {
-      "train": "sample_data/s2and_small.json"
+      "train": "sample_data/s2and_small.json",
     }
   }
 ]

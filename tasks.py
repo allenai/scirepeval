@@ -7,7 +7,7 @@ import torch.nn.functional as F
 
 class TaskFamily:
     def __init__(self, name, loss, data_files, type, multi_label=False, labels_field=None, labels=None,
-                 ctrl_token="[CLS]", head=None):
+                 ctrl_token=None, head=None):
         self.name = name
         self.data_files = data_files
         self.type = type

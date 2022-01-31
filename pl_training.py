@@ -52,7 +52,7 @@ class PhantasmLight(pl.LightningModule):
 
     def forward(self, x):
         embedding = self.encoder(x)
-        return embedding
+        return embedding.last_hidden_state[:, 0, :]
 
     def configure_optimizers(self):
         """Prepare optimizer and schedule (linear warmup and decay)"""
@@ -90,11 +90,11 @@ class PhantasmLight(pl.LightningModule):
             if task.type == "triplet":
                 query, pos, neg = batch[0][0], batch[0][1], batch[0][2]
                 query_emb, pos_emb, neg_emb = self(query), self(pos), self(neg)
-                curr_loss = task.loss(query_emb.pooler_output, pos_emb.pooler_output, neg_emb.pooler_output)
+                curr_loss = task.loss(query_emb, pos_emb, neg_emb)
             else:
                 x, y = batch[0], batch[1]
                 encoding = self(x)
-                logits = self.heads[name](encoding.pooler_output)
+                logits = self.heads[name](encoding)
                 curr_loss = task.loss(logits, y)
                 if task.multi_label:
                     curr_loss = torch.mean(curr_loss, dim=1)

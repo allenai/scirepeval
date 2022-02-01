@@ -44,15 +44,16 @@ class PhantasmLight(pl.LightningModule):
             special_tokens_dict = {'additional_special_tokens': list(spl_ctrl_tokens)}
             num_added_toks = self.tokenizer.add_special_tokens(special_tokens_dict)
             if num_added_toks:
-                self.encoder.resize_token_embeddings(len(self.tokenizer))
-                self.encoder.embeddings.word_embeddings.weight[-num_added_toks,
-                :] = self.encoder.embeddings.word_embeddings.weight[self.tokenizer.cls_token_id, :]
+                with torch.no_grad():
+                    self.encoder.resize_token_embeddings(len(self.tokenizer))
+                    self.encoder.embeddings.word_embeddings.weight[-num_added_toks:,
+                    :] = self.encoder.embeddings.word_embeddings.weight[self.tokenizer.cls_token_id, :]
         self.batch_size = batch_size
         self.lr = 1e-6
 
-    def forward(self, x):
+    def forward(self, x, token_idx=0):
         embedding = self.encoder(x)
-        return embedding.last_hidden_state[:, 0, :]
+        return embedding.last_hidden_state[:, token_idx, :]
 
     def configure_optimizers(self):
         """Prepare optimizer and schedule (linear warmup and decay)"""
@@ -87,13 +88,15 @@ class PhantasmLight(pl.LightningModule):
         losses = []
         for name, batch in train_batch.items():
             task = self.task_dict[name]
+            idx = 0 if not task.ctrl_token else 1
+
             if task.type == "triplet":
                 query, pos, neg = batch[0][0], batch[0][1], batch[0][2]
-                query_emb, pos_emb, neg_emb = self(query), self(pos), self(neg)
+                query_emb, pos_emb, neg_emb = self(query, idx), self(pos, idx), self(neg, idx)
                 curr_loss = task.loss(query_emb, pos_emb, neg_emb)
             else:
                 x, y = batch[0], batch[1]
-                encoding = self(x)
+                encoding = self(x, idx)
                 logits = self.heads[name](encoding)
                 curr_loss = task.loss(logits, y)
                 if task.multi_label:
@@ -137,16 +140,17 @@ class PhantasmLight(pl.LightningModule):
                                                         tokenizer=self.tokenizer,
                                                         fields=["title", "abstract"],
                                                         label_field=task.labels_field,
-                                                        labels=task.labels))
+                                                        labels=task.labels, ctrl_token=task.ctrl_token))
                 else:
                     dataset_list.append(ClassificationDataset(task_name=t_name, json_file=task.data_files[split],
                                                               tokenizer=self.tokenizer,
                                                               fields=["title", "abstract"],
                                                               label_field=task.labels_field,
-                                                              labels=task.labels))
+                                                              labels=task.labels, ctrl_token=task.ctrl_token))
             else:
                 dataset_list.append(TripletDataset(task_name=t_name, json_file=task.data_files[split],
-                                                   tokenizer=self.tokenizer, fields=["title", "abstract"]))
+                                                   tokenizer=self.tokenizer, fields=["title", "abstract"],
+                                                   ctrl_token=task.ctrl_token))
         multi_dataset = CustomChainDataset(dataset_list, batch_size=self.batch_size,
                                            device_rank=self.trainer.global_rank, num_devices=self.trainer.world_size,
                                            batching_strategy=BatchingStrategy.MIXED_PROPORTIONAL)
@@ -192,8 +196,6 @@ if __name__ == '__main__':
 
     model = PhantasmLight(batch_size=16)
     trainer = pl.Trainer(logger=logger,
-                         gpus=[0, 1, 2],
-                         strategy=DDPPlugin(find_unused_parameters=True),
                          enable_checkpointing=True,
                          callbacks=[checkpoint_callback],
                          val_check_interval=10,

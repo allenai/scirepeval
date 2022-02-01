@@ -3,10 +3,12 @@
     "name": "mesh",
     "type": "classification",
     "data_files": {
-      "train": "sample_data/mesh_small.json"
+      "train": "sample_data/mesh_small.json",
+      "dev": "sample_data/mesh_small.json"
     },
     "labels": "sample_data/mesh_descriptors.txt",
-    "labels_field": "descriptor"
+    "labels_field": "descriptor",
+    "ctrl_token": "[CLF]"
   },
   {
     "name": "fos",
@@ -16,13 +18,16 @@
       "train": "sample_data/fos_small.json"
     },
     "labels": "sample_data/fos_labels.txt",
-    "labels_field": "labels_text"
+    "labels_field": "labels_text",
+    "ctrl_token": "[CLF]"
   },
   {
     "name": "s2and",
     "type": "triplet",
     "data_files": {
       "train": "sample_data/s2and_small.json",
-    }
+      "dev": "sample_data/s2and_small.json"
+    },
+    "ctrl_token": "[ATH]"
   }
 ]

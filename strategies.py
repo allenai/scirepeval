@@ -52,7 +52,6 @@ class ProportionalBatching(BatchWrapper):
                 if di >= len(iters):
                     di = 0
 
-
 class TaskBasedBatching(BatchWrapper):
     def get_batch_iter(self, datasets: Iterable[Dataset], batch_size: int):
         iters = list(map(iter, datasets))

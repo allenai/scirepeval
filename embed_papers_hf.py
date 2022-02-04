@@ -10,11 +10,11 @@ import torch
 
 class Dataset:
 
-    def __init__(self, data_path, max_length=512, batch_size=32):
-        self.tokenizer = AutoTokenizer.from_pretrained(
-            '/net/nfs2.s2-research/phantasm/phantasm_new/lightning_logs/full_run/mixed_prop/checkpoints/tokenizer/')
+    def __init__(self, data_path, max_length=512, batch_size=32, ctrl_token=None):
+        self.tokenizer = AutoTokenizer.from_pretrained("allenai/specter")
         self.max_length = max_length
         self.batch_size = batch_size
+        self.ctrl_token = ctrl_token
         # data is assumed to be a json file
         # [{"corpus_id":...,"title":..., "abstract":...}...]
         try:
@@ -34,15 +34,19 @@ class Dataset:
         i = 0
         for d in self.data:
             if "corpus_id" in d:
+                text = "" if not self.ctrl_token else self.ctrl_token + " "
+                text += d['title'] + ' '
+                if d.get('abstract'):
+                    text += f'{self.tokenizer.eos_token} ' + d.get('abstract')
                 if (i) % batch_size != 0 or i == 0:
                     batch_ids.append(d["corpus_id"])
-                    batch.append(d['title'] + ' ' + (d.get('abstract') or ''))
+                    batch.append(text)
                 else:
                     input_ids = self.tokenizer(batch, padding=True, truncation=True,
                                                return_tensors="pt", max_length=self.max_length)
                     yield input_ids.to('cuda'), batch_ids
                     batch_ids = [d["corpus_id"]]
-                    batch = [d['title'] + ' ' + (d.get('abstract') or '')]
+                    batch = [text]
                 i += 1
         if len(batch) > 0:
             input_ids = self.tokenizer(batch, padding=True, truncation=True,
@@ -65,15 +69,19 @@ class QueryDataset(Dataset):
             d_pair = [d["query"]] + d["candidates"]
             for dp in d_pair:
                 if "corpus_id" in dp:
+                    text = "" if not self.ctrl_token else self.ctrl_token + " "
+                    text += d['title'] + ' '
+                    if d.get('abstract'):
+                        text += '{self.tokenizer.eos_token} ' + d.get('abstract')
                     if (i) % batch_size != 0 or i == 0:
                         batch_ids.append(dp["corpus_id"])
-                        batch.append(dp['title'] + ' ' + (dp.get('abstract') or ''))
+                        batch.append(text)
                     else:
                         input_ids = self.tokenizer(batch, padding=True, truncation=True,
                                                    return_tensors="pt", max_length=self.max_length)
                         yield input_ids.to('cuda'), batch_ids
                         batch_ids = [dp["corpus_id"]]
-                        batch = [dp['title'] + ' ' + (dp.get('abstract') or '')]
+                        batch = [text]
                     i += 1
         if len(batch) > 0:
             input_ids = self.tokenizer(batch, padding=True, truncation=True,
@@ -84,15 +92,15 @@ class QueryDataset(Dataset):
 
 class Model:
 
-    def __init__(self):
-        self.model = AutoModel.from_pretrained(
-            '/net/nfs2.s2-research/phantasm/phantasm_new/lightning_logs/full_run/mixed_prop/checkpoints/model/')
+    def __init__(self, token_idx):
+        self.model = AutoModel.from_pretrained("allenai/specter")
         self.model.to('cuda')
         self.model.eval()
+        self.token_idx = token_idx
 
     def __call__(self, input_ids):
         output = self.model(**input_ids)
-        return output.last_hidden_state[:, 0, :]  # cls token
+        return output.last_hidden_state[:, self.token_idx, :]  # cls token
 
 
 def main():
@@ -101,10 +109,11 @@ def main():
     parser.add_argument('--output', help='path to write the output embeddings file. '
                                          'the output format is jsonlines where each line has "paper_id" and "embedding" keys')
     parser.add_argument('--batch-size', type=int, default=8, help='batch size for prediction')
+    parser.add_argument('--ctrl-token', default=None, help='Optional Control Token')
 
     args = parser.parse_args()
-    dataset = QueryDataset(data_path=args.data_path, batch_size=args.batch_size)
-    model = Model()
+    dataset = Dataset(data_path=args.data_path, batch_size=args.batch_size, ctrl_token=args.ctrl_token)
+    model = Model(0 if not dataset.ctrl_token else 1)
     results = {}
     try:
         for batch, batch_ids in tqdm(dataset.batches(), total=len(dataset) // args.batch_size):

@@ -65,15 +65,20 @@ class AbstractMultiTaskDataset(ABC, IterableDataset):
             map_itr = map(self.preprocess, json_parse)
         else:
             json_list = list(json_parse)
-            self.effective_sample_size = min(self.effective_sample_size, len(json_list))
-            map_itr = map(self.preprocess, self.sub_sample(json_list))
+            if len(json_list) < self.effective_sample_size:
+                map_itr = map(self.preprocess, json_list)
+            else:
+                map_itr = map(self.preprocess, self.sub_sample(json_list))
         return self.postprocess_iter(map_itr)
 
     def tokenized_input(self, input_map: Dict[str, str]) -> BatchEncoding:
-        text = "" if not self.ctrl_token else self.ctrl_token
+        text = []
         for field in self.fields:
             if input_map[field]:
-                text += " " + input_map[field]
+                text.append(input_map[field])
+        text = (f" {self.tokenizer.eos_token} ".join(text)).strip()
+        if self.ctrl_token:
+            text = self.ctrl_token + " "+text
         input_ids = self.tokenizer(text, padding="max_length", truncation=True, return_tensors="pt",
                                    max_length=self.max_len)
         return input_ids["input_ids"].flatten()

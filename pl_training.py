@@ -26,6 +26,9 @@ def init_weights(modules):
             module.linear.bias.data.zero_()
 
 
+pl_to_split_map = {"fit": "train", "validate": "dev", "test": "test", "predict": "test"}
+
+
 class PhantasmLight(pl.LightningModule):
     def __init__(self, batch_size: int, task_dict: Dict[str, TaskFamily] = None):
         super().__init__()
@@ -41,6 +44,7 @@ class PhantasmLight(pl.LightningModule):
         self.tokenizer = AutoTokenizer.from_pretrained("allenai/specter")
         spl_ctrl_tokens = set([t.ctrl_token for t in self.task_dict.values() if t.ctrl_token])
         if spl_ctrl_tokens:
+            print("Using Control Tokens")
             special_tokens_dict = {'additional_special_tokens': list(spl_ctrl_tokens)}
             num_added_toks = self.tokenizer.add_special_tokens(special_tokens_dict)
             if num_added_toks:
@@ -57,6 +61,7 @@ class PhantasmLight(pl.LightningModule):
 
     def configure_optimizers(self):
         """Prepare optimizer and schedule (linear warmup and decay)"""
+        model = self.encoder
         no_decay = ["bias", "LayerNorm.weight"]
         optimizer_grouped_parameters = [
             {
@@ -84,12 +89,11 @@ class PhantasmLight(pl.LightningModule):
                 "frequency": 1}
         }
 
-    def calc_loss(self, train_batch, batch_idx, mode="train"):
+    def calc_loss(self, train_batch, batch_idx):
         losses = []
         for name, batch in train_batch.items():
             task = self.task_dict[name]
             idx = 0 if not task.ctrl_token else 1
-
             if task.type == "triplet":
                 query, pos, neg = batch[0][0], batch[0][1], batch[0][2]
                 query_emb, pos_emb, neg_emb = self(query, idx), self(pos, idx), self(neg, idx)
@@ -103,32 +107,26 @@ class PhantasmLight(pl.LightningModule):
                     curr_loss = torch.mean(curr_loss, dim=1)
             losses.append(curr_loss)
         loss = torch.mean(torch.cat(losses))
-        loss_key = "{}_loss".format(mode)
-        self.log(loss_key, loss, on_step=True, on_epoch=False, prog_bar=True, logger=True)
-        return {loss_key if mode != "train" else "loss": loss}
+        return loss
 
     def training_step(self, train_batch, batch_idx):
         loss = self.calc_loss(train_batch, batch_idx)
-        self.log('lr', self.lr_schedulers().get_last_lr()[-1], on_step=True, on_epoch=False, prog_bar=True, logger=True)
-        return loss
+        self.log("train_loss", loss, prog_bar=True, on_step=True, on_epoch=True, batch_size=self.batch_size)
+        self.log("lr", self.lr_schedulers().get_last_lr()[-1], on_step=True, on_epoch=False, prog_bar=True, logger=True)
+        return {"loss": loss}
 
     def validation_step(self, train_batch, batch_idx) -> Optional[STEP_OUTPUT]:
-        return self.calc_loss(train_batch, batch_idx, mode="val")
+        loss = self.calc_loss(train_batch, batch_idx)
+        self.log("val_loss", loss, on_step=True, on_epoch=False, prog_bar=True, sync_dist=True,
+                 batch_size=self.batch_size)
+        self.log("avg_val_loss", loss, on_step=False, on_epoch=True, prog_bar=True, sync_dist=True,
+                 batch_size=self.batch_size)
 
-    def _eval_end(self, outputs) -> tuple:
-        avg_loss = torch.stack([x['val_loss'] for x in outputs]).mean()
-        if self.trainer.data_parallel:
-            torch.distributed.all_reduce(avg_loss, op=torch.distributed.ReduceOp.SUM)
-            avg_loss /= self.trainer.world_size
-        results = {"avg_val_loss": avg_loss}
-        for k, v in results.items():
-            if isinstance(v, torch.Tensor):
-                results[k] = v.detach().cpu().item()
-        return results
-
-    def validation_epoch_end(self, outputs: list) -> dict:
-        ret = self._eval_end(outputs)
-        self.log('avg_val_loss', ret["avg_val_loss"], on_epoch=True, prog_bar=True, sync_dist=True)
+    #     def validation_epoch_end(self, outputs: list) -> dict:
+    #         avg_loss = torch.stack([x['val_loss'] for x in outputs]).mean()
+    #         print(avg_loss)
+    #         avg_loss = torch.mean(self.all_gather(avg_loss))
+    #         self.log("avg_val_loss", avg_loss, on_epoch=True, prog_bar=True, rank_zero_only=True, logger=True, sync_dist=True)
 
     def load_data(self, split) -> CustomChainDataset:
         dataset_list = []
@@ -137,20 +135,23 @@ class PhantasmLight(pl.LightningModule):
                 if task.multi_label:
                     dataset_list.append(
                         MultiLabelClassificationDataset(task_name=t_name, json_file=task.data_files[split],
-                                                        tokenizer=self.tokenizer,
+                                                        tokenizer=self.tokenizer, ctrl_token=task.ctrl_token,
                                                         fields=["title", "abstract"],
                                                         label_field=task.labels_field,
-                                                        labels=task.labels, ctrl_token=task.ctrl_token))
+                                                        labels=task.labels,
+                                                        sample_size=100000 if split == "train" else 20000))
                 else:
                     dataset_list.append(ClassificationDataset(task_name=t_name, json_file=task.data_files[split],
-                                                              tokenizer=self.tokenizer,
+                                                              tokenizer=self.tokenizer, ctrl_token=task.ctrl_token,
                                                               fields=["title", "abstract"],
                                                               label_field=task.labels_field,
-                                                              labels=task.labels, ctrl_token=task.ctrl_token))
+                                                              labels=task.labels,
+                                                              sample_size=100000 if split == "train" else 20000))
             else:
-                dataset_list.append(TripletDataset(task_name=t_name, json_file=task.data_files[split],
-                                                   tokenizer=self.tokenizer, fields=["title", "abstract"],
-                                                   ctrl_token=task.ctrl_token))
+                dataset_list.append(
+                    TripletDataset(task_name=t_name, json_file=task.data_files[split], ctrl_token=task.ctrl_token,
+                                   tokenizer=self.tokenizer, fields=["title", "abstract"],
+                                   sample_size=100000 if split == "train" else 20000))
         multi_dataset = CustomChainDataset(dataset_list, batch_size=self.batch_size,
                                            device_rank=self.trainer.global_rank, num_devices=self.trainer.world_size,
                                            batching_strategy=BatchingStrategy.MIXED_PROPORTIONAL)
@@ -170,17 +171,17 @@ class PhantasmLight(pl.LightningModule):
         return DataLoader(self.multi_val, batch_size=self.batch_size, collate_fn=multi_collate, num_workers=3)
 
     def on_save_checkpoint(self, checkpoint: Dict[str, Any]) -> None:
-        self.encoder.save_pretrained("./lightning_logs/trial/mixed_prop/checkpoints/model/")
-        self.tokenizer.save_pretrained("./lightning_logs/trial/mixed_prop/checkpoints/tokenizer/")
-        self.tokenizer.save_vocabulary("./lightning_logs/trial/mixed_prop/checkpoints/tokenizer/")
+        self.encoder.save_pretrained("./lightning_logs/full_run/mixed_prop_ctrl_tokens/checkpoints/model/")
+        self.tokenizer.save_pretrained("./lightning_logs/full_run/mixed_prop_ctrl_tokens/checkpoints/tokenizer/")
+        self.tokenizer.save_vocabulary("./lightning_logs/full_run/mixed_prop_ctrl_tokens/checkpoints/tokenizer/")
 
 
 if __name__ == '__main__':
     log_dir = "./lightning_logs/"
     logger = TensorBoardLogger(
         save_dir=log_dir,
-        version="mixed_prop",
-        name='trial'
+        version="mixed_prop_ctrl_1",
+        name='var_run'
     )
 
     # second part of the path shouldn't be f-string
@@ -196,9 +197,11 @@ if __name__ == '__main__':
 
     model = PhantasmLight(batch_size=16)
     trainer = pl.Trainer(logger=logger,
+                         gpus=[0, 1, 2],
+                         strategy="ddp",
                          enable_checkpointing=True,
                          callbacks=[checkpoint_callback],
-                         val_check_interval=10,
+                         val_check_interval=1.0,
                          num_sanity_val_steps=3,
                          max_epochs=2)
     trainer.fit(model)

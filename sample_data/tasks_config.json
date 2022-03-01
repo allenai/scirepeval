@@ -3,8 +3,8 @@
     "name": "mesh",
     "type": "classification",
     "data_files": {
-      "train": "sample_data/mesh_small.json",
-      "dev": "sample_data/mesh_small.json"
+      "train": "../../scidocs/data/mesh_plus/train.json",
+      "dev": "../../scidocs/data/mesh_plus/val.json"
     },
     "labels": "sample_data/mesh_descriptors.txt",
     "labels_field": "descriptor",
@@ -15,7 +15,8 @@
     "type": "classification",
     "multi_label": true,
     "data_files": {
-      "train": "sample_data/fos_small.json"
+      "train": "../fos/fos_train.json",
+      "dev": "../fos/fos_val.json"
     },
     "labels": "sample_data/fos_labels.txt",
     "labels_field": "labels_text",
@@ -23,11 +24,35 @@
   },
   {
     "name": "s2and",
-    "type": "triplet",
+    "type": "ir",
     "data_files": {
-      "train": "sample_data/s2and_small.json",
-      "dev": "sample_data/s2and_small.json"
+      "train": "../../scidocs/data/s2and/train.jsonl",
+      "dev": "../../scidocs/data/s2and/dev.jsonl"
     },
     "ctrl_token": "[ATH]"
+  },
+  {
+    "name": "specter",
+    "type": "triplet",
+    "data_files": {
+      "train": "../../scidocs/data/specter_triplets/train.json",
+      "dev": "../../scidocs/data/specter_triplets/val.json"
+    },
+    "ctrl_token": "[SAL]"
+  },
+  {
+    "name": "search",
+    "type": "ir",
+    "data_files": {
+      "train": "../search/train_new.jsonl",
+      "dev": "../search/val_new.jsonl"
+    },
+    "input_fields": [
+      "title",
+      "abstract",
+      "venue",
+      "year"
+    ],
+    "ctrl_token": "[QRY]"
   }
 ]

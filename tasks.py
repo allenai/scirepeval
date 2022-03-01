@@ -6,8 +6,10 @@ import torch.nn.functional as F
 
 
 class TaskFamily:
-    def __init__(self, name, loss, data_files, type, multi_label=False, labels_field=None, labels=None,
-                 ctrl_token=None, head=None):
+    def __init__(self, name, loss, data_files, type, multi_label=False, input_fields=None,
+                 labels_field=None, labels=None, ctrl_token=None, head=None):
+        if input_fields is None:
+            input_fields = ["title", "abstract"]
         self.name = name
         self.data_files = data_files
         self.type = type
@@ -17,6 +19,7 @@ class TaskFamily:
         self.head = head
         self.labels = labels
         self.labels_field = labels_field
+        self.input_fields = input_fields
 
 
 class TaskHead(nn.Module):

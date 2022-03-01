@@ -5,8 +5,6 @@ from typing import Iterable
 from torch.utils.data import Dataset
 import random
 
-random.seed(42)
-
 
 class BatchWrapper(ABC):
 
@@ -51,6 +49,7 @@ class ProportionalBatching(BatchWrapper):
                 iters.remove(it)
                 if di >= len(iters):
                     di = 0
+
 
 class TaskBasedBatching(BatchWrapper):
     def get_batch_iter(self, datasets: Iterable[Dataset], batch_size: int):

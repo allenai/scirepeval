@@ -8,16 +8,18 @@ import pathlib
 import torch
 import decimal
 import hashlib
+from bert_pals import BertPalsEncoder
 
 
 class Dataset:
 
-    def __init__(self, data_path, model_dir, max_length=512, batch_size=32, ctrl_token=None,
-                 fields=["title", "abstract"]):
+    def __init__(self, data_path, model_dir, max_length=512, batch_size=32, ctrl_token=None, fields=None):
         self.tokenizer = AutoTokenizer.from_pretrained(model_dir + "/tokenizer/")
         self.max_length = max_length
         self.batch_size = batch_size
         self.ctrl_token = ctrl_token
+        if not fields:
+            fields = ["title", "abstract"]
         self.fields = fields
         # data is assumed to be a json file
         # [{"corpus_id":...,"title":..., "abstract":...}...]
@@ -73,7 +75,7 @@ class QueryDataset(Dataset):
         i = 0
         for d in self.data:
             d_pair = [d["query"]] + d["candidates"]
-            for dp in d_pair:
+            for i, dp in enumerate(d_pair):
                 key = ""
                 text = []
                 if type(dp) == dict:
@@ -91,7 +93,14 @@ class QueryDataset(Dataset):
                     text = dp
                 if key:
                     if self.ctrl_token:
-                        text = self.ctrl_token + " " + text
+                        if type(self.ctrl_token) == dict:
+                            if i == 0:
+                                ctrl_token = self.ctrl_token["query"]
+                            else:
+                                ctrl_token = self.ctrl_token["candidates"]
+                        else:
+                            ctrl_token = self.ctrl_token
+                        text = ctrl_token + " " + text
                     if (i) % batch_size != 0 or i == 0:
                         batch_ids.append(key)
                         batch.append(text)
@@ -111,15 +120,19 @@ class QueryDataset(Dataset):
 
 class Model:
 
-    def __init__(self, token_idx, model_dir):
-        self.model = AutoModel.from_pretrained(model_dir + "/model/")
+    def __init__(self, encoder, token_idx, model_dir, task_id=None):
+        self.model = encoder
         self.model.to('cuda')
         self.model.eval()
         self.token_idx = token_idx
+        self.task_id = task_id
 
     def __call__(self, input_ids):
-        output = self.model(**input_ids)
-        return output.last_hidden_state[:, self.token_idx, :]  # cls token
+        output = self.model(**input_ids) if not self.task_id else self.model(input_ids, self.task_id)
+        try:
+            return output.last_hidden_state[:, self.token_idx, :]  # cls token
+        except:
+            return output[:, self.token_idx, :]  # cls token
 
 
 def main():
@@ -129,20 +142,33 @@ def main():
     parser.add_argument('--output', help='path to write the output embeddings file. '
                                          'the output format is jsonlines where each line has "paper_id" and "embedding" keys')
     parser.add_argument('--batch-size', type=int, default=8, help='batch size for prediction')
-    parser.add_argument('--ctrl-token', default=None, help='Optional Control Token')
+    parser.add_argument('--ctrl-token', default=None, help='Optional Control Token', type=json.loads)
     parser.add_argument('--mode', default=None, help='Optional IR mode for Query Candidates data samples')
+    parser.add_argument('--fields', nargs='+', help='Fields other than title, abstract', default=None)
+    parser.add_argument('--encoder-type', help='Encoder type from default/pals/adapters', default="default")
 
     args = parser.parse_args()
     model_dir = args.model_dir
+    ctrl_token = None
     if args.ctrl_token:
-        print(f"Using control token: {args.ctrl_token}")
+        ctrl_token = args.ctrl_token['val']
+        print(f"Using control token: {ctrl_token}")
     if args.mode == "ir":
         dataset = QueryDataset(data_path=args.data_path, model_dir=model_dir, batch_size=args.batch_size,
-                               ctrl_token=args.ctrl_token)
+                               ctrl_token=ctrl_token, fields=args.fields)
     else:
         dataset = Dataset(data_path=args.data_path, model_dir=model_dir, batch_size=args.batch_size,
-                          ctrl_token=args.ctrl_token)
-    model = Model(0 if not dataset.ctrl_token else 1, model_dir)
+                          ctrl_token=ctrl_token)
+    if args.encoder_type == "default":
+        encoder = AutoModel.from_pretrained(model_dir + "/model/")
+        model = Model(encoder, 0 if not dataset.ctrl_token else 1, model_dir)
+    elif args.encoder_type == "pals":
+        task_ids = []
+        if ctrl_token:
+            task_ids = ["[ATH]", "[CLF]", "[QRY]", "[SAL]"]
+        encoder = BertPalsEncoder(config="bert_pals_config/pals.config.json", task_ids=task_ids,
+                                checkpoint=f"{model_dir}/model/pytorch_model.bin")
+        model = Model(encoder, 0 if not ctrl_token else 1, model_dir, task_id=ctrl_token)
     results = {}
     try:
         for batch, batch_ids in tqdm(dataset.batches(), total=len(dataset) // args.batch_size):

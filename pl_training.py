@@ -2,19 +2,21 @@ from typing import Dict, Optional, Any
 
 import pytorch_lightning as pl
 import torch
+import torch.nn
 from pytorch_lightning.callbacks import ModelCheckpoint
 from pytorch_lightning.loggers import TensorBoardLogger
 from pytorch_lightning.utilities.types import TRAIN_DATALOADERS, EVAL_DATALOADERS, STEP_OUTPUT
-import torch.nn
 from torch.utils.data import DataLoader
-from transformers import AutoTokenizer, AutoModel
 from transformers import AdamW
-from pytorch_lightning.plugins import DDPPlugin
-from schedulers import InverseSquareRootSchedule, InverseSquareRootScheduleConfig
+from transformers import AutoTokenizer, AutoModel
+
 from datasets import ClassificationDataset, multi_collate, MultiLabelClassificationDataset, IRDataset, \
     CustomChainDataset, TripletDataset
-from tasks import TaskFamily, load_tasks
+from schedulers import InverseSquareRootSchedule, InverseSquareRootScheduleConfig
 from strategies import BatchingStrategy
+from tasks import TaskFamily, load_tasks
+from bert_pals import BertPalsEncoder
+from adapter_fusion import AdapterFactory
 
 pl.seed_everything(42, workers=True)
 
@@ -30,9 +32,12 @@ pl_to_split_map = {"fit": "train", "validate": "dev", "test": "test", "predict":
 
 
 class PhantasmLight(pl.LightningModule):
-    def __init__(self, batch_size: int, use_ctrl_tokens=False, task_dict: Dict[str, TaskFamily] = None):
+    def __init__(self, batch_size: int, tokenizer: str, model: str, log_dir: str, use_ctrl_tokens=False,
+                 task_dict: Dict[str, TaskFamily] = None,
+                 pals_cfg: str = None, adapter_type: str = None):
         super().__init__()
         self.task_dict = load_tasks() if not task_dict else task_dict
+        print(self.task_dict.keys())
         self.heads = torch.nn.ModuleDict(
             {t.name: t.head for t in self.task_dict.values() if t.head}
         )
@@ -40,30 +45,52 @@ class PhantasmLight(pl.LightningModule):
         self.multi_train = None
         self.multi_test = None
         self.multi_val = None
-        self.encoder = AutoModel.from_pretrained("allenai/specter")
-        self.tokenizer = AutoTokenizer.from_pretrained("allenai/specter")
+        self.pals = pals_cfg is not None
+        self.adapters = adapter_type is not None
         self.use_ctrl_tokens = use_ctrl_tokens
+        task_ids = [task for task in self.task_dict]
+        spl_ctrl_tokens = set()
         if self.use_ctrl_tokens:
-            spl_ctrl_tokens = set([t.ctrl_token for t in self.task_dict.values() if t.ctrl_token])
-            if spl_ctrl_tokens:
-                print("Using Control Tokens")
-                special_tokens_dict = {'additional_special_tokens': list(spl_ctrl_tokens)}
-                num_added_toks = self.tokenizer.add_special_tokens(special_tokens_dict)
-                if num_added_toks:
-                    with torch.no_grad():
-                        self.encoder.resize_token_embeddings(len(self.tokenizer))
-                        self.encoder.embeddings.word_embeddings.weight[-num_added_toks:,
-                        :] = self.encoder.embeddings.word_embeddings.weight[self.tokenizer.cls_token_id, :]
+            for t in self.task_dict.values():
+                if type(t.ctrl_token) == str:
+                    spl_ctrl_tokens.add(t.ctrl_token)
+                else:
+                    spl_ctrl_tokens.update(t.ctrl_token.values())
+            spl_ctrl_tokens = sorted(list(spl_ctrl_tokens))
+            task_ids = spl_ctrl_tokens if spl_ctrl_tokens else task_ids
+        self.tokenizer = AutoTokenizer.from_pretrained(tokenizer)
+
+        if self.adapters:
+            adapters_dir = f'{log_dir}/models/adapters/'
+            self.encoder = AdapterFactory.get_adapter(model, task_ids,
+                                                      adapter_type == "fusion", adapters_dir)
+        else:
+            self.encoder = AutoModel.from_pretrained(model)
+            if self.pals:
+                self.encoder = BertPalsEncoder(f"bert_pals_config/{pals_cfg}", task_ids, self.encoder)
+        if spl_ctrl_tokens:
+            print("Using Control Tokens", spl_ctrl_tokens)
+            special_tokens_dict = {'additional_special_tokens': spl_ctrl_tokens}
+            num_added_toks = self.tokenizer.add_special_tokens(special_tokens_dict)
+            self.encoder.resize_token_embeddings(len(self.tokenizer))
+            # if num_added_toks:
+            #     with torch.no_grad():
+            #         self.encoder.embeddings.word_embeddings.weight[-num_added_toks:,
+            #         :] += self.encoder.embeddings.word_embeddings.weight[self.tokenizer.cls_token_id, :]
         self.batch_size = batch_size
         self.lr = 1e-6
+        self.save_hyperparameters()
 
-    def forward(self, x, token_idx=0):
-        embedding = self.encoder(x)
-        return embedding.last_hidden_state[:, token_idx, :]
+    def forward(self, x, token_idx=0, task_id=None):
+        if not self.pals:
+            embedding = self.encoder(x) if not self.adapters else self.encoder(x, task_id)
+            return embedding.last_hidden_state[:, token_idx, :]
+        else:
+            embedding = self.encoder(x, task_id)
+            return embedding[:, token_idx, :]
 
     def configure_optimizers(self):
         """Prepare optimizer and schedule (linear warmup and decay)"""
-        model = self.encoder
         no_decay = ["bias", "LayerNorm.weight"]
         optimizer_grouped_parameters = [
             {
@@ -80,7 +107,7 @@ class PhantasmLight(pl.LightningModule):
         )
 
         self.opt = optimizer
-        scheduler_config = InverseSquareRootScheduleConfig(warmup_updates=100, warmup_init_lr=self.lr, lr=5e-5)
+        scheduler_config = InverseSquareRootScheduleConfig(warmup_updates=1400, warmup_init_lr=self.lr, lr=1e-5)
         scheduler = InverseSquareRootSchedule(scheduler_config, optimizer)
 
         return {
@@ -93,21 +120,32 @@ class PhantasmLight(pl.LightningModule):
 
     def calc_loss(self, train_batch, batch_idx):
         losses, loss_per_task = [], dict()
+        scl = torch.tensor(0.0)
         for name, batch in train_batch.items():
             # print(name, batch[0].shape if name not in ("s2and", "search", "specter") else batch[0][0].shape, self.global_rank)
             task = self.task_dict[name]
             idx = 0 if not task.ctrl_token else 1
+            task_id = name if not self.use_ctrl_tokens else task.ctrl_token
             if task.type != "classification":
                 query, pos, neg = batch[0][0], batch[0][1], batch[0][2]
-                query_emb, pos_emb, neg_emb = self(query, idx), self(pos, idx), self(neg, idx)
+                query_ctrl = cand_ctrl = task_id
+                if type(task_id) == dict:
+                    query_ctrl = task_id["query"]
+                    cand_ctrl = task_id["candidates"]
+                query_emb, pos_emb, neg_emb = self(query, idx, query_ctrl), self(pos, idx, cand_ctrl), self(neg, idx,
+                                                                                                            cand_ctrl)
                 curr_loss = task.loss(query_emb, pos_emb, neg_emb)
             else:
                 x, y = batch[0], batch[1]
-                encoding = self(x, idx)
+                encoding = self(x, idx, task_id)
                 logits = self.heads[name](encoding)
                 curr_loss = task.loss(logits, y)
                 if task.multi_label:
                     curr_loss = torch.mean(curr_loss, dim=1)
+                elif task.contrastive_loss:
+                    scl = task.contrastive_loss(encoding, y, self.heads[name].num_labels)
+                    curr_loss = 0.1 * curr_loss + 0.9 * scl
+
             loss_per_task[name] = torch.mean(curr_loss)
             losses.append(curr_loss)
         loss = torch.mean(torch.cat(losses))
@@ -148,24 +186,24 @@ class PhantasmLight(pl.LightningModule):
                                                         fields=task.input_fields,
                                                         label_field=task.labels_field,
                                                         labels=task.labels,
-                                                        sample_size=400000 if split == "train" else 80000))
+                                                        sample_size=600000 if split == "train" else 80000))
                 else:
                     dataset_list.append(ClassificationDataset(task_name=t_name, json_file=task.data_files[split],
                                                               tokenizer=self.tokenizer, ctrl_token=op_token,
                                                               fields=task.input_fields,
                                                               label_field=task.labels_field,
                                                               labels=task.labels,
-                                                              sample_size=400000 if split == "train" else 80000))
+                                                              sample_size=600000 if split == "train" else 80000))
             elif task.type == "ir":
                 dataset_list.append(
                     IRDataset(task_name=t_name, json_file=task.data_files[split], ctrl_token=op_token,
                               tokenizer=self.tokenizer, fields=task.input_fields,
-                              sample_size=400000 if split == "train" else 80000))
+                              sample_size=600000 if split == "train" else 80000))
             else:
                 dataset_list.append(
                     TripletDataset(task_name=t_name, json_file=task.data_files[split], ctrl_token=op_token,
                                    tokenizer=self.tokenizer, fields=task.input_fields,
-                                   sample_size=400000 if split == "train" else 80000))
+                                   sample_size=600000 if split == "train" else 80000))
         multi_dataset = CustomChainDataset(dataset_list, batch_size=self.batch_size,
                                            device_rank=self.trainer.global_rank, num_devices=self.trainer.world_size,
                                            batching_strategy=BatchingStrategy.MIXED_PROPORTIONAL)
@@ -178,25 +216,34 @@ class PhantasmLight(pl.LightningModule):
         self.load_data("train")
 
     def train_dataloader(self) -> TRAIN_DATALOADERS:
-        return DataLoader(self.multi_train, batch_size=self.batch_size, collate_fn=multi_collate, num_workers=0)
+        return DataLoader(self.multi_train, batch_size=self.batch_size, collate_fn=multi_collate, num_workers=2,
+                          pin_memory=True)
 
     def val_dataloader(self) -> EVAL_DATALOADERS:
         self.load_data("dev")
-        return DataLoader(self.multi_val, batch_size=self.batch_size, collate_fn=multi_collate, num_workers=3)
+        return DataLoader(self.multi_val, batch_size=self.batch_size, collate_fn=multi_collate, num_workers=1)
 
     def on_save_checkpoint(self, checkpoint: Dict[str, Any]) -> None:
         logger = self.logger
-        self.encoder.save_pretrained(f'{logger.save_dir}/{logger.name}/{logger.version}/checkpoints/model/')
-        self.tokenizer.save_pretrained(f'{logger.save_dir}/{logger.name}/{logger.version}/checkpoints/tokenizer/')
-        self.tokenizer.save_vocabulary(f'{logger.save_dir}/{logger.name}/{logger.version}/checkpoints/tokenizer/')
+        log_dir = f'{logger.save_dir}/{logger.name}/{logger.version}/checkpoints'
+        self.tokenizer.save_pretrained(f'{log_dir}/tokenizer/')
+        self.tokenizer.save_vocabulary(f'{log_dir}/tokenizer/')
+        if self.pals:
+            torch.save(self.encoder.state_dict(),
+                       f'{log_dir}/model/pytorch_model.bin')
+        elif self.adapters:
+            self.encoder.save_pretrained(
+                f'{log_dir}/model/adapters/')
+        else:
+            self.encoder.save_pretrained(f'{log_dir}/model/')
 
 
 if __name__ == '__main__':
     log_dir = "./lightning_logs/"
     logger = TensorBoardLogger(
         save_dir=log_dir,
-        version="all",
-        name='full_run'
+        version='ro_after_specter',
+        name='full_run',
     )
 
     # second part of the path shouldn't be f-string
@@ -210,15 +257,17 @@ if __name__ == '__main__':
         mode='min'
     )
 
-    model = PhantasmLight(batch_size=16, use_ctrl_tokens=False)
+    model = PhantasmLight(batch_size=8,
+                          tokenizer="allenai/specter",
+                          model="allenai/specter",
+                          use_ctrl_tokens=True, pals_cfg=None, adapter_type="Single", log_dir=filepath)
+
+    hparams = {"val_check_interval": 1.0, "num_sanity_val_steps": 4, "max_epochs": 2, "accumulate_grad_batches": 16}
+
     trainer = pl.Trainer(logger=logger,
-                         gpus=[0, 1, 2, 3],
-                         strategy="ddp",
                          enable_checkpointing=True,
                          callbacks=[checkpoint_callback],
-                         val_check_interval=1.0,
-                         num_sanity_val_steps=4,
-                         max_epochs=2,
                          precision=16,
-                         accumulate_grad_batches=4)
+                         **hparams)
+    logger.log_hyperparams(hparams)
     trainer.fit(model)

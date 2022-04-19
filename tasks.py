@@ -7,7 +7,7 @@ import torch.nn.functional as F
 
 class TaskFamily:
     def __init__(self, name, loss, data_files, type, multi_label=False, input_fields=None,
-                 labels_field=None, labels=None, ctrl_token=None, head=None):
+                 labels_field=None, labels=None, ctrl_token=None, head=None, contrastive_loss = None):
         if input_fields is None:
             input_fields = ["title", "abstract"]
         self.name = name
@@ -15,6 +15,7 @@ class TaskFamily:
         self.type = type
         self.multi_label = multi_label
         self.loss = loss
+        self.contrastive_loss = contrastive_loss
         self.ctrl_token = ctrl_token
         self.head = head
         self.labels = labels
@@ -32,6 +33,22 @@ class TaskHead(nn.Module):
 
     def forward(self, encoding):
         return self.linear(self.dropout(encoding))
+
+
+class SCLLoss(nn.Module):
+    def __init__(self, temp=0.3):
+        super(SCLLoss, self).__init__()
+        self.temp = temp
+
+    def forward(self, encoding, y, num_classes):
+        dot_prod = torch.exp(torch.mm(encoding, encoding.T) / self.temp)
+        y_mask = torch.nn.functional.one_hot(y, num_classes=num_classes).T[y]
+        same_class_mask = y_mask.fill_diagonal_(0)
+        diff_class_mask = torch.where(same_class_mask == 1, 0, 1).fill_diagonal_(0)
+        con_loss = torch.log((dot_prod * same_class_mask) / torch.sum(dot_prod * diff_class_mask, dim=1))
+        con_loss = -1.0 * torch.sum(con_loss, dim=1) / (torch.sum(y_mask, dim=1) + 1e-10)
+        scl_loss = torch.sum(con_loss)
+        return scl_loss
 
 
 # Triplet will be an object of TaskFamily as no separate head needed
@@ -109,6 +126,10 @@ def load_tasks(tasks_config_file: str = "sample_data/tasks_config.json") -> Dict
                 task["loss"] = nn.BCEWithLogitsLoss(reduction="none")
             else:
                 task["loss"] = nn.CrossEntropyLoss(reduction="none")
+                use_contrastive = task.pop("contrastive", False)
+                if use_contrastive:
+                    task["contrastive_loss"] = SCLLoss()
+
         else:
             task["loss"] = TripletLoss(reduction="none")
         task_dict[task["name"]] = TaskFamily(**task)

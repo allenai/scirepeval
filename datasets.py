@@ -29,9 +29,15 @@ class AbstractMultiTaskDataset(ABC, IterableDataset):
         self.max_len = max_len
         self._effective_sample_size = sample_size
 
-    @abstractmethod
-    def sub_sample(self, json_parse: List[Dict]) -> Iterator:
-        pass
+    def sub_sample(self, json_parse: Iterator[Dict]) -> Iterator:
+        curr_len = 0
+        try:
+            for _ in range(self.effective_sample_size):
+                curr_len += 1
+                yield next(json_parse)
+        except StopIteration:
+            print(
+                f"Reqd sample size {self.effective_sample_size} greater than {self.task_name} dataset size {curr_len}, using complete dataset")
 
     @abstractmethod
     def preprocess(self, line: Dict[str, str]) -> Union[
@@ -63,14 +69,10 @@ class AbstractMultiTaskDataset(ABC, IterableDataset):
         if self.sample_size == -1:
             map_itr = map(self.preprocess, json_parse)
         else:
-            json_list = list(json_parse)
-            if len(json_list) < self.effective_sample_size:
-                map_itr = map(self.preprocess, json_list)
-            else:
-                map_itr = map(self.preprocess, self.sub_sample(json_list))
+            map_itr = map(self.preprocess, self.sub_sample(json_parse))
         return self.postprocess_iter(map_itr)
 
-    def tokenized_input(self, input_data: Union[Dict[str, str], str]) -> BatchEncoding:
+    def tokenized_input(self, input_data: Union[Dict[str, str], str], ctrl_token_key: str = None) -> BatchEncoding:
         text = []
         if type(input_data) == dict:
             for field in self.fields:
@@ -82,7 +84,8 @@ class AbstractMultiTaskDataset(ABC, IterableDataset):
         else:
             text = input_data
         if self.ctrl_token:
-            text = self.ctrl_token + " " + text
+            ctrl_token = self.ctrl_token if not ctrl_token_key else self.ctrl_token[ctrl_token_key]
+            text = ctrl_token + " " + text
         input_ids = self.tokenizer(text, padding="max_length", truncation=True, return_tensors="pt",
                                    max_length=self.max_len)
         return input_ids["input_ids"].flatten()
@@ -104,14 +107,19 @@ class ClassificationDataset(AbstractMultiTaskDataset):
         input_ids = self.tokenized_input(line)
         return self.task_name, input_ids, self.label_transform(label)
 
-    def sub_sample(self, json_parse: List[Dict]) -> Iterator:
-        X_ids = np.array([d["corpus_id"] for d in json_parse])
-        y = np.array([self.labels[d[self.label_field]] for d in json_parse])
-        ids, _, _, _ = train_test_split(X_ids, y, train_size=self.effective_sample_size, random_state=42,
-                                        stratify=y)
-        for d in json_parse:
-            if d["corpus_id"] in ids:
-                yield d
+    def sub_sample(self, json_parse: Iterator[Dict]) -> Iterator:
+        # json_itr_list = itertools.tee(json_parse, 2)
+        # json_parse = json_itr_list[0]
+        X, y = zip(*[(d, self.labels[d[self.label_field]]) for d in json_parse])
+        X, y = np.array(X), np.array(y)
+        if X.shape[0] < self.effective_sample_size:
+            print(
+                f"Reqd sample size {self.effective_sample_size} greater than {self.task_name} dataset size {X.shape[0]}, using complete dataset")
+            X_sub = X
+        else:
+            X_sub, _, _, _ = train_test_split(X, y, train_size=self.effective_sample_size, random_state=42, stratify=y)
+        for d in X_sub:
+            yield d
 
 
 class MultiLabelClassificationDataset(ClassificationDataset):
@@ -125,18 +133,22 @@ class MultiLabelClassificationDataset(ClassificationDataset):
     def label_transform(self, label_raw: List[str]) -> Union[int, np.ndarray]:
         return self.mlb.transform([label_raw]).flatten().astype(float)
 
-    def sub_sample(self, json_parse: List[Dict]) -> Iterator:
-        X_ids = np.array([d["corpus_id"] for d in json_parse])
-        y = self.mlb.transform([tuple(d[self.label_field]) for d in json_parse])
-        sub_sample_ratio = self.effective_sample_size / len(json_parse)
-        stratifier = IterativeStratification(n_splits=2, order=1,
-                                             sample_distribution_per_fold=[sub_sample_ratio,
-                                                                           1 - sub_sample_ratio, ])
-        _, indices = next(stratifier.split(X_ids, y))
-        ids = X_ids[indices]
-        for d in json_parse:
-            if d["corpus_id"] in ids:
-                yield d
+    def sub_sample(self, json_parse: Iterator[Dict]) -> Iterator:
+        X, y = zip(*[(d, tuple(d[self.label_field])) for d in json_parse])
+        X, y = np.array(X), self.mlb.transform(y)
+        if X.shape[0] < self.effective_sample_size:
+            print(
+                f"Reqd sample size {self.effective_sample_size} greater than {self.task_name} dataset size {X.shape[0]}, using complete dataset")
+            X_sub = X
+        else:
+            sub_sample_ratio = self.effective_sample_size / X.shape[0]
+            stratifier = IterativeStratification(n_splits=2, order=1,
+                                                 sample_distribution_per_fold=[sub_sample_ratio,
+                                                                               1 - sub_sample_ratio, ])
+            _, indices = next(stratifier.split(X, y))
+            X_sub = X[indices]
+        for d in X_sub:
+            yield d
 
 
 class IRDataset(AbstractMultiTaskDataset):
@@ -155,21 +167,22 @@ class IRDataset(AbstractMultiTaskDataset):
             pos_candidates = itertools.cycle(pos_candidates)
             while len(new_pos_candidates) < 5:
                 new_pos_candidates.append(next(pos_candidates))
-        tokenized_query = self.tokenized_input(query)
+        query_ctrl_key, cand_ctrl_key = None, None
+        if type(self.ctrl_token) == dict:
+            query_ctrl_key = "query"
+            cand_ctrl_key = "candidates"
+        tokenized_query = self.tokenized_input(query, query_ctrl_key)
+
         for pos in new_pos_candidates:
             neg = None
             if neg_candidates:
                 neg = neg_candidates.pop()
             if neg:
-                tokenized_pos = self.tokenized_input(pos)
-                tokenized_neg = self.tokenized_input(neg)
+                tokenized_pos = self.tokenized_input(pos, cand_ctrl_key)
+                tokenized_neg = self.tokenized_input(neg, cand_ctrl_key)
                 yield (self.task_name, [tokenized_query, tokenized_pos, tokenized_neg])
             else:
                 break
-
-    def sub_sample(self, json_parse: List[Dict]) -> Iterator:
-        for idx in range(self.effective_sample_size):
-            yield json_parse[idx]
 
     def postprocess_iter(self, curr_iter):
         chained_iter = itertools.chain(*curr_iter)
@@ -192,9 +205,6 @@ class TripletDataset(AbstractMultiTaskDataset):
     def __init__(self, task_name: str, json_file: str, tokenizer: PreTrainedTokenizer, fields: List[str],
                  sample_size=-1, ctrl_token: str = None, max_len: int = 512):
         super().__init__(task_name, json_file, tokenizer, fields, sample_size, ctrl_token, max_len)
-
-    def sub_sample(self, json_parse: List[Dict]) -> Iterator:
-        return json_parse[:self.effective_sample_size]
 
     def preprocess(self, line: Dict[str, str]) -> Union[
         Tuple[str, BatchEncoding, torch.Tensor], List[Tuple[str, List[BatchEncoding]]]]:
@@ -234,6 +244,7 @@ class CustomChainDataset(ChainDataset):
         worker_info = get_worker_info()
         if worker_info:
             batch_itr = self.iter_slice(batch_itr, worker_info)
+
         return batch_itr
 
 
@@ -249,18 +260,19 @@ if __name__ == '__main__':
     with open("sample_data/mesh_descriptors.txt", "r") as f:
         labels = f.readlines()
     labels = {l.strip(): i for i, l in enumerate(labels)}
-    cls_dataset = ClassificationDataset(task_name="mesh", json_file="sample_data/mesh_small.json", tokenizer=tokenizer,
+    cls_dataset = ClassificationDataset(task_name="mesh", json_file="sample_data/mesh_small.json",
+                                        tokenizer=tokenizer,
                                         fields=["title", "abstract"],
-                                        label_field="descriptor", labels=labels, sample_size=100)
+                                        label_field="descriptor", labels=labels, sample_size=400000)
     trip_dataset = IRDataset(task_name="s2and", json_file="sample_data/s2and_small.json",
                              tokenizer=tokenizer,
-                             fields=["title", "abstract"], sample_size=100)
-    specter_dataset = TripletDataset(task_name="specter", json_file="sample_data/specter_small.json",
-                             tokenizer=tokenizer,
-                             fields=["title", "abstract"])
+                             fields=["title", "abstract"], sample_size=400000)
+    specter_dataset = TripletDataset(task_name="specter", json_file="../../scidocs/data/specter_triplets/train.json",
+                                     tokenizer=tokenizer,
+                                     fields=["title", "abstract"], sample_size=400000)
     search_dataset = IRDataset(task_name="search", json_file="sample_data/search_small.jsonl",
-                             tokenizer=tokenizer,
-                             fields=["title", "abstract", "venue", "year"], sample_size=100)
+                               tokenizer=tokenizer,
+                               fields=["title", "abstract", "venue", "year"], sample_size=100)
     with open("sample_data/fos_labels.txt", "r") as f:
         mlc_labels = f.readlines()
     mlc_labels = {l.strip(): i for i, l in enumerate(mlc_labels)}
@@ -271,11 +283,12 @@ if __name__ == '__main__':
                                                      label_field="labels_text", labels=mlc_labels, sample_size=100)
 
     batch_size = 16
-    multi_dataset = CustomChainDataset([search_dataset], batch_size=batch_size,
-                                       batching_strategy=BatchingStrategy.SEQUENTIAL)
-    dataloader = DataLoader(multi_dataset, batch_size=batch_size, collate_fn=multi_collate)
+    multi_dataset = CustomChainDataset([cls_dataset], batch_size=batch_size,
+                                       batching_strategy=BatchingStrategy.MIXED_PROPORTIONAL)
+    dataloader = DataLoader(multi_dataset, batch_size=batch_size, collate_fn=multi_collate, num_workers=4)
     for i, data in enumerate(dataloader):
         print(i)
         for task, batch in data.items():
             d = batch[-1][-1] if task in ("s2and", "specter", "search") else batch[-1]
-            print(task, d.shape[0])
+            print(batch[1])
+            break

@@ -5,8 +5,6 @@ from typing import Iterable
 from torch.utils.data import Dataset
 import random
 
-random.seed(42)
-
 
 class BatchWrapper(ABC):
 

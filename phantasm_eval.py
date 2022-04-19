@@ -3,6 +3,8 @@ from scidocs.user_activity_and_citations import make_run_from_embeddings, qrel_m
 from scidocs.embeddings import load_embeddings_from_jsonl
 from tqdm import tqdm
 from scidocs.classification import classify
+from scidocs import get_scidocs_metrics
+from scidocs.paths import DataPaths
 import numpy as np
 from sklearn.model_selection import train_test_split
 from sklearn.model_selection import StratifiedKFold
@@ -97,9 +99,9 @@ def fos(train_file, test_file, embed_file):
     test_ids, y_test = get_data_from_ids(test_file, multi=True)
     fos_embeddings = load_embeddings_from_jsonl(embed_file)
     X_train, X_test = np.array([fos_embeddings[d] for d in train_ids]), np.array([fos_embeddings[d] for d in test_ids])
-    svm = LinearSVC(random_state=42, max_iter=10000, verbose=1)
+    svm = LinearSVC(random_state=42, max_iter=10000)
     Cs = np.logspace(-4, 2, 7)
-    svm = GridSearchCV(estimator=svm, cv=3, param_grid={'C': Cs}, verbose=1, n_jobs=5)
+    svm = GridSearchCV(estimator=svm, cv=3, param_grid={'C': Cs}, n_jobs=5)
     svm = OneVsRestClassifier(svm, n_jobs=4)
     svm.fit(X_train, y_train)
     preds = svm.predict(X_test)
@@ -115,12 +117,32 @@ def s2and(qrel_file, run_file, embed_file):
     print("S2AND IR eval: " + str(coview_results))
 
 
-biomimicry("biomimicry/test_new.jsonl", "biomimicry/mtl_cls.json")
-# biomimicry("biomimicry/test_new.jsonl", "biomimicry/mtl_cls.json", samples=64)
-# biomimicry("biomimicry/test_new.jsonl", "biomimicry/mtl_cls.json", samples=16)
-# mesh("mesh/train_eval_ids.txt", "mesh/test_eval_ids.txt", "mesh/mtl_cls.json")
-# fos("fos/train_eval_ids.txt", "fos/test_eval_ids.txt", "fos/mtl_cls.json")
-# s2and("s2and/test.qrel", "s2and/mtl_cls.qrel", "s2and/mtl_cls.json")
+def scidocs(classification_embeddings_path, user_activity_and_citations_embeddings_path, recomm_embeddings_path):
+    data_paths = DataPaths("scidocs/data")
+    scidocs_metrics = get_scidocs_metrics(
+        data_paths,
+        classification_embeddings_path,
+        user_activity_and_citations_embeddings_path,
+        recomm_embeddings_path,
+        val_or_test='test',  # set to 'val' if tuning hyperparams
+        n_jobs=12,  # the classification tasks can be parallelized
+        cuda_device=-1  # the recomm task can use a GPU if this is set to 0, 1, etc
+    )
+
+    print(scidocs_metrics)
+
+
+# for i in range(6):
+# biomimicry("biomimicry/test_new.jsonl", "biomimicry/emb_phantasm_class_only_2.json")
+# biomimicry("biomimicry/test_new.jsonl", "biomimicry/emb_phantasm_class_only_2.json", samples=64)
+# biomimicry("biomimicry/test_new.jsonl", "biomimicry/emb_phantasm_class_only_2.json", samples=16)
+s2and("s2and/test.qrel", "s2and/mtl_cls.qrel", f"s2and/emb_phantasm_s2and_search.json")
+# s2and("search/test.qrel", "search/mtl_cls.qrel", f"search/emb_phantasm_specter_search.json")
+# fos("fos/train_eval_ids.txt", "fos/test_eval_ids.txt", "fos/emb_phantasm_fos_search.json")
+# mesh("mesh/train_eval_ids.txt", "mesh/test_eval_ids.txt", "mesh/emb_phantasm_mesh_search.json")
+# scidocs("specter2/emb_phantasm_mag_mesh_specter_search.json", "specter2/emb_phantasm_view_cite_read_specter_search.json", "specter2/emb_phantasm_recomm_specter_search.json")
+
+
 
 
 

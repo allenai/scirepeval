@@ -118,7 +118,7 @@ class BertPalConfig(BertConfig):
         output = copy.deepcopy(self.__dict__)
         return output
 
-    def to_json_string(self):
+    def to_json_string(self, use_diff: bool = True):
         """Serializes this instance to a JSON string."""
         return json.dumps(self.to_dict(), indent=2, sort_keys=True) + "\n"
 
@@ -521,7 +521,7 @@ class BertModel(BertPreTrainedModel):
         Args:
             config: `BertConfig` instance.
         """
-        super(BertModel, self).__init__()
+        super(BertModel, self).__init__(config)
         self.embeddings = BERTEmbeddings(config)
         self.encoder = BERTEncoder(config)
         self.pooler = BERTPooler(config)
@@ -685,6 +685,8 @@ class BertForQuestionAnswering(nn.Module):
     def __init__(self, config):
         super(BertForQuestionAnswering, self).__init__()
         self.bert = BertModel(config)
+        # TODO check with Google if it's normal there is no dropout on the token classifier of SQuAD in the TF version
+        # self.dropout = nn.Dropout(config.hidden_dropout_prob)
         self.qa_outputs = nn.Linear(config.hidden_size, 2)
 
         def init_weights(module):
@@ -823,20 +825,24 @@ class BertPalsEncoder(torch.nn.Module):
                 if module.bias is not None:
                     module.bias.data.zero_()
 
-        self.apply(init_weights)
+        if type(checkpoint) == str:
+            chk = torch.load(checkpoint, map_location='cpu')
+            update = {k.replace("bert.", ""): v for k, v in chk.items()}
 
-        partial = checkpoint.state_dict()
-        model_dict = self.bert.state_dict()
-        update = {}
-        for n, p in model_dict.items():
-            if 'aug' in n or 'mult' in n:
-                update[n] = p
-                if 'pooler.mult' in n and 'bias' in n:
-                    update[n] = partial['pooler.dense.bias']
-                if 'pooler.mult' in n and 'weight' in n:
-                    update[n] = partial['pooler.dense.weight']
-            else:
-                update[n] = partial[n]
+        else:
+            self.apply(init_weights)
+            partial = checkpoint.state_dict()
+            model_dict = self.bert.state_dict()
+            update = {}
+            for n, p in model_dict.items():
+                if 'aug' in n or 'mult' in n:
+                    update[n] = p
+                    if 'pooler.mult' in n and 'bias' in n:
+                        update[n] = partial['pooler.dense.bias']
+                    if 'pooler.mult' in n and 'weight' in n:
+                        update[n] = partial['pooler.dense.weight']
+                else:
+                    update[n] = partial[n]
         self.bert.load_state_dict(update)
 
     def forward(self, x, task_id=None):
@@ -845,3 +851,7 @@ class BertPalsEncoder(torch.nn.Module):
 
     def resize_token_embeddings(self, new_num_tokens: Optional[int] = None):
         return self.bert.resize_token_embeddings(new_num_tokens)
+
+    def save_pretrained(self, save_path: str):
+        torch.save(self.bert.state_dict(), f'{save_path}/pytorch_model.bin')
+        torch.save(self.bert.config.save_pretrained(save_path))

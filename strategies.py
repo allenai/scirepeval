@@ -39,7 +39,8 @@ class ProportionalBatching(BatchWrapper):
             it = iters[di]
             i = 0
             try:
-                while i < batch_size // len(iters):
+                rng = round(batch_size / len(iters))
+                while i < rng:
                     x = next(it)
                     i += 1
                     yield x

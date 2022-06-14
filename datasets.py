@@ -260,7 +260,7 @@ if __name__ == '__main__':
     with open("sample_data/mesh_descriptors.txt", "r") as f:
         labels = f.readlines()
     labels = {l.strip(): i for i, l in enumerate(labels)}
-    cls_dataset = ClassificationDataset(task_name="mesh", json_file="sample_data/mesh_small.json",
+    cls_dataset = ClassificationDataset(task_name="mesh", json_file="../../scidocs/data/mesh_plus/train.json",
                                         tokenizer=tokenizer,
                                         fields=["title", "abstract"],
                                         label_field="descriptor", labels=labels, sample_size=400000)
@@ -283,12 +283,11 @@ if __name__ == '__main__':
                                                      label_field="labels_text", labels=mlc_labels, sample_size=100)
 
     batch_size = 16
-    multi_dataset = CustomChainDataset([cls_dataset], batch_size=batch_size,
+    multi_dataset = CustomChainDataset([ml_cls_dataset], batch_size=batch_size,
                                        batching_strategy=BatchingStrategy.MIXED_PROPORTIONAL)
     dataloader = DataLoader(multi_dataset, batch_size=batch_size, collate_fn=multi_collate, num_workers=4)
     for i, data in enumerate(dataloader):
         print(i)
         for task, batch in data.items():
             d = batch[-1][-1] if task in ("s2and", "specter", "search") else batch[-1]
-            print(batch[1])
-            break
+            print(task, d.shape[0])

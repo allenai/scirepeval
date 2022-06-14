@@ -24,7 +24,7 @@ class TaskFamily:
 
 
 class TaskHead(nn.Module):
-    def __init__(self, num_labels, dim=768):
+    def __init__(self, num_labels, dim=1024):
         super().__init__()
         self.dim = dim
         self.num_labels = num_labels
@@ -41,13 +41,14 @@ class SCLLoss(nn.Module):
         self.temp = temp
 
     def forward(self, encoding, y, num_classes):
-        dot_prod = torch.exp(torch.mm(encoding, encoding.T) / self.temp)
+        norm_encoding = F.normalize(encoding, p=2, dim=1)
+        dot_prod = torch.matmul(norm_encoding, norm_encoding.T) / self.temp
         y_mask = torch.nn.functional.one_hot(y, num_classes=num_classes).T[y]
-        same_class_mask = y_mask.fill_diagonal_(0)
-        diff_class_mask = torch.where(same_class_mask == 1, 0, 1).fill_diagonal_(0)
-        con_loss = torch.log((dot_prod * same_class_mask) / torch.sum(dot_prod * diff_class_mask, dim=1))
-        con_loss = -1.0 * torch.sum(con_loss, dim=1) / (torch.sum(y_mask, dim=1) + 1e-10)
-        scl_loss = torch.sum(con_loss)
+        diag_mask = torch.ones(y_mask.shape, device=torch.device('cuda')).fill_diagonal_(0)
+        den = torch.exp(dot_prod) * diag_mask
+        inner = dot_prod - torch.log(torch.sum(den, dim=1)+1e-10)
+        con_loss = inner * y_mask * diag_mask
+        scl_loss = -1.0 * torch.sum(con_loss, dim=1) / (torch.sum(y_mask, dim=1))
         return scl_loss
 
 

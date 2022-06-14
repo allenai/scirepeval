@@ -26,12 +26,12 @@
     "name": "s2and",
     "type": "ir",
     "data_files": {
-      "train": "../../scidocs/data/s2and/train.jsonl",
-      "dev": "../../scidocs/data/s2and/dev.jsonl"
+      "train": "../../scidocs/data/s2and/full_test_partitioned/train.jsonl",
+      "dev": "../../scidocs/data/s2and/full_test_partitioned/dev.jsonl"
     },
     "ctrl_token": "[ATH]"
   },
-  {
+    {
     "name": "specter",
     "type": "triplet",
     "data_files": {
@@ -47,12 +47,17 @@
       "train": "../search/train_new.jsonl",
       "dev": "../search/val_new.jsonl"
     },
-    "input_fields": [
-      "title",
-      "abstract",
-      "venue",
-      "year"
-    ],
-    "ctrl_token": "[QRY]"
+    "input_fields": ["title", "abstract", "venue", "year"],
+    "ctrl_token": {"query": "[QRY]", "candidates": "[SAL]"}
+  },
+  {
+    "name": "cite_context",
+    "type": "ir",
+    "data_files": {
+      "train": "../cite_context/train.json",
+      "dev": "../cite_context/dev.json"
+    },
+    "ctrl_token": "[SAL]"
   }
+
 ]

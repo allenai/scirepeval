@@ -1,4 +1,24 @@
 [
+    {
+    "name": "cite_pred",
+    "type": "regression",
+    "data_files": {
+      "train": "../../scidocs/data/citation_count/train.json",
+      "dev": "../../scidocs/data/citation_count/val.json"
+    },
+    "labels_field": "log_citations",
+    "ctrl_token": "[RGN]"
+  },
+    {
+    "name": "year_pred",
+    "type": "regression",
+    "data_files": {
+      "train": "../../scidocs/data/year_author_prediction/train.json",
+      "dev": "../../scidocs/data/year_author_prediction/val.json"
+    },
+    "labels_field": "scaled_year",
+    "ctrl_token": "[RGN]"
+  },
   {
     "name": "mesh",
     "type": "classification",
@@ -23,24 +43,6 @@
     "ctrl_token": "[CLF]"
   },
   {
-    "name": "s2and",
-    "type": "ir",
-    "data_files": {
-      "train": "../../scidocs/data/s2and/full_test_partitioned/train.jsonl",
-      "dev": "../../scidocs/data/s2and/full_test_partitioned/dev.jsonl"
-    },
-    "ctrl_token": "[ATH]"
-  },
-    {
-    "name": "specter",
-    "type": "triplet",
-    "data_files": {
-      "train": "../../scidocs/data/specter_triplets/train.json",
-      "dev": "../../scidocs/data/specter_triplets/val.json"
-    },
-    "ctrl_token": "[SAL]"
-  },
-  {
     "name": "search",
     "type": "ir",
     "data_files": {
@@ -51,11 +53,29 @@
     "ctrl_token": {"query": "[QRY]", "candidates": "[SAL]"}
   },
   {
+    "name": "s2and",
+    "type": "ir",
+    "data_files": {
+      "train": "../../scidocs/data/s2and/full_test_partitioned/train.jsonl",
+      "dev": "../../scidocs/data/s2and/full_test_partitioned/dev.jsonl"
+    },
+    "ctrl_token": "[SAL]"
+  },
+  {
     "name": "cite_context",
     "type": "ir",
     "data_files": {
       "train": "../cite_context/train.json",
       "dev": "../cite_context/dev.json"
+    },
+    "ctrl_token": "[SAL]"
+  },
+    {
+    "name": "specter",
+    "type": "triplet",
+    "data_files": {
+      "train": "../../scidocs/data/specter_triplets/train.json",
+      "dev": "../../scidocs/data/specter_triplets/val.json"
     },
     "ctrl_token": "[SAL]"
   }

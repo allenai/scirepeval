@@ -10,23 +10,22 @@ EMBED_DIR="${HOME_DIR}/phantasm/phantasm_new"
 
 
 
-# echo "Biomimicry"
-# python ${EMBED_DIR}/embed_papers_hf.py --data-path ${HOME_DIR}/phantasm/biomimicry/test_new.jsonl --output ${HOME_DIR}/phantasm/biomimicry/emb_phantasm_${OUTPUT_SUFFIX}.json --model-dir ${MODEL_DIR} --encoder-type ${ENCODER_TYPE} --ctrl-token '{"val": "[CLF]"}' --model-name ${MODEL_NAME}
+echo "Biomimicry"
+python ${EMBED_DIR}/embed_papers_hf.py --data-path ${HOME_DIR}/phantasm/biomimicry/test_new.jsonl --output ${HOME_DIR}/phantasm/biomimicry/emb_phantasm_${OUTPUT_SUFFIX}.json --model-dir ${MODEL_DIR} --encoder-type ${ENCODER_TYPE} --model-name ${MODEL_NAME} --ctrl-token '{"val": "[CLF]"}'
 
 
 echo "DRSM"
 python ${EMBED_DIR}/embed_papers_hf.py --data-path ${HOME_DIR}/scidocs/data/drsm/test.json --output ${HOME_DIR}/phantasm/drsm/emb_phantasm_${OUTPUT_SUFFIX}.json --model-dir ${MODEL_DIR} --encoder-type ${ENCODER_TYPE} --ctrl-token '{"val": "[CLF]"}' --model-name ${MODEL_NAME}
 
 
+echo "Scidocs"
+python ${EMBED_DIR}/embed_papers_hf.py --data-path ${HOME_DIR}/phantasm/specter2/paper_metadata_mag_mesh.json --output ${HOME_DIR}/phantasm/specter2/emb_phantasm_mag_mesh_${OUTPUT_SUFFIX}.json --model-dir ${MODEL_DIR} --encoder-type ${ENCODER_TYPE} --model-name ${MODEL_NAME} --ctrl-token '{"val": "[CLF]"}'
+python ${EMBED_DIR}/embed_papers_hf.py --data-path ${HOME_DIR}/phantasm/specter2/paper_metadata_recomm.json --output ${HOME_DIR}/phantasm/specter2/emb_phantasm_recomm_${OUTPUT_SUFFIX}.json --model-dir ${MODEL_DIR} --encoder-type ${ENCODER_TYPE} --model-name ${MODEL_NAME} --ctrl-token '{"val": "[SAL]"}'
+python ${EMBED_DIR}/embed_papers_hf.py --data-path ${HOME_DIR}/phantasm/specter2/paper_metadata_view_cite_read.json --output ${HOME_DIR}/phantasm/specter2/emb_phantasm_view_cite_read_${OUTPUT_SUFFIX}.json --model-dir ${MODEL_DIR} --encoder-type ${ENCODER_TYPE} --model-name ${MODEL_NAME} --ctrl-token '{"val": "[SAL]"}'
+
+
 echo "FoS"
 python ${EMBED_DIR}/embed_papers_hf.py --data-path ${HOME_DIR}/phantasm/fos/fos_test_new.json --output ${HOME_DIR}/phantasm/fos/emb_phantasm_${OUTPUT_SUFFIX}.json --model-dir ${MODEL_DIR} --encoder-type ${ENCODER_TYPE} --ctrl-token '{"val": "[CLF]"}' --model-name ${MODEL_NAME}
-
-
-
-echo "Scidocs"
-python ${EMBED_DIR}/embed_papers_hf.py --data-path ${HOME_DIR}/phantasm/specter2/paper_metadata_mag_mesh.json --output ${HOME_DIR}/phantasm/specter2/emb_phantasm_mag_mesh_${OUTPUT_SUFFIX}.json --model-dir ${MODEL_DIR} --encoder-type ${ENCODER_TYPE} --ctrl-token '{"val": "[CLF]"}'  --model-name ${MODEL_NAME}
-python ${EMBED_DIR}/embed_papers_hf.py --data-path ${HOME_DIR}/phantasm/specter2/paper_metadata_recomm.json --output ${HOME_DIR}/phantasm/specter2/emb_phantasm_recomm_${OUTPUT_SUFFIX}.json --model-dir ${MODEL_DIR} --encoder-type ${ENCODER_TYPE} --ctrl-token '{"val": "[SAL]"}' --model-name ${MODEL_NAME}
-python ${EMBED_DIR}/embed_papers_hf.py --data-path ${HOME_DIR}/phantasm/specter2/paper_metadata_view_cite_read.json --output ${HOME_DIR}/phantasm/specter2/emb_phantasm_view_cite_read_${OUTPUT_SUFFIX}.json --model-dir ${MODEL_DIR} --encoder-type ${ENCODER_TYPE} --ctrl-token '{"val": "[SAL]"}' --model-name ${MODEL_NAME}
 
 
 echo "Feeds"
@@ -48,13 +47,26 @@ python ${EMBED_DIR}/embed_papers_hf.py --data-path ${HOME_DIR}/phantasm/trec_cov
 
 
 echo "Peer review"
-python ${EMBED_DIR}/embed_papers_hf.py --data-path ${HOME_DIR}/scidocs/data/peer_review/nips_test_complete.json --output ${HOME_DIR}/phantasm/peer_review/emb_phantasm_nips_${OUTPUT_SUFFIX}.json --model-dir ${MODEL_DIR} --encoder-type ${ENCODER_TYPE} --ctrl-token '{"val": "[ATH]"}' --model-name ${MODEL_NAME}
+python ${EMBED_DIR}/embed_papers_hf.py --data-path ${HOME_DIR}/scidocs/data/peer_review/nips_test_complete.json --output ${HOME_DIR}/phantasm/peer_review/emb_phantasm_nips_${OUTPUT_SUFFIX}.json --model-dir ${MODEL_DIR} --encoder-type ${ENCODER_TYPE} --ctrl-token '{"val": "[SAL]"}' --model-name ${MODEL_NAME}
 
-python ${EMBED_DIR}/embed_papers_hf.py --data-path ${HOME_DIR}/scidocs/data/peer_review/icip_test_complete.json --output ${HOME_DIR}/phantasm/peer_review/emb_phantasm_icip_${OUTPUT_SUFFIX}.json --model-dir ${MODEL_DIR} --encoder-type ${ENCODER_TYPE} --ctrl-token '{"val": "[ATH]"}' --model-name ${MODEL_NAME}
+python ${EMBED_DIR}/embed_papers_hf.py --data-path ${HOME_DIR}/scidocs/data/peer_review/icip_test_complete.json --output ${HOME_DIR}/phantasm/peer_review/emb_phantasm_icip_${OUTPUT_SUFFIX}.json --model-dir ${MODEL_DIR} --encoder-type ${ENCODER_TYPE} --ctrl-token '{"val": "[SAL]"}' --model-name ${MODEL_NAME}
 
 echo "s2and"
-python ${EMBED_DIR}/embed_papers_hf.py --data-path ${HOME_DIR}/scidocs/data/s2and/full_test_partitioned/test.jsonl --output ${HOME_DIR}/phantasm/s2and/emb_phantasm_${OUTPUT_SUFFIX}.json --mode ir --model-dir ${MODEL_DIR} --batch-size 4 --encoder-type ${ENCODER_TYPE} --ctrl-token '{"val": "[ATH]"}' --model-name ${MODEL_NAME}
+python ${EMBED_DIR}/embed_papers_hf.py --data-path ${HOME_DIR}/scidocs/data/s2and/full_test_partitioned/test.jsonl --output ${HOME_DIR}/phantasm/s2and/emb_phantasm_${OUTPUT_SUFFIX}.json --mode ir --model-dir ${MODEL_DIR} --batch-size 4 --encoder-type ${ENCODER_TYPE} --model-name ${MODEL_NAME} --ctrl-token '{"val": "[SAL]"}'
 
+echo "No. of citations"
+python ${EMBED_DIR}/embed_papers_hf.py --data-path ${HOME_DIR}/scidocs/data/citation_count/test.json --output ${HOME_DIR}/phantasm/reg_cite_count/emb_phantasm_${OUTPUT_SUFFIX}.json --model-dir ${MODEL_DIR} --encoder-type ${ENCODER_TYPE} --ctrl-token '{"val": "[RGN]"}' --model-name ${MODEL_NAME}
+
+
+echo "Year of publication"
+python ${EMBED_DIR}/embed_papers_hf.py --data-path ${HOME_DIR}/scidocs/data/year_author_prediction/test.json --output ${HOME_DIR}/phantasm/reg_yr_ath/emb_phantasm_${OUTPUT_SUFFIX}.json --model-dir ${MODEL_DIR} --encoder-type ${ENCODER_TYPE} --ctrl-token '{"val": "[RGN]"}' --model-name ${MODEL_NAME}
+
+echo "Review Ratings/h-Index"
+python ${EMBED_DIR}/embed_papers_hf.py --data-path ${HOME_DIR}/scidocs/data/rating_hIndex/test.json --output ${HOME_DIR}/phantasm/rating_hIndex/emb_phantasm_${OUTPUT_SUFFIX}.json --model-dir ${MODEL_DIR} --encoder-type ${ENCODER_TYPE} --ctrl-token '{"val": "[RGN]"}' --model-name ${MODEL_NAME}
+
+
+echo "Tweet mentions"
+python ${EMBED_DIR}/embed_papers_hf.py --data-path ${HOME_DIR}/scidocs/data/tweet_mentions/test.json --output ${HOME_DIR}/phantasm/tweet_mentions/emb_phantasm_${OUTPUT_SUFFIX}.json --model-dir ${MODEL_DIR} --encoder-type ${ENCODER_TYPE} --ctrl-token '{"val": "[RGN]"}' --model-name ${MODEL_NAME}
 
 echo "MeSH"
 python ${EMBED_DIR}/embed_papers_hf.py --data-path ${HOME_DIR}/scidocs/data/mesh_plus/test.json --output ${HOME_DIR}/phantasm/mesh/emb_phantasm_${OUTPUT_SUFFIX}.json --model-dir ${MODEL_DIR} --encoder-type ${ENCODER_TYPE} --ctrl-token '{"val": "[CLF]"}' --model-name ${MODEL_NAME}
@@ -64,8 +76,10 @@ echo "s2and_mini"
 blocks=("arnetminer" "inspire" "kisti" "qian" "pubmed" "zbmath")
 for block in ${blocks[@]}; do
     echo ${block}
-    python ${EMBED_DIR}/embed_papers_hf.py --data-path ${HOME_DIR}/phantasm/S2AND/s2and_mini/${block}/${block}_papers.json  --output ${HOME_DIR}/phantasm/S2AND/s2and_mini/${block}/${block}_${OUTPUT_SUFFIX}.pkl --model-dir ${MODEL_DIR} --encoder-type ${ENCODER_TYPE} --format "pkl" --ctrl-token '{"val": "[ATH]"}'
+    python ${EMBED_DIR}/embed_papers_hf.py --data-path ${HOME_DIR}/phantasm/S2AND/s2and_mini/${block}/${block}_papers.json  --output ${HOME_DIR}/phantasm/S2AND/s2and_mini/${block}/${block}_${OUTPUT_SUFFIX}.pkl --model-dir ${MODEL_DIR} --encoder-type ${ENCODER_TYPE} --format "pkl" --ctrl-token '{"val": "[SAL]"}'  --model-name ${MODEL_NAME}
 done
+
+
 
 
 

@@ -15,7 +15,7 @@ from adapter_fusion import AdapterEncoder, AdapterFusion
 class Dataset:
 
     def __init__(self, data_path, model_dir, max_length=512, batch_size=32, ctrl_token=None, fields=None):
-        self.tokenizer = AutoTokenizer.from_pretrained(model_dir + "/tokenizer/")  # model_dir + "/tokenizer/"
+        self.tokenizer = AutoTokenizer.from_pretrained(model_dir + "/tokenizer/")
         self.max_length = max_length
         self.batch_size = batch_size
         self.ctrl_token = ctrl_token
@@ -151,7 +151,9 @@ class Model:
     def __call__(self, input_ids, batch_ids):
         if not self.task_id or type(self.task_id) != dict:
             output = self.model(**input_ids) if not self.task_id else self.model(task_id=self.task_id,
-                                                                                 x=input_ids["input_ids"])
+                                                                                 x=input_ids["input_ids"],
+                                                                                 attention_mask=input_ids[
+                                                                                     "attention_mask"])
         else:
             x = input_ids["input_ids"]
             output = torch.zeros(x.shape[0], x.shape[1], 768).to("cuda")
@@ -159,12 +161,14 @@ class Model:
             c_idx = torch.tensor([i for i, b in enumerate(batch_ids) if b[1] == "c"])
 
             if not q_idx.shape[0]:
-                output = self.model(task_id=self.task_id["candidates"], x=input_ids["input_ids"])
+                output = self.model(task_id=self.task_id["candidates"], x=input_ids["input_ids"],
+                                    attention_mask=input_ids["attention_mask"])
             else:
                 for i, v in enumerate(sorted(self.task_id.values())):
                     curr_input_idx = q_idx if v == "[QRY]" else c_idx
                     curr_input = x[curr_input_idx]
-                    curr_output = self.model(task_id=v, x=curr_input)
+                    curr_output = self.model(task_id=v, x=curr_input,
+                                             attention_mask=input_ids["attention_mask"][curr_input_idx])
                     try:
                         output[curr_input_idx] = curr_output
                     except:
@@ -208,7 +212,7 @@ def main():
                           ctrl_token=ctrl_token)
     if args.encoder_type == "default":
         encoder = AutoModel.from_pretrained(model_dir + "/model/")
-        model = Model(encoder, 0 if not dataset.ctrl_token else 1, model_dir)
+        model = Model(encoder, 0 if not ctrl_token else 1, model_dir)
     elif args.encoder_type == "pals":
         task_ids = []
         if args.ctrl_token:
@@ -222,11 +226,12 @@ def main():
         model = Model(encoder, 0 if not ctrl_token else 1, model_dir, task_id=task_id)
     elif args.encoder_type == "fusion":
         t_ids = ["[ATH]", "[CLF]", "[QRY]", "[SAL]"] if args.ctrl_token else None
-        encoder = AdapterFusion(model_name, t_ids, adapters_dir=f"{model_dir}/model", inference=True)
+        encoder = AdapterFusion(model_name, t_ids, adapters_dir=f"{model_dir}/model/adapters/", inference=True)
         model = Model(encoder, 0 if not ctrl_token else 1, model_dir, task_id=task_id)
     results = {}
     try:
         for batch, batch_ids in tqdm(dataset.batches(), total=len(dataset) // args.batch_size):
+            # batch = {k:v[:, 1:] for k,v in batch.items()}
             emb = model(batch, batch_ids)
             for paper_id, embedding in zip(batch_ids, emb.unbind()):
                 if type(paper_id) == tuple:

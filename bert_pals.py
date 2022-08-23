@@ -845,8 +845,8 @@ class BertPalsEncoder(torch.nn.Module):
                     update[n] = partial[n]
         self.bert.load_state_dict(update)
 
-    def forward(self, x, task_id=None):
-        embedding = self.bert(x, i=self.task_idx[task_id])
+    def forward(self, x, attention_mask=None, task_id=None):
+        embedding = self.bert(x, attention_mask=attention_mask, i=self.task_idx[task_id])
         return embedding[0][-1]
 
     def resize_token_embeddings(self, new_num_tokens: Optional[int] = None):

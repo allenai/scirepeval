@@ -88,7 +88,10 @@ class AbstractMultiTaskDataset(ABC, IterableDataset):
             text = ctrl_token + " " + text
         input_ids = self.tokenizer(text, padding="max_length", truncation=True, return_tensors="pt",
                                    max_length=self.max_len)
-        return input_ids["input_ids"].flatten()
+        # if self.ctrl_token:
+        #     input_ids["input_ids"] = input_ids["input_ids"][:,1:]
+        #     input_ids["attention_mask"] = input_ids["attention_mask"][:,1:]
+        return {"input_ids": input_ids["input_ids"].flatten(), "attention_mask": input_ids["attention_mask"].flatten()}
 
 
 class ClassificationDataset(AbstractMultiTaskDataset):
@@ -162,10 +165,11 @@ class IRDataset(AbstractMultiTaskDataset):
         query, candidates = line["query"], line["candidates"]
         pos_candidates, neg_candidates = [c for c in candidates if c["score"]], [c for c in candidates if
                                                                                  not c["score"]]
+        num_trips = min(5, len(neg_candidates))
         new_pos_candidates = pos_candidates.copy()
         if pos_candidates:
             pos_candidates = itertools.cycle(pos_candidates)
-            while len(new_pos_candidates) < 5:
+            while len(new_pos_candidates) < num_trips:
                 new_pos_candidates.append(next(pos_candidates))
         query_ctrl_key, cand_ctrl_key = None, None
         if type(self.ctrl_token) == dict:
@@ -173,24 +177,19 @@ class IRDataset(AbstractMultiTaskDataset):
             cand_ctrl_key = "candidates"
         tokenized_query = self.tokenized_input(query, query_ctrl_key)
 
-        for pos in new_pos_candidates:
-            neg = None
-            if neg_candidates:
-                neg = neg_candidates.pop()
-            if neg:
-                tokenized_pos = self.tokenized_input(pos, cand_ctrl_key)
-                tokenized_neg = self.tokenized_input(neg, cand_ctrl_key)
-                yield (self.task_name, [tokenized_query, tokenized_pos, tokenized_neg])
-            else:
-                break
+        for pos in new_pos_candidates[:num_trips]:
+            neg = neg_candidates.pop()
+            tokenized_pos = self.tokenized_input(pos, cand_ctrl_key)
+            tokenized_neg = self.tokenized_input(neg, cand_ctrl_key)
+            yield (self.task_name, [tokenized_query, tokenized_pos, tokenized_neg])
 
     def postprocess_iter(self, curr_iter):
-        chained_iter = itertools.chain(*curr_iter)
+        # chained_iter = itertools.chain(*curr_iter)
         batched_list = []
         try:
             while True:
-                for _ in range(1000):
-                    batched_list.append(next(chained_iter))
+                while len(batched_list) < 1000:
+                    batched_list += next(curr_iter)
                 random.shuffle(batched_list)
                 for x in batched_list:
                     yield x
@@ -248,6 +247,19 @@ class CustomChainDataset(ChainDataset):
         return batch_itr
 
 
+class RegressionDataset(AbstractMultiTaskDataset):
+    def __init__(self, task_name: str, json_file: str, tokenizer: PreTrainedTokenizer, fields: List[str],
+                 label_field: str, sample_size=-1, ctrl_token: str = None, max_len: int = 512):
+        super().__init__(task_name, json_file, tokenizer, fields, sample_size, ctrl_token, max_len)
+        self.label_field = label_field
+
+    def preprocess(self, line: Dict[str, str]) -> Tuple[str, Dict[str, BatchEncoding], Union[int, float]]:
+        # Splits the line into text and label and applies preprocessing to the text
+        label = np.float32(line[self.label_field])
+        input_ids = self.tokenized_input(line)
+        return self.task_name, input_ids, label
+
+
 def multi_collate(batch: List[Any]) -> Dict[str, List[Any]]:
     task_sub_batch = defaultdict(list)
     for b in batch:
@@ -257,6 +269,7 @@ def multi_collate(batch: List[Any]) -> Dict[str, List[Any]]:
 
 if __name__ == '__main__':
     tokenizer = AutoTokenizer.from_pretrained("allenai/specter")
+    tokenizer.add_special_tokens({'additional_special_tokens': ["[CLF]"]})
     with open("sample_data/mesh_descriptors.txt", "r") as f:
         labels = f.readlines()
     labels = {l.strip(): i for i, l in enumerate(labels)}
@@ -280,7 +293,8 @@ if __name__ == '__main__':
     ml_cls_dataset = MultiLabelClassificationDataset(task_name="fos", json_file="sample_data/fos_small.json",
                                                      tokenizer=tokenizer,
                                                      fields=["title", "abstract"],
-                                                     label_field="labels_text", labels=mlc_labels, sample_size=100)
+                                                     label_field="labels_text", labels=mlc_labels, sample_size=100,
+                                                     ctrl_token="[CLF]")
 
     batch_size = 16
     multi_dataset = CustomChainDataset([ml_cls_dataset], batch_size=batch_size,
@@ -291,3 +305,4 @@ if __name__ == '__main__':
         for task, batch in data.items():
             d = batch[-1][-1] if task in ("s2and", "specter", "search") else batch[-1]
             print(task, d.shape[0])
+            print(batch)

@@ -41,9 +41,9 @@ class AdapterEncoder(AbstractAdapter):
                 self.model.load_adapter(f"{load_dir}/{t_id}/", load_as=t_id)
         self.model.train_adapter(adapter_setup=task_ids, train_embeddings=False)
 
-    def forward(self, x, task_id):
+    def forward(self, x, attention_mask, task_id):
         self.model.base_model.set_active_adapters(task_id)
-        return self.model(x)
+        return self.model(x, attention_mask=attention_mask)
 
     def save_pretrained(self, save_path: str, adapter_names: List[str]=None):
         #self.model.save_pretrained(save_path)
@@ -60,8 +60,8 @@ class AdapterFusion(AbstractAdapter):
     def __init__(self, checkpoint_name, task_ids: List[str], adapters_dir: str, inference=False):
         super(AdapterFusion, self).__init__(checkpoint_name)
         # Add a new adapter
-        fusion_dir = adapters_dir if inference else None
-        adapters_dir = adapters_dir.replace("fusion", "adapters")+"/adapters"
+        fusion_dir = adapters_dir.replace("/adapters/", "") if inference else None
+        adapters_dir = adapters_dir.replace("fusion", "adapters")
         for t_id in task_ids:
             self.model.load_adapter(f"{adapters_dir}/{t_id}/", load_as=t_id)
         self.fusion_mods_dict = dict()
@@ -72,13 +72,14 @@ class AdapterFusion(AbstractAdapter):
                 self.model.add_adapter_fusion(task_fuse)
             else:
                 self.model.load_adapter_fusion(f"{fusion_dir}/{t_id}_fusion/")
-            self.model.train_adapter_fusion(task_fuse)
+        self.model.train_adapter_fusion(list(self.fusion_mods_dict.values()))
+        print(self.model.active_adapters)
         # self.model.get_input_embeddings().train()
         # self.model.train_adapter(adapter_setup=task_ids, train_embeddings=True)
 
-    def forward(self, x, task_id):
+    def forward(self, x, attention_mask, task_id):
         self.model.base_model.set_active_adapters(self.fusion_mods_dict[task_id])
-        return self.model(x)
+        return self.model(x, attention_mask=attention_mask)
 
     def save_pretrained(self, save_path: str):
         #self.model.save_pretrained(save_path)

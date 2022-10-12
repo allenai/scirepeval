@@ -251,7 +251,7 @@ class PhantasmLight(pl.LightningModule):
             if task.type == "classification":
                 kwargs.update({"label_field": task.labels_field, "labels": task.labels})
             elif task.type == "regression":
-                kwargs.update({"labels": task.labels})
+                kwargs.update({"label_field": task.labels_field})
             if task.multi_label:
                 dataset_list.append(MultiLabelClassificationDataset(**kwargs))
             else:

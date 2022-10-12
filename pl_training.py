@@ -258,7 +258,7 @@ class PhantasmLight(pl.LightningModule):
                       "sample_size": task.sample_size[split] if type(task.sample_size) == dict else task.sample_size}
 
             if task.type == "classification":
-                kwargs.update({"label_field": task.label_field, "labels": task.labels})
+                kwargs.update({"label_field": task.labels_field, "labels": task.labels})
             elif task.type == "regression":
                 kwargs.update({"labels": task.labels})
             if task.multi_label:

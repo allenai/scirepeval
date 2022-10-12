@@ -7,7 +7,11 @@
       "dev": "../scirepeval_data/train/cite_count/val.jsonl"
     },
     "labels_field": "log_citations",
-    "ctrl_token": "[RGN]"
+    "ctrl_token": "[RGN]",
+    "sample_size": {
+      "train": 600000,
+      "dev": 40000
+    }
   },
     {
     "name": "year_pred",
@@ -17,7 +21,11 @@
       "dev": "../scirepeval_data/train/pub_year/val.jsonl"
     },
     "labels_field": "scaled_year",
-    "ctrl_token": "[RGN]"
+    "ctrl_token": "[RGN]",
+      "sample_size": {
+      "train": 600000,
+      "dev": 40000
+    }
   },
 
   {
@@ -29,7 +37,11 @@
     },
     "labels": "sample_data/mesh_descriptors.txt",
     "labels_field": "descriptor",
-    "ctrl_token": "[CLF]"
+    "ctrl_token": "[CLF]",
+    "sample_size": {
+      "train": 600000,
+      "dev": 40000
+    }
   },
   {
     "name": "fos",
@@ -41,7 +53,11 @@
     },
     "labels": "sample_data/fos_labels.txt",
     "labels_field": "labels_text",
-    "ctrl_token": "[CLF]"
+    "ctrl_token": "[CLF]",
+    "sample_size": {
+      "train": 600000,
+      "dev": 40000
+    }
   },
   {
     "name": "search",
@@ -51,7 +67,11 @@
       "dev": "../scirepeval_data/train/search/val.jsonl"
     },
     "input_fields": ["title", "abstract", "venue", "year"],
-    "ctrl_token": {"query": "[QRY]", "candidates": "[PRX]"}
+    "ctrl_token": {"query": "[QRY]", "candidates": "[PRX]"},
+    "sample_size": {
+      "train": 600000,
+      "dev": 40000
+    }
   },
   {
     "name": "s2and",
@@ -60,7 +80,11 @@
       "train": "../scirepeval_data/train/same_author/train.jsonl",
       "dev": "../scirepeval_data/train/same_author/val.jsonl"
     },
-    "ctrl_token": "[PRX]"
+    "ctrl_token": "[PRX]",
+    "sample_size": {
+      "train": 600000,
+      "dev": 40000
+    }
   },
   {
     "name": "cite_context",
@@ -69,7 +93,11 @@
       "train": "../scirepeval_data/train/high_influence_cite/train.jsonl",
       "dev": "../scirepeval_data/train/high_influence_cite/val.jsonl"
     },
-    "ctrl_token": "[PRX]"
+    "ctrl_token": "[PRX]",
+    "sample_size": {
+      "train": 600000,
+      "dev": 40000
+    }
   },
     {
     "name": "specter",
@@ -78,7 +106,11 @@
       "train": "../scirepeval_data/train/cite_prediction/train.jsonl",
       "dev": "../scirepeval_data/train/cite_prediction/val.jsonl"
     },
-    "ctrl_token": "[PRX]"
+    "ctrl_token": "[PRX]",
+      "sample_size": {
+      "train": 600000,
+      "dev": 40000
+    }
   }
 
 ]

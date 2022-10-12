@@ -66,7 +66,7 @@ class AbstractMultiTaskDataset(ABC, IterableDataset):
         #     file_iter = open(self.data_src, "rb")
         #     json_parse = ijson.items(file_iter, '', multiple_values=True)
         if type(self.data_src) == dict:
-            json_parse = datasets.load_dataset("json", data_files=self.data_src, streaming=True)["train"]
+            json_parse = datasets.load_dataset("json", data_files=self.data_src, streaming=True)[next(iter(self.data_src.keys()))]
         else:
             json_parse = datasets.load_dataset(self.data_src[0], self.task_name, split=self.data_src[1], streaming=True)
         if self.sample_size == -1:

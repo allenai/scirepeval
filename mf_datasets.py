@@ -69,6 +69,7 @@ class AbstractMultiTaskDataset(ABC, IterableDataset):
             json_parse = datasets.load_dataset("json", data_files=self.data_src, streaming=True)[next(iter(self.data_src.keys()))]
         else:
             json_parse = datasets.load_dataset(self.data_src[0], self.task_name, split=self.data_src[1], streaming=True)
+        json_parse = iter(json_parse)
         if self.sample_size == -1:
             map_itr = map(self.preprocess, json_parse)
         else:

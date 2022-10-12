@@ -340,12 +340,11 @@ if __name__ == '__main__':
                           model=args.tokenizer,
                           warmup_steps=args.warmup,
                           use_ctrl_tokens=args.ctrl_tokens, task_dict=tasks_dict, pals_cfg=args.pals_config,
-                          adapter_type=args.adapter_type, log_dir=filepath)
+                          adapter_type=args.adapter_type, log_dir=filepath, max_len=args.max_len)
 
     hparams = {"gpus": args.gpu, "val_check_interval": args.val_check_interval, "num_sanity_val_steps": 4,
                "max_epochs": args.epochs,
-               "accumulate_grad_batches": args.grad_accum, "resume_from_checkpoint": args.checkpoint,
-               "max_len": args.max_len}
+               "accumulate_grad_batches": args.grad_accum, "resume_from_checkpoint": args.checkpoint}
 
     trainer = pl.Trainer(logger=logger,
                          strategy="ddp" if hparams["gpus"] else None,

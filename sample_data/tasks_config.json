@@ -1,12 +1,16 @@
 [
-    {
+  {
     "name": "cite_count",
     "type": "regression",
     "dataset": "allenai/scirepeval",
     "labels_field": "log_citations",
-    "ctrl_token": "[RGN]"
+    "ctrl_token": "[RGN]",
+    "sample_size": {
+      "train": 600000,
+      "dev": 40000
+    }
   },
-    {
+  {
     "name": "pub_year",
     "type": "regression",
     "data_files": {
@@ -14,7 +18,11 @@
       "dev": "../../scidocs/data/year_author_prediction/val.json"
     },
     "labels_field": "scaled_year",
-    "ctrl_token": "[RGN]"
+    "ctrl_token": "[RGN]",
+    "sample_size": {
+      "train": 600000,
+      "dev": 40000
+    }
   },
   {
     "name": "mesh_descriptors",
@@ -25,7 +33,11 @@
     },
     "labels": "sample_data/mesh_descriptors.txt",
     "labels_field": "descriptor",
-    "ctrl_token": "[CLF]"
+    "ctrl_token": "[CLF]",
+    "sample_size": {
+      "train": 600000,
+      "dev": 40000
+    }
   },
   {
     "name": "fos",
@@ -37,7 +49,11 @@
     },
     "labels": "sample_data/fos_labels.txt",
     "labels_field": "labels_text",
-    "ctrl_token": "[CLF]"
+    "ctrl_token": "[CLF]",
+    "sample_size": {
+      "train": 600000,
+      "dev": 40000
+    }
   },
   {
     "name": "search",
@@ -46,8 +62,20 @@
       "train": "../search/train_new.jsonl",
       "dev": "../search/val_new.jsonl"
     },
-    "input_fields": ["title", "abstract", "venue", "year"],
-    "ctrl_token": {"query": "[QRY]", "candidates": "[SAL]"}
+    "input_fields": [
+      "title",
+      "abstract",
+      "venue",
+      "year"
+    ],
+    "ctrl_token": {
+      "query": "[QRY]",
+      "candidates": "[SAL]"
+    },
+    "sample_size": {
+      "train": 600000,
+      "dev": 40000
+    }
   },
   {
     "name": "same_author",
@@ -56,7 +84,11 @@
       "train": "../../scidocs/data/s2and/full_test_partitioned/train.jsonl",
       "dev": "../../scidocs/data/s2and/full_test_partitioned/dev.jsonl"
     },
-    "ctrl_token": "[SAL]"
+    "ctrl_token": "[SAL]",
+    "sample_size": {
+      "train": 600000,
+      "dev": 40000
+    }
   },
   {
     "name": "high_influence_cite",
@@ -65,16 +97,23 @@
       "train": "../cite_context/train.json",
       "dev": "../cite_context/dev.json"
     },
-    "ctrl_token": "[SAL]"
+    "ctrl_token": "[SAL]",
+    "sample_size": {
+      "train": 600000,
+      "dev": 40000
+    }
   },
-    {
+  {
     "name": "cite_prediction",
     "type": "triplet",
     "data_files": {
       "train": "../../scidocs/data/specter_triplets/train.json",
       "dev": "../../scidocs/data/specter_triplets/val.json"
     },
-    "ctrl_token": "[SAL]"
+    "ctrl_token": "[SAL]",
+    "sample_size": {
+      "train": 600000,
+      "dev": 40000
+    }
   }
-
 ]

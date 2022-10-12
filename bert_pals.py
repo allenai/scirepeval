@@ -809,6 +809,8 @@ class BertPalsEncoder(torch.nn.Module):
         super(BertPalsEncoder, self).__init__()
         self.bert_config = BertPalConfig.from_json_file(config)
         self.bert_config.num_tasks = len(task_ids)
+        if type(checkpoint) != str:
+            self.bert_config.vocab_size = checkpoint.config.vocab_size
         self.bert = BertModel(self.bert_config)
         self.task_idx = {task: i for i, task in enumerate(task_ids)}
         print(self.task_idx)

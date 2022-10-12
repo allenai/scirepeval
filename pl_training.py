@@ -143,7 +143,6 @@ class PhantasmLight(pl.LightningModule):
         losses, loss_per_task = [], torch.zeros(len(self.task_dict)).cuda()
         scl = torch.tensor(0.0)
         for name, batch in train_batch.items():
-            # print(name, batch[0]["input_ids"].shape if name not in ("s2and", "search", "specter", "cite_context") else batch[0][0]["input_ids"].shape, self.global_rank)
             task = self.task_dict[name]
             idx = 0 if not self.use_ctrl_tokens else 1
             task_id = task.ctrl_token
@@ -235,14 +234,6 @@ class PhantasmLight(pl.LightningModule):
     # def on_train_epoch_start(self) -> None:
     #     self.init_loss = None
 
-    # def validation_epoch_end(self, outputs: list) -> dict:
-    #     # avg_loss = torch.stack([x['val_loss'] for x in outputs]).mean()
-    #     # print(avg_loss)
-    #     # avg_loss = torch.mean(self.all_gather(avg_loss))
-    #     # self.log("avg_val_loss", avg_loss, on_epoch=True, prog_bar=True, rank_zero_only=True, logger=True, sync_dist=True)
-    #     for task in self.task_counts:
-    #         self.task_counts[task] = torch.tensor(0)
-
     def load_data(self, split) -> CustomChainDataset:
         hf_split = "validation" if split == "dev" else "train"
         dataset_list = []
@@ -308,7 +299,7 @@ if __name__ == '__main__':
     parser.add_argument('tokenizer', help='HuggingFace tokenizer to be used')
     parser.add_argument('--output', help='dir to save checkpoints and finetuned model', default="./lightning_logs/")
     parser.add_argument('version', help='experiment version')
-    parser.add_argument('--pals-confg', default=None, help='path to config file for PALS architecture')
+    parser.add_argument('--pals-config', default=None, help='path to config file for PALS architecture')
     parser.add_argument('--adapter-type', default=None, help='type of adapter architecture (single/fusion)')
     parser.add_argument('--batch-size', type=int, default=16, help='batch size')
     parser.add_argument('--lr', type=float, default=1e-4, help='initial learning rate')
@@ -356,13 +347,6 @@ if __name__ == '__main__':
                "accumulate_grad_batches": args.grad_accum, "resume_from_checkpoint": args.checkpoint,
                "max_len": args.max_len}
 
-    # for name, param in model.named_parameters():
-    #     if param.requires_grad:
-    #         print('name: ', name)
-    #         print(type(param))
-    #         print('param.shape: ', param.shape)
-    #         print('param.requires_grad: ', param.requires_grad)
-    #         print('=====')
     trainer = pl.Trainer(logger=logger,
                          strategy="ddp" if hparams["gpus"] else None,
                          enable_checkpointing=True,

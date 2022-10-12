@@ -244,7 +244,7 @@ class PhantasmLight(pl.LightningModule):
             data_src = data_file if data_file else dataset_name
             op_token = task.ctrl_token if self.use_ctrl_tokens else None
 
-            kwargs = {"data_src": data_src, "ctrl_token": op_token, "max_seq_len": self.max_seq_len, "task": t_name,
+            kwargs = {"data_src": data_src, "ctrl_token": op_token, "max_len": self.max_len, "task": t_name,
                       "tokenizer": self.tokenizer, "fields": task.input_fields,
                       "sample_size": task.sample_size[split] if type(task.sample_size) == dict else task.sample_size}
 

@@ -81,7 +81,7 @@ class AbstractMultiTaskDataset(ABC, IterableDataset):
         if type(input_data) == dict:
             for field in self.fields:
                 if input_data[field]:
-                    if type(input_data[field]) == decimal.Decimal:
+                    if type(input_data[field]) in set([decimal.Decimal, float]):
                         input_data[field] = str(int(input_data[field]))
                     text.append(input_data[field])
             text = (f" {self.tokenizer.sep_token} ".join(text)).strip()

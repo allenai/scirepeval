@@ -11,7 +11,7 @@ from torch.utils.data import DataLoader
 from transformers import AdamW, get_linear_schedule_with_warmup
 from transformers import AutoTokenizer, AutoModel
 
-from datasets import ClassificationDataset, multi_collate, MultiLabelClassificationDataset, IRDataset, \
+from mf_datasets import ClassificationDataset, multi_collate, MultiLabelClassificationDataset, IRDataset, \
     CustomChainDataset, TripletDataset, RegressionDataset
 from schedulers import InverseSquareRootSchedule, InverseSquareRootScheduleConfig
 from strategies import BatchingStrategy
@@ -245,39 +245,43 @@ class PhantasmLight(pl.LightningModule):
     #         self.task_counts[task] = torch.tensor(0)
 
     def load_data(self, split) -> CustomChainDataset:
+        hf_split = "validation" if split == "dev" else "train"
         dataset_list = []
         for t_name, task in self.task_dict.items():
+            data_file = {hf_split: task.data_files[split]} if task.data_files else None
+            dataset_name = (task.dataset, hf_split)
+            data_src = data_file if data_file else dataset_name
             op_token = task.ctrl_token if self.use_ctrl_tokens else None
             if task.type == "classification":
                 if task.multi_label:
                     dataset_list.append(
-                        MultiLabelClassificationDataset(task_name=t_name, json_file=task.data_files[split],
+                        MultiLabelClassificationDataset(task_name=t_name, data_src=data_src,
                                                         tokenizer=self.tokenizer, ctrl_token=op_token,
                                                         fields=task.input_fields,
                                                         label_field=task.labels_field,
                                                         labels=task.labels,
                                                         sample_size=600000 if split == "train" else 40000))
                 else:
-                    dataset_list.append(ClassificationDataset(task_name=t_name, json_file=task.data_files[split],
+                    dataset_list.append(ClassificationDataset(task_name=t_name, data_src=data_src,
                                                               tokenizer=self.tokenizer, ctrl_token=op_token,
                                                               fields=task.input_fields,
                                                               label_field=task.labels_field,
                                                               labels=task.labels,
                                                               sample_size=600000 if split == "train" else 40000))
             elif task.type == "regression":
-                dataset_list.append(RegressionDataset(task_name=t_name, json_file=task.data_files[split],
+                dataset_list.append(RegressionDataset(task_name=t_name, data_src=data_src,
                                                       tokenizer=self.tokenizer, ctrl_token=op_token,
                                                       fields=task.input_fields,
                                                       label_field=task.labels_field,
                                                       sample_size=600000 if split == "train" else 40000))
             elif task.type == "ir":
                 dataset_list.append(
-                    IRDataset(task_name=t_name, json_file=task.data_files[split], ctrl_token=op_token,
+                    IRDataset(task_name=t_name, data_src=data_src, ctrl_token=op_token,
                               tokenizer=self.tokenizer, fields=task.input_fields,
                               sample_size=600000 if split == "train" else 40000))
             else:
                 dataset_list.append(
-                    TripletDataset(task_name=t_name, json_file=task.data_files[split], ctrl_token=op_token,
+                    TripletDataset(task_name=t_name, data_src=data_src, ctrl_token=op_token,
                                    tokenizer=self.tokenizer, fields=task.input_fields,
                                    sample_size=600000 if split == "train" else 40000))
         multi_dataset = CustomChainDataset(dataset_list, batch_size=self.batch_size,

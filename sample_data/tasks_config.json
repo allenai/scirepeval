@@ -1,16 +1,13 @@
 [
     {
-    "name": "cite_pred",
+    "name": "cite_count",
     "type": "regression",
-    "data_files": {
-      "train": "../../scidocs/data/citation_count/train.json",
-      "dev": "../../scidocs/data/citation_count/val.json"
-    },
+    "dataset": "allenai/scirepeval",
     "labels_field": "log_citations",
     "ctrl_token": "[RGN]"
   },
     {
-    "name": "year_pred",
+    "name": "pub_year",
     "type": "regression",
     "data_files": {
       "train": "../../scidocs/data/year_author_prediction/train.json",
@@ -20,7 +17,7 @@
     "ctrl_token": "[RGN]"
   },
   {
-    "name": "mesh",
+    "name": "mesh_descriptors",
     "type": "classification",
     "data_files": {
       "train": "../../scidocs/data/mesh_plus/train.json",
@@ -53,7 +50,7 @@
     "ctrl_token": {"query": "[QRY]", "candidates": "[SAL]"}
   },
   {
-    "name": "s2and",
+    "name": "same_author",
     "type": "ir",
     "data_files": {
       "train": "../../scidocs/data/s2and/full_test_partitioned/train.jsonl",
@@ -62,7 +59,7 @@
     "ctrl_token": "[SAL]"
   },
   {
-    "name": "cite_context",
+    "name": "high_influence_cite",
     "type": "ir",
     "data_files": {
       "train": "../cite_context/train.json",
@@ -71,7 +68,7 @@
     "ctrl_token": "[SAL]"
   },
     {
-    "name": "specter",
+    "name": "cite_prediction",
     "type": "triplet",
     "data_files": {
       "train": "../../scidocs/data/specter_triplets/train.json",

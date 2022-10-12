@@ -1,119 +1,84 @@
 [
   {
-    "name": "cite_count",
-    "type": "regression",
-    "dataset": "allenai/scirepeval",
-    "labels_field": "log_citations",
-    "ctrl_token": "[RGN]",
-    "sample_size": {
-      "train": 600000,
-      "dev": 40000
-    }
-  },
-  {
-    "name": "pub_year",
+    "name": "cite_pred",
     "type": "regression",
     "data_files": {
-      "train": "../../scidocs/data/year_author_prediction/train.json",
-      "dev": "../../scidocs/data/year_author_prediction/val.json"
+      "train": "../scirepeval_data/train/cite_count/train.jsonl",
+      "dev": "../scirepeval_data/train/cite_count/val.jsonl"
+    },
+    "labels_field": "log_citations",
+    "ctrl_token": "[RGN]"
+  },
+    {
+    "name": "year_pred",
+    "type": "regression",
+    "data_files": {
+      "train": "../scirepeval_data/train/pub_year/train.jsonl",
+      "dev": "../scirepeval_data/train/pub_year/val.jsonl"
     },
     "labels_field": "scaled_year",
-    "ctrl_token": "[RGN]",
-    "sample_size": {
-      "train": 600000,
-      "dev": 40000
-    }
+    "ctrl_token": "[RGN]"
   },
+
   {
-    "name": "mesh_descriptors",
+    "name": "mesh",
     "type": "classification",
     "data_files": {
-      "train": "../../scidocs/data/mesh_plus/train.json",
-      "dev": "../../scidocs/data/mesh_plus/val.json"
+      "train": "../scirepeval_data/train/mesh_descriptors/train.jsonl",
+      "dev": "../scirepeval_data/train/mesh_descriptors/val.jsonl"
     },
     "labels": "sample_data/mesh_descriptors.txt",
     "labels_field": "descriptor",
-    "ctrl_token": "[CLF]",
-    "sample_size": {
-      "train": 600000,
-      "dev": 40000
-    }
+    "ctrl_token": "[CLF]"
   },
   {
     "name": "fos",
     "type": "classification",
     "multi_label": true,
     "data_files": {
-      "train": "../fos/fos_train.json",
-      "dev": "../fos/fos_val.json"
+      "train": "../scirepeval_data/train/fos/train.jsonl",
+      "dev": "../scirepeval_data/train/fos/val.jsonl"
     },
     "labels": "sample_data/fos_labels.txt",
     "labels_field": "labels_text",
-    "ctrl_token": "[CLF]",
-    "sample_size": {
-      "train": 600000,
-      "dev": 40000
-    }
+    "ctrl_token": "[CLF]"
   },
   {
     "name": "search",
     "type": "ir",
     "data_files": {
-      "train": "../search/train_new.jsonl",
-      "dev": "../search/val_new.jsonl"
+      "train": "../scirepeval_data/train/search/train.jsonl",
+      "dev": "../scirepeval_data/train/search/val.jsonl"
     },
-    "input_fields": [
-      "title",
-      "abstract",
-      "venue",
-      "year"
-    ],
-    "ctrl_token": {
-      "query": "[QRY]",
-      "candidates": "[SAL]"
-    },
-    "sample_size": {
-      "train": 600000,
-      "dev": 40000
-    }
+    "input_fields": ["title", "abstract", "venue", "year"],
+    "ctrl_token": {"query": "[QRY]", "candidates": "[PRX]"}
   },
   {
-    "name": "same_author",
+    "name": "s2and",
     "type": "ir",
     "data_files": {
-      "train": "../../scidocs/data/s2and/full_test_partitioned/train.jsonl",
-      "dev": "../../scidocs/data/s2and/full_test_partitioned/dev.jsonl"
+      "train": "../scirepeval_data/train/same_author/train.jsonl",
+      "dev": "../scirepeval_data/train/same_author/val.jsonl"
     },
-    "ctrl_token": "[SAL]",
-    "sample_size": {
-      "train": 600000,
-      "dev": 40000
-    }
+    "ctrl_token": "[PRX]"
   },
   {
-    "name": "high_influence_cite",
+    "name": "cite_context",
     "type": "ir",
     "data_files": {
-      "train": "../cite_context/train.json",
-      "dev": "../cite_context/dev.json"
+      "train": "../scirepeval_data/train/high_influence_cite/train.jsonl",
+      "dev": "../scirepeval_data/train/high_influence_cite/val.jsonl"
     },
-    "ctrl_token": "[SAL]",
-    "sample_size": {
-      "train": 600000,
-      "dev": 40000
-    }
+    "ctrl_token": "[PRX]"
   },
-  {
-    "name": "cite_prediction",
+    {
+    "name": "specter",
     "type": "triplet",
     "data_files": {
-      "train": "../../scidocs/data/specter_triplets/train.json",
-      "dev": "../../scidocs/data/specter_triplets/val.json"
+      "train": "../scirepeval_data/train/cite_prediction/train.jsonl",
+      "dev": "../scirepeval_data/train/cite_prediction/val.jsonl"
     },
-    "ctrl_token": "[SAL]",
-    "sample_size": {
-      "train": 600000,
-      "dev": 40000
-    }
+    "ctrl_token": "[PRX]"
   }
+
 ]

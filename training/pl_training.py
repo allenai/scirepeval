@@ -1,3 +1,8 @@
+import sys
+ 
+# setting path
+sys.path.append('../')
+
 import argparse
 from typing import Dict, Optional, Any
 

@@ -16,6 +16,7 @@ from collections import defaultdict
 from strategies import BatchingStrategy
 import random
 
+datasets.logging.set_verbosity_error()
 
 class AbstractMultiTaskDataset(ABC, IterableDataset):
     def __init__(self, task_name: str, data_src: Union[Dict[str,str],Tuple[str, str]], tokenizer: PreTrainedTokenizer, fields: List[str],

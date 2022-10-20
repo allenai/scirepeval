@@ -1,6 +1,6 @@
 import sys
 
-sys.path.append('../evaluation')
+sys.path.append('../')
 
 from evaluation.encoders import Model
 from evaluation.evaluator import SupervisedEvaluator, SupervisedTask

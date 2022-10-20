@@ -1,6 +1,6 @@
 from typing import Dict
 
-from encoders import Model
+from evaluation.encoders import Model
 from tqdm import tqdm
 import numpy as np
 import json

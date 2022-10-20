@@ -2,10 +2,10 @@ from typing import Union, Dict
 
 import numpy as np
 
-from embeddings_generator import EmbeddingsGenerator
+from evaluation.embeddings_generator import EmbeddingsGenerator
 from abc import ABC, abstractmethod
-from encoders import Model
-from eval_datasets import SimpleDataset, IRDataset
+from evaluation.encoders import Model
+from evaluation.eval_datasets import SimpleDataset, IRDataset
 import logging
 import datasets
 import os

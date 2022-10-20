@@ -33,7 +33,7 @@ class SupervisedTask(Enum):
 
 
 class SupervisedEvaluator(Evaluator):
-    def __init__(self, task: SupervisedTask, meta_dataset: Union[str, tuple], test_dataset: str, model: Model, metrics,
+    def __init__(self, task: SupervisedTask, meta_dataset: Union[str, tuple], test_dataset: Union[str, tuple], model: Model, metrics,
                  batch_size: int = 16,
                  fields: list = None):
         super(SupervisedEvaluator, self).__init__(meta_dataset, SimpleDataset, model, batch_size, fields)

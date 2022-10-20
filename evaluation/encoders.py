@@ -55,9 +55,10 @@ class Model:
         input_ids = self.tokenizer(batch, padding=True, truncation=True,
                                    return_tensors="pt", max_length=self.max_length)
         input_ids.to('cuda')
-        if self.variant == "default" or type(self.task_id) != dict:
-            output = self.encoder(**input_ids) if not self.task_id else self.encoder(task_id=self.task_id,
-                                                                                     **input_ids)
+        if self.variant == "default":
+            output = self.encoder(**input_ids)
+        elif type(self.task_id) != dict:
+            output = self.encoder(task_id=self.task_id, **input_ids)
         else:
             x = input_ids["input_ids"]
             output = torch.zeros(x.shape[0], x.shape[1], self.hidden_dim).to("cuda")

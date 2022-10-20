@@ -5,7 +5,9 @@ from tqdm import tqdm
 import numpy as np
 import json
 import pathlib
+import logging
 
+logger = logging.getLogger(__name__)
 
 class EmbeddingsGenerator:
     def __init__(self, dataset, model: Model):
@@ -31,6 +33,7 @@ class EmbeddingsGenerator:
                 with open(save_path, 'w') as fout:
                     for k, v in results.items():
                         fout.write(json.dumps({"doc_id": k, "embedding": v}) + '\n')
+        logger.info(f"Generated {len(results)} embeddings")
         return results
 
     @staticmethod
@@ -40,4 +43,5 @@ class EmbeddingsGenerator:
             for line in tqdm(f, desc=f'reading embeddings from {embeddings_path}'):
                 line_json = json.loads(line)
                 embeddings[line_json['paper_id']] = np.array(line_json['embedding'])
+        logger.info(f"Loaded {len(embeddings)} embeddings")
         return embeddings

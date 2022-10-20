@@ -1,10 +1,8 @@
-import hashlib
-import json
+import logging
+import os
 from typing import Union, List
 
 import datasets
-import logging
-import os
 
 logger = logging.getLogger(__name__)
 
@@ -24,6 +22,7 @@ class SimpleDataset:
             self.data = datasets.load_dataset("json", data_files={"test": data_path})["test"]
         else:
             self.data = datasets.load_dataset(data_path[0], data_path[1], split="evaluation")
+        logger.info(f"Loaded {len(self.data)} documents")
         self.seen_ids = set()
 
     def __len__(self):

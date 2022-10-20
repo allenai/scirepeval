@@ -53,7 +53,8 @@ class Model:
 
     def __call__(self, batch, batch_ids):
         input_ids = self.tokenizer(batch, padding=True, truncation=True,
-                                   return_tensors="pt", max_length=self.max_length).cuda()
+                                   return_tensors="pt", max_length=self.max_length)
+        input_ids.to('cuda')
         if self.variant == "default" or type(self.task_id) != dict:
             output = self.encoder(**input_ids) if not self.task_id else self.encoder(task_id=self.task_id,
                                                                                      **input_ids)

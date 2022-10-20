@@ -29,33 +29,7 @@ class SimpleDataset:
         return len(self.data)
 
     def batches(self):
-        # create batches
-        batch = []
-        batch_ids = []
-        batch_size = self.batch_size
-        i = 0
-        key = "doc_id"
-        for d in self.data:
-            if key in d and d[key] not in self.seen_ids:
-                bid = d[key]
-                self.seen_ids.add(bid)
-                text = []
-                for field in self.fields:
-                    if d[field]:
-                        text.append(str(d[field]))
-                text = (f" {self.sep_token} ".join(text)).strip()
-                if self.ctrl_token:
-                    text = f"{self.ctrl_token} {text}"
-                if (i) % batch_size != 0 or i == 0:
-                    batch_ids.append(bid)
-                    batch.append(text)
-                else:
-                    yield batch, batch_ids
-                    batch_ids = [bid]
-                    batch = [text]
-                i += 1
-        if len(batch) > 0:
-            yield batch, batch_ids
+        return self.process_batches(self.data, self.ctrl_token)
 
     def process_batches(self, data: Union[datasets.Dataset, List], ctrl_token: str):
         # create batches

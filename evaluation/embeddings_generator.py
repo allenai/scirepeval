@@ -9,6 +9,7 @@ import logging
 
 logger = logging.getLogger(__name__)
 
+
 class EmbeddingsGenerator:
     def __init__(self, dataset, model: Model):
         self.dataset = dataset

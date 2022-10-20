@@ -29,7 +29,7 @@ class SimpleDataset:
         return len(self.data)
 
     def batches(self):
-        self.process_batches(self.data, self.ctrl_token)
+        return self.process_batches(self.data, self.ctrl_token)
 
     def process_batches(self, data: Union[datasets.Dataset, List], ctrl_token: str):
         # create batches

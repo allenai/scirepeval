@@ -19,6 +19,7 @@ class SimpleDataset:
         if not fields:
             fields = ["title", "abstract"]
         self.fields = fields
+        logger.info(f"Loading test metadata from {data_path}")
         if type(data_path) == str and os.path.isfile(data_path):
             self.data = datasets.load_dataset("json", data_files={"test": data_path})["test"]
         else:

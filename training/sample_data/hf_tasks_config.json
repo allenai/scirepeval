@@ -1,0 +1,116 @@
+[
+  {
+    "name": "cite_pred",
+    "type": "regression",
+    "dataset": {
+      "path": "allenai/scirepeval",
+      "name": "cite_count"
+    },
+    "labels_field": "log_citations",
+    "ctrl_token": "[RGN]",
+    "sample_size": {
+      "train": 600000,
+      "dev": 40000
+    }
+  },
+    {
+    "name": "year_pred",
+    "type": "regression",
+    "dataset": {
+      "path": "allenai/scirepeval",
+      "name": "pub_year"
+    },
+    "labels_field": "scaled_year",
+    "ctrl_token": "[RGN]",
+      "sample_size": {
+      "train": 600000,
+      "dev": 40000
+    }
+  },
+
+  {
+    "name": "mesh",
+    "type": "classification",
+    "dataset": {
+      "path": "allenai/scirepeval",
+      "name": "mesh_descriptors"
+    },
+    "labels": "sample_data/mesh_descriptors.txt",
+    "labels_field": "descriptor",
+    "ctrl_token": "[CLF]",
+    "sample_size": {
+      "train": 600000,
+      "dev": 40000
+    }
+  },
+  {
+    "name": "fos",
+    "type": "classification",
+    "multi_label": true,
+    "dataset": {
+      "path": "allenai/scirepeval",
+      "name": "fos"
+    },
+    "labels": "sample_data/fos_labels.txt",
+    "labels_field": "labels_text",
+    "ctrl_token": "[CLF]",
+    "sample_size": {
+      "train": 600000,
+      "dev": 40000
+    }
+  },
+  {
+    "name": "search",
+    "type": "ir",
+    "dataset": {
+      "path": "allenai/scirepeval",
+      "name": "search"
+    },
+    "input_fields": ["title", "abstract", "venue", "year"],
+    "ctrl_token": {"query": "[QRY]", "candidates": "[PRX]"},
+    "sample_size": {
+      "train": 600000,
+      "dev": 40000
+    }
+  },
+  {
+    "name": "s2and",
+    "type": "ir",
+    "dataset": {
+      "path": "allenai/scirepeval",
+      "name": "same_author"
+    },
+    "ctrl_token": "[PRX]",
+    "sample_size": {
+      "train": 600000,
+      "dev": 40000
+    }
+  },
+  {
+    "name": "cite_context",
+    "type": "ir",
+    "data_files": {
+      "train": "../scirepeval_data/train/high_influence_cite/train.jsonl",
+      "dev": "../scirepeval_data/train/high_influence_cite/val.jsonl"
+    },
+    "ctrl_token": "[PRX]",
+    "sample_size": {
+      "train": 600000,
+      "dev": 40000
+    }
+  },
+    {
+    "name": "specter",
+    "type": "triplet",
+    "dataset": {
+      "path": "allenai/scirepeval",
+      "name": "cite_prediction"
+    },
+    "ctrl_token": "[PRX]",
+      "sample_size": {
+      "train": 600000,
+      "dev": 40000
+    }
+  }
+
+]

@@ -1,0 +1,11 @@
+val_check_interval: 1.0
+num_sanity_val_steps: 4
+max_epochs: 2
+accumulate_grad_batches: 16
+batch_size: 8
+tokenizer: allenai/specter
+model: allenai/specter
+use_ctrl_tokens: true
+task_dict: null
+pals_cfg: null
+adapter_type: null

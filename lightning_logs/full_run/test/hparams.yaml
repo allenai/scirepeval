@@ -1,0 +1,14 @@
+val_check_interval: 1.0
+num_sanity_val_steps: 0
+max_epochs: 4
+accumulate_grad_batches: 1
+batch_size: 1
+lr: 5.0e-06
+tokenizer: allenai/specter
+model: allenai/specter
+warmup_steps: 600
+log_dir: ./lightning_logs//full_run/test/checkpoints/
+use_ctrl_tokens: true
+task_dict: null
+pals_cfg: null
+adapter_type: fusion

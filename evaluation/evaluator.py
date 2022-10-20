@@ -21,6 +21,7 @@ class Evaluator(ABC):
         self.embeddings_generator = EmbeddingsGenerator(dataset, model)
 
     def generate_embeddings(self, save_path: str = None):
+        logger.info("Generating embeddings... this might take a while")
         return self.embeddings_generator.generate_embeddings(save_path)
 
     @abstractmethod

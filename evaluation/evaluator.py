@@ -48,7 +48,7 @@ class SupervisedEvaluator(Evaluator):
         else:
             split_dataset = datasets.load_dataset(self.test_dataset[0], self.test_dataset[1])
 
-        if os.path.isfile(embeddings):
+        if type(embeddings) == str and os.path.isfile(embeddings):
             embeddings = EmbeddingsGenerator.load_embeddings_from_jsonl(embeddings)
         if self.task == SupervisedTask.CLASSIFICATION:
             self.classify(split_dataset, embeddings)

@@ -47,7 +47,7 @@ class SupervisedEvaluator(Evaluator):
                                                                      "test": f"{self.test_dataset}/test.csv"})
         else:
             split_dataset = datasets.load_dataset(self.test_dataset[0], self.test_dataset[1])
-
+        logger.info(f"Loaded {len(split_dataset['train'])} training and {len(split_dataset['test'])} test documents")
         if type(embeddings) == str and os.path.isfile(embeddings):
             embeddings = EmbeddingsGenerator.load_embeddings_from_jsonl(embeddings)
         if self.task == SupervisedTask.CLASSIFICATION:

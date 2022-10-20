@@ -11,6 +11,7 @@ import datasets
 import os
 from enum import Enum
 
+logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger(__name__)
 
 

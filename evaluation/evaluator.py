@@ -1,6 +1,9 @@
-from typing import Union, Dict
+from typing import Union, Dict, Tuple
 
 import numpy as np
+from lightning.classification import LinearSVC
+from sklearn.metrics import f1_score
+from sklearn.model_selection import GridSearchCV
 
 from evaluation.embeddings_generator import EmbeddingsGenerator
 from abc import ABC, abstractmethod
@@ -25,7 +28,7 @@ class Evaluator(ABC):
         return self.embeddings_generator.generate_embeddings(save_path)
 
     @abstractmethod
-    def evaluate(self, embeddings: Union[str, Dict[str, np.ndarray]]):
+    def evaluate(self, embeddings: Union[str, Dict[str, np.ndarray]], kwargs):
         pass
 
 
@@ -42,7 +45,7 @@ class SupervisedEvaluator(Evaluator):
         self.metrics = metrics
         self.task = task
 
-    def evaluate(self, embeddings):
+    def evaluate(self, embeddings, kwargs=None):
         logger.info(f"Loading test dataset from {self.test_dataset}")
         if type(self.test_dataset) == str and os.path.isdir(self.test_dataset):
             split_dataset = datasets.load_dataset("csv", data_files={"train": f"{self.test_dataset}/train.csv",
@@ -57,10 +60,27 @@ class SupervisedEvaluator(Evaluator):
         elif self.task == SupervisedTask.REGRESSION:
             self.regression(split_dataset, embeddings)
 
-    def classify(self, data, embeddings):
-        pass
+    def read_dataset(self, data: datasets.DatasetDict, embeddings: Dict[str, np.ndarray]) -> Tuple[np.ndarray, np.ndarray, np.ndarray, np.ndarray]:
+        train, test = data["train"], data["test"]
+        x_train, x_test = np.array([embeddings[paper["paper_id"]] for paper in train]), np.array(
+            [embeddings[paper["paper_id"]] for paper in test])
+        y_train, y_test = np.array([paper["label"] for paper in train]), np.array([paper["label"] for paper in test])
+        return x_train, x_test, y_train, y_test
 
-    def regression(self, data, embeddings):
+    def classify(self, data, embeddings, cv=3, kwargs=None):
+        x_train, x_test, y_train, y_test = self.read_dataset(data, embeddings)
+        estimator = LinearSVC(loss="squared_hinge", random_state=42)
+        Cs = np.logspace(-4, 2, 7)
+        if cv:
+            svm = GridSearchCV(estimator=estimator, cv=cv, param_grid={'C': Cs}, verbose=1, n_jobs=n_jobs)
+        else:
+            svm = estimator
+        svm.fit(x_train, y_train)
+        preds = svm.predict(x_test)
+        for m in self.metrics:
+            print(np.round(100 * f1_score(y_test, preds, average=m), 2))
+
+    def regression(self, data, embeddings, kwargs=None):
         pass
 
 

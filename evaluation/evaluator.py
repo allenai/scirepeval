@@ -62,12 +62,12 @@ class SupervisedEvaluator(Evaluator):
 
     def read_dataset(self, data: datasets.DatasetDict, embeddings: Dict[str, np.ndarray]) -> Tuple[np.ndarray, np.ndarray, np.ndarray, np.ndarray]:
         train, test = data["train"], data["test"]
-        x_train, x_test = np.array([embeddings[paper["paper_id"]] for paper in train]), np.array(
-            [embeddings[paper["paper_id"]] for paper in test])
+        x_train, x_test = np.array([embeddings[str(paper["paper_id"])] for paper in train]), np.array(
+            [embeddings[str(paper["paper_id"])] for paper in test])
         y_train, y_test = np.array([paper["label"] for paper in train]), np.array([paper["label"] for paper in test])
         return x_train, x_test, y_train, y_test
 
-    def classify(self, data, embeddings, cv=3, kwargs=None):
+    def classify(self, data, embeddings, cv=3, n_jobs=1):
         x_train, x_test, y_train, y_test = self.read_dataset(data, embeddings)
         estimator = LinearSVC(loss="squared_hinge", random_state=42)
         Cs = np.logspace(-4, 2, 7)

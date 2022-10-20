@@ -42,7 +42,7 @@ class SupervisedEvaluator(Evaluator):
 
     def evaluate(self, embeddings):
         logger.info(f"Loading test dataset from {self.test_dataset}")
-        if os.path.isdir(self.test_dataset):
+        if type(self.test_dataset) == str and os.path.isdir(self.test_dataset):
             split_dataset = datasets.load_dataset("csv", data_files={"train": f"{self.test_dataset}/train.csv",
                                                                      "test": f"{self.test_dataset}/test.csv"})
         else:

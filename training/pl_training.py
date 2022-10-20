@@ -35,7 +35,7 @@ def init_weights(modules):
 pl_to_split_map = {"fit": "train", "validate": "dev", "test": "test", "predict": "test"}
 
 
-class PhantasmLight(pl.LightningModule):
+class SciRepTrain(pl.LightningModule):
     def __init__(self, batch_size: int, init_lr: float, peak_lr: float, tokenizer: str, model: str, warmup_steps: int,
                  log_dir: str,
                  use_ctrl_tokens=False,
@@ -93,14 +93,14 @@ class PhantasmLight(pl.LightningModule):
         self.max_len = max_len
         self.save_hyperparameters(ignore=["task_dict"])
 
-    def forward(self, x, attention_mask=None, token_idx=0, task_id=None):
+    def forward(self, input_ids, attention_mask=None, token_idx=0, task_id=None):
         if not self.pals:
-            embedding = self.encoder(x, attention_mask=attention_mask) if not self.adapters else self.encoder(x,
-                                                                                                              attention_mask=attention_mask,
-                                                                                                              task_id=task_id)
+            embedding = self.encoder(input_ids, attention_mask=attention_mask) if not self.adapters else self.encoder(input_ids,
+                                                                                                                      attention_mask=attention_mask,
+                                                                                                                      task_id=task_id)
             return embedding.last_hidden_state[:, token_idx, :]
         else:
-            embedding = self.encoder(x, attention_mask=attention_mask, task_id=task_id)
+            embedding = self.encoder(input_ids, attention_mask=attention_mask, task_id=task_id)
             return embedding[:, token_idx, :]
 
     def configure_optimizers(self):
@@ -334,13 +334,13 @@ if __name__ == '__main__':
         mode='min'
     )
 
-    model = PhantasmLight(batch_size=args.batch_size, init_lr=args.lr,
-                          peak_lr=args.peak_lr,
-                          tokenizer=args.model,
-                          model=args.tokenizer,
-                          warmup_steps=args.warmup,
-                          use_ctrl_tokens=args.ctrl_tokens, task_dict=tasks_dict, pals_cfg=args.pals_config,
-                          adapter_type=args.adapter_type, log_dir=filepath, max_len=args.max_len)
+    model = SciRepTrain(batch_size=args.batch_size, init_lr=args.lr,
+                        peak_lr=args.peak_lr,
+                        tokenizer=args.model,
+                        model=args.tokenizer,
+                        warmup_steps=args.warmup,
+                        use_ctrl_tokens=args.ctrl_tokens, task_dict=tasks_dict, pals_cfg=args.pals_config,
+                        adapter_type=args.adapter_type, log_dir=filepath, max_len=args.max_len)
 
     hparams = {"gpus": args.gpu, "val_check_interval": args.val_check_interval, "num_sanity_val_steps": 4,
                "max_epochs": args.epochs,

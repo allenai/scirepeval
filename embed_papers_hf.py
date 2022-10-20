@@ -222,11 +222,11 @@ def main():
         model = Model(encoder, 0 if not ctrl_token else 1, model_dir, task_id=task_id)
     elif args.encoder_type == "adapters":
         t_ids = [task_id] if type(task_id) != dict else list(task_id.values())
-        encoder = AdapterEncoder(model_name, t_ids, load_dir=f"{model_dir}/model/adapters/")
+        encoder = AdapterEncoder(model_name, t_ids, load_as=f"{model_dir}/model/adapters/")
         model = Model(encoder, 0 if not ctrl_token else 1, model_dir, task_id=task_id)
     elif args.encoder_type == "fusion":
         t_ids = ["[ATH]", "[CLF]", "[QRY]", "[SAL]"] if args.ctrl_token else None
-        encoder = AdapterFusion(model_name, t_ids, adapters_dir=f"{model_dir}/model/adapters/", inference=True)
+        encoder = AdapterFusion(model_name, t_ids, load_adapters_as=f"{model_dir}/model/adapters/", inference=True)
         model = Model(encoder, 0 if not ctrl_token else 1, model_dir, task_id=task_id)
     results = {}
     try:

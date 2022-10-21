@@ -1,4 +1,8 @@
+import math
 from typing import Union
+
+import numpy as np
+from sklearn.model_selection import StratifiedKFold
 
 from evaluation.encoders import Model
 from evaluation.evaluator import SupervisedEvaluator, SupervisedTask
@@ -13,4 +17,22 @@ class FewShotEvaluator(SupervisedEvaluator):
         self.sample_size = sample_size
         self.num_iterations = num_iterations
 
-    def classify(self, x_train, x_test, y_train, y_test, multi_label=False, cv=3, n_jobs=1):
+    def classify(self, x, x_test, y, y_test, multi_label=False, cv=3, n_jobs=1):
+        if self.task == SupervisedTask.MULTILABEL_CLASSIFICATION:
+            pass
+        else:
+            stage_results = dict()
+            skf = StratifiedKFold(n_splits=math.ceil(x.shape[0] / self.sample_size))
+            count = 0
+            for _, train in skf.split(x, y):
+                x_train, y_train = x[train], y[train]
+                res = super().classify(x_train, x_test, y_train, y_test, cv=None)
+                for k, v in res.items():
+                    if k not in stage_results:
+                        stage_results[k] = []
+                    stage_results[k].append(v)
+                count += 1
+                if count == self.num_iterations:
+                    break
+            results = {k: np.mean(v) for k, v in stage_results.items()}
+            self.print_results(results)

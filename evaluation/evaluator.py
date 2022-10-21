@@ -44,7 +44,7 @@ class Evaluator(ABC):
             logger.info(f"                 {self.name}")
             logger.info("*****************************************************")
             for k, v in results.items():
-                logger.info(f"                  {k}: {v}")
+                logger.info(f"                 {k}: {v}")
             logger.info("*****************************************************")
 
 

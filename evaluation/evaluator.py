@@ -6,6 +6,7 @@ from lightning.regression import LinearSVR
 from sklearn.metrics import f1_score, accuracy_score, precision_score, recall_score, mean_squared_error, r2_score
 from scipy.stats import kendalltau, pearsonr
 from sklearn.model_selection import GridSearchCV
+from sklearn.multiclass import OneVsRestClassifier
 
 from evaluation.embeddings_generator import EmbeddingsGenerator
 from abc import ABC, abstractmethod
@@ -50,6 +51,7 @@ class Evaluator(ABC):
 
 class SupervisedTask(Enum):
     CLASSIFICATION = 1
+    MULTILABEL_CLASSIFICATION = 2
     REGRESSION = 2
 
 
@@ -80,10 +82,13 @@ class SupervisedEvaluator(Evaluator):
         logger.info(f"Loaded {len(split_dataset['train'])} training and {len(split_dataset['test'])} test documents")
         if type(embeddings) == str and os.path.isfile(embeddings):
             embeddings = EmbeddingsGenerator.load_embeddings_from_jsonl(embeddings)
+        x_train, x_test, y_train, y_test = self.read_dataset(split_dataset, embeddings)
         if self.task == SupervisedTask.CLASSIFICATION:
-            self.classify(split_dataset, embeddings)
+            self.classify(x_train, x_test, y_train, y_test)
+        elif self.task == SupervisedTask.MULTILABEL_CLASSIFICATION:
+            self.classify(x_train, x_test, y_train, y_test, multi_label=True)
         elif self.task == SupervisedTask.REGRESSION:
-            self.regression(split_dataset, embeddings)
+            self.regression(x_train, x_test, y_train, y_test)
 
     def read_dataset(self, data: datasets.DatasetDict, embeddings: Dict[str, np.ndarray]) -> Tuple[
         np.ndarray, np.ndarray, np.ndarray, np.ndarray]:
@@ -93,14 +98,19 @@ class SupervisedEvaluator(Evaluator):
         y_train, y_test = np.array([paper["label"] for paper in train]), np.array([paper["label"] for paper in test])
         return x_train, x_test, y_train, y_test
 
-    def classify(self, data, embeddings, cv=3, n_jobs=1):
-        x_train, x_test, y_train, y_test = self.read_dataset(data, embeddings)
-        estimator = LinearSVC(loss="squared_hinge", random_state=RANDOM_STATE)
+    def classify(self, x_train, x_test, y_train, y_test, multi_label=False, cv=3, n_jobs=1):
+
         Cs = np.logspace(-4, 2, 7)
-        if cv:
-            svm = GridSearchCV(estimator=estimator, cv=cv, param_grid={'C': Cs}, verbose=1, n_jobs=n_jobs)
+        if multi_label:
+            estimator = LinearSVC(max_iter=10000)
+            svm = GridSearchCV(estimator=estimator, cv=cv, param_grid={'C': Cs}, n_jobs=5)
+            svm = OneVsRestClassifier(svm, n_jobs=4)
         else:
-            svm = estimator
+            estimator = LinearSVC(loss="squared_hinge", random_state=RANDOM_STATE)
+            if cv:
+                svm = GridSearchCV(estimator=estimator, cv=cv, param_grid={'C': Cs}, verbose=1, n_jobs=n_jobs)
+            else:
+                svm = estimator
         svm.fit(x_train, y_train)
         preds = svm.predict(x_test)
         results = dict()
@@ -117,8 +127,7 @@ class SupervisedEvaluator(Evaluator):
                     f"Metric {m} not found...skipping, try one of {SUPSERVISED_TASK_METRICS[self.task].keys()}")
         self.print_results(results)
 
-    def regression(self, data, embeddings, cv=3, n_jobs=1):
-        x_train, x_test, y_train, y_test = self.read_dataset(data, embeddings)
+    def regression(self, x_train, x_test, y_train, y_test, cv=3, n_jobs=1):
         svm = LinearSVR(random_state=RANDOM_STATE)
         Cs = np.logspace(-4, 2, 7)
         svm = GridSearchCV(estimator=svm, cv=cv, param_grid={'C': Cs}, verbose=1, n_jobs=n_jobs)
@@ -128,7 +137,7 @@ class SupervisedEvaluator(Evaluator):
         for m in self.metrics:
             if m in SUPSERVISED_TASK_METRICS[self.task]:
                 result = SUPSERVISED_TASK_METRICS[self.task][m](y_test, preds)
-                result = result[0] if type(result) == tuple else result
+                result = result[0][0] if type(result) == tuple else result
                 if m != "mse":
                     result = np.round(100 * result, 2)
                 results[m] = result

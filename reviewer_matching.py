@@ -6,6 +6,7 @@ import datasets
 import numpy as np
 from tqdm import tqdm
 
+from evaluation.embeddings_generator import EmbeddingsGenerator
 from evaluation.encoders import Model
 from evaluation.eval_datasets import SimpleDataset
 from evaluation.evaluator import IREvaluator
@@ -17,10 +18,30 @@ logger = logging.getLogger(__name__)
 class ReviewerMatchingEvaluator(IREvaluator):
     def __init__(self, name: str, meta_dataset: Union[str, tuple], test_dataset: Union[str, tuple],
                  reviewer_metadata: Union[str, tuple], model: Model,
-                 metrics: tuple, batch_size: int = 16, fields: list = None):
+                 metrics: tuple = ("P_5", "P_10"), batch_size: int = 16, fields: list = None):
         super(ReviewerMatchingEvaluator, self).__init__(name, meta_dataset, test_dataset, model, metrics, SimpleDataset,
                                                         batch_size, fields, )
         self.reviewer_metadata = reviewer_metadata
+
+    def evaluate(self, embeddings, **kwargs):
+        logger.info(f"Loading test dataset from {self.test_dataset}")
+        if type(self.test_dataset) == str and os.path.isdir(self.test_dataset):
+            split_dataset = datasets.load_dataset("json",
+                                                  data_files={"test_hard": f"{self.test_dataset}/test_hard_qrel.jsonl",
+                                                              "test_soft": f"{self.test_dataset}/test_soft_qrel.jsonl"})
+        else:
+            split_dataset = datasets.load_dataset(self.test_dataset[0], self.test_dataset[1])
+        logger.info(f"Loaded {len(split_dataset['test_hard'])} test query-candidate pairs for hard and soft tests")
+        if type(embeddings) == str and os.path.isfile(embeddings):
+            embeddings = EmbeddingsGenerator.load_embeddings_from_jsonl(embeddings)
+
+        qrels_hard = self.get_qc_pairs(split_dataset["test_hard"])
+        qrels_soft = self.get_qc_pairs(split_dataset["test_soft"])
+        preds = self.retrieval(embeddings, qrels_hard)
+        results = {f"hard_{k}": v for k, v in self.calc_metrics(qrels_hard, preds).items()}
+        results.update({f"soft_{k}": v for k, v in self.calc_metrics(qrels_soft, preds).items()})
+        self.print_results(results)
+        return results
 
     def retrieval(self, embeddings, qrels: Dict[str, Dict[str, int]]) -> Dict[str, Dict[str, float]]:
         logger.info("Loading reviewer metadata...")

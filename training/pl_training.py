@@ -21,7 +21,7 @@ from transformers import AutoTokenizer, AutoModel
 
 from adapter_fusion import AdapterFactory
 from bert_pals import BertPalsEncoder
-from mf_datasets import ClassificationDataset, multi_collate, MultiLabelClassificationDataset, IRDataset, \
+from mtl_datasets import ClassificationDataset, multi_collate, MultiLabelClassificationDataset, IRDataset, \
     CustomChainDataset, TripletDataset, RegressionDataset
 from schedulers import InverseSquareRootSchedule, InverseSquareRootScheduleConfig
 from strategies import BatchingStrategy

@@ -36,7 +36,7 @@ class Evaluator(ABC):
         return self.embeddings_generator.generate_embeddings(save_path)
 
     @abstractmethod
-    def evaluate(self, embeddings: Union[str, Dict[str, np.ndarray]], kwargs):
+    def evaluate(self, embeddings: Union[str, Dict[str, np.ndarray]], kwargs) -> Dict[str, float]:
         pass
 
     def print_results(self, results: Dict[str, float]):
@@ -83,14 +83,13 @@ class SupervisedEvaluator(Evaluator):
         if type(embeddings) == str and os.path.isfile(embeddings):
             embeddings = EmbeddingsGenerator.load_embeddings_from_jsonl(embeddings)
         x_train, x_test, y_train, y_test = self.read_dataset(split_dataset, embeddings)
-        if self.task == SupervisedTask.CLASSIFICATION:
-            self.classify(x_train, x_test, y_train, y_test)
-        elif self.task == SupervisedTask.MULTILABEL_CLASSIFICATION:
-            self.classify(x_train, x_test, y_train, y_test, multi_label=True)
-        elif self.task == SupervisedTask.REGRESSION:
-            self.regression(x_train, x_test, y_train, y_test)
+        eval_fn = self.regression if self.task == SupervisedTask.REGRESSION else self.classify
+        results = eval_fn(x_train, x_test, y_train, y_test)
+        self.print_results(results)
+        return results
 
-    def read_dataset(self, data: datasets.DatasetDict, embeddings: Dict[str, np.ndarray]) -> Tuple[
+    @staticmethod
+    def read_dataset(data: datasets.DatasetDict, embeddings: Dict[str, np.ndarray]) -> Tuple[
         np.ndarray, np.ndarray, np.ndarray, np.ndarray]:
         train, test = data["train"], data["test"]
         x_train, x_test = np.array([embeddings[str(paper["paper_id"])] for paper in train]), np.array(
@@ -98,10 +97,11 @@ class SupervisedEvaluator(Evaluator):
         y_train, y_test = np.array([paper["label"] for paper in train]), np.array([paper["label"] for paper in test])
         return x_train, x_test, y_train, y_test
 
-    def classify(self, x_train, x_test, y_train, y_test, multi_label=False, cv=3, n_jobs=1):
+    def classify(self, x_train: np.ndarray, x_test: np.ndarray, y_train: np.ndarray, y_test: np.ndarray, cv: int = 3,
+                 n_jobs: int = 1):
 
         Cs = np.logspace(-4, 2, 7)
-        if multi_label:
+        if self.task == SupervisedTask.MULTILABEL_CLASSIFICATION:
             estimator = LinearSVC(max_iter=10000)
             svm = GridSearchCV(estimator=estimator, cv=cv, param_grid={'C': Cs}, n_jobs=5)
             svm = OneVsRestClassifier(svm, n_jobs=4)
@@ -125,10 +125,10 @@ class SupervisedEvaluator(Evaluator):
             else:
                 logger.warning(
                     f"Metric {m} not found...skipping, try one of {SUPSERVISED_TASK_METRICS[self.task].keys()}")
-        self.print_results(results)
         return results
 
-    def regression(self, x_train, x_test, y_train, y_test, cv=3, n_jobs=1):
+    def regression(self, x_train: np.ndarray, x_test: np.ndarray, y_train: np.ndarray, y_test: np.ndarray, cv: int = 3,
+                   n_jobs: int = 1):
         svm = LinearSVR(random_state=RANDOM_STATE)
         Cs = np.logspace(-4, 2, 7)
         svm = GridSearchCV(estimator=svm, cv=cv, param_grid={'C': Cs}, verbose=1, n_jobs=n_jobs)
@@ -145,7 +145,6 @@ class SupervisedEvaluator(Evaluator):
             else:
                 logger.warning(
                     f"Metric {m} not found...skipping, try one of {SUPSERVISED_TASK_METRICS[self.task].keys()}")
-        self.print_results(results)
         return results
 
 

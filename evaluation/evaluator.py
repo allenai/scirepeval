@@ -42,7 +42,7 @@ class Evaluator(ABC):
     def print_results(self, results: Dict[str, float]):
         if results:
             logger.info("*****************************************************")
-            logger.info(f"{self.name}")
+            logger.info(f"                 {self.name}")
             logger.info("*****************************************************")
             logger.info(json.dumps(results, indent=4))
             logger.info("*****************************************************")

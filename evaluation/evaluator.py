@@ -139,9 +139,9 @@ class SupervisedEvaluator(Evaluator):
 
 
 class IREvaluator(Evaluator):
-    def __init__(self, meta_dataset: Union[str, tuple], test_dataset: str, model: Model, metrics, batch_size: int = 16,
-                 fields: list = None):
-        super(IREvaluator, self).__init__(meta_dataset, IRDataset, model, batch_size, fields)
+    def __init__(self, name: str, meta_dataset: Union[str, tuple], test_dataset: Union[str, tuple], model: Model,
+                 metrics, batch_size: int = 16, fields: list = None):
+        super(IREvaluator, self).__init__(name, meta_dataset, IRDataset, model, batch_size, fields)
         self.test_dataset = test_dataset
         self.metrics = metrics
 
@@ -184,4 +184,3 @@ class IREvaluator(Evaluator):
             )
             metric_values[measure] = np.round(100 * res, 2)
         self.print_results(metric_values)
-

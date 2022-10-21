@@ -7,7 +7,7 @@ import numpy as np
 from tqdm import tqdm
 
 from evaluation.encoders import Model
-from evaluation.eval_datasets import IRDataset
+from evaluation.eval_datasets import SimpleDataset
 from evaluation.evaluator import IREvaluator
 from sklearn.metrics.pairwise import cosine_similarity
 
@@ -18,7 +18,7 @@ class ReviewerMatchingEvaluator(IREvaluator):
     def __init__(self, name: str, meta_dataset: Union[str, tuple], test_dataset: Union[str, tuple],
                  reviewer_metadata: Union[str, tuple], model: Model,
                  metrics: tuple, batch_size: int = 16, fields: list = None):
-        super(ReviewerMatchingEvaluator, self).__init__(name, meta_dataset, test_dataset, model, metrics, IRDataset,
+        super(ReviewerMatchingEvaluator, self).__init__(name, meta_dataset, test_dataset, model, metrics, SimpleDataset,
                                                         batch_size, fields, )
         self.reviewer_metadata = reviewer_metadata
 

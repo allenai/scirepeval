@@ -137,8 +137,7 @@ class SupervisedEvaluator(Evaluator):
         results = dict()
         for m in self.metrics:
             if m in SUPSERVISED_TASK_METRICS[self.task]:
-                result = SUPSERVISED_TASK_METRICS[self.task][m](y_test, preds)
-                result = result[0][0] if type(result) == tuple else result
+                result = tuple(SUPSERVISED_TASK_METRICS[self.task][m](y_test, preds))[0]
                 if m != "mse":
                     result = np.round(100 * result, 2)
                 results[m] = result

@@ -40,12 +40,12 @@ class Evaluator(ABC):
 
     def print_results(self, results: Dict[str, float]):
         if results:
-            logger.info("*****************************************************")
-            logger.info(f"                 {self.name}")
-            logger.info("*****************************************************")
+            print("*****************************************************")
+            print(f"                 {self.name}")
+            print("*****************************************************")
             for k, v in results.items():
-                logger.info(f"                 {k}: {v}")
-            logger.info("*****************************************************")
+                print(f"                 {k}: {v}")
+            print("*****************************************************")
 
 
 class SupervisedTask(Enum):

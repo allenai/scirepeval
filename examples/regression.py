@@ -9,7 +9,7 @@ from evaluation.evaluator import SupervisedEvaluator, SupervisedTask
 model = Model(base_checkpoint="../lightning_logs/full_run/scincl_ctrl/checkpoints/", task_id="[RGN]", use_ctrl_codes=True)
 # model = Model(base_checkpoint="malteos/scincl", variant="adapters",
 #               adapters_load_from="../lightning_logs/full_run/scincl_adapters/checkpoints/", task_id="[CLF]")
-evaluator = SupervisedEvaluator("max hIndex", SupervisedTask.CLASSIFICATION, ("allenai/scirepeval", "peer_review_score_hIndex"),
+evaluator = SupervisedEvaluator("max hIndex", SupervisedTask.REGRESSION, ("allenai/scirepeval", "peer_review_score_hIndex"),
                                 ("allenai/scirepeval_test", "hIndex"), model, metrics=("pearsonr","kendelltau"))
 
 embeddings = evaluator.generate_embeddings()

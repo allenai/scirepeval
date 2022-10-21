@@ -18,8 +18,8 @@ class ReviewerMatchingEvaluator(IREvaluator):
     def __init__(self, name: str, meta_dataset: Union[str, tuple], test_dataset: Union[str, tuple],
                  reviewer_metadata: Union[str, tuple], model: Model,
                  metrics: tuple, batch_size: int = 16, fields: list = None):
-        super(IREvaluator, self).__init__(name, meta_dataset, test_dataset, model, metrics, IRDataset, batch_size,
-                                          fields, )
+        super(ReviewerMatchingEvaluator, self).__init__(name, meta_dataset, test_dataset, model, metrics, IRDataset,
+                                                        batch_size, fields, )
         self.reviewer_metadata = reviewer_metadata
 
     def retrieval(self, embeddings, qrels: Dict[str, Dict[str, int]]) -> Dict[str, Dict[str, float]]:

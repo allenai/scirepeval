@@ -13,4 +13,4 @@ class FewShotEvaluator(SupervisedEvaluator):
         self.sample_size = sample_size
         self.num_iterations = num_iterations
 
-
+    def classify(self, x_train, x_test, y_train, y_test, multi_label=False, cv=3, n_jobs=1):

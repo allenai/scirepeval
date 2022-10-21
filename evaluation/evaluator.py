@@ -52,7 +52,7 @@ class Evaluator(ABC):
 class SupervisedTask(Enum):
     CLASSIFICATION = 1
     MULTILABEL_CLASSIFICATION = 2
-    REGRESSION = 2
+    REGRESSION = 3
 
 
 SUPSERVISED_TASK_METRICS = {
@@ -126,6 +126,7 @@ class SupervisedEvaluator(Evaluator):
                 logger.warning(
                     f"Metric {m} not found...skipping, try one of {SUPSERVISED_TASK_METRICS[self.task].keys()}")
         self.print_results(results)
+        return results
 
     def regression(self, x_train, x_test, y_train, y_test, cv=3, n_jobs=1):
         svm = LinearSVR(random_state=RANDOM_STATE)
@@ -145,6 +146,7 @@ class SupervisedEvaluator(Evaluator):
                 logger.warning(
                     f"Metric {m} not found...skipping, try one of {SUPSERVISED_TASK_METRICS[self.task].keys()}")
         self.print_results(results)
+        return results
 
 
 class IREvaluator(Evaluator):
@@ -193,3 +195,4 @@ class IREvaluator(Evaluator):
             )
             metric_values[measure] = np.round(100 * res, 2)
         self.print_results(metric_values)
+        return metric_values

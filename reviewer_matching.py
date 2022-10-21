@@ -45,11 +45,12 @@ class ReviewerMatchingEvaluator(IREvaluator):
 
     def retrieval(self, embeddings, qrels: Dict[str, Dict[str, int]]) -> Dict[str, Dict[str, float]]:
         logger.info("Loading reviewer metadata...")
-        if type(self.reviewer_metadata) == str and os.path.isdir(self.test_dataset):
+        if type(self.reviewer_metadata) == str and os.path.isdir(self.reviewer_metadata):
             reviewer_dataset = datasets.load_dataset("json", data_files={
-                "metadata": f"{self.test_dataset}/reviewer_metadata.jsonl"})
+                "metadata": f"{self.reviewer_metadata}/reviewer_metadata.jsonl"})["metadata"]
         else:
-            reviewer_dataset = datasets.load_dataset(self.test_dataset[0], self.test_dataset[1], split="metadata")
+            reviewer_dataset = datasets.load_dataset(self.reviewer_metadata[0], self.reviewer_metadata[1],
+                                                     split="metadata")
         logger.info(f"Loaded {len(reviewer_dataset)} reviewer metadata")
         reviewer_papers = {d["r_id"]: d["papers"] for d in reviewer_dataset}
 

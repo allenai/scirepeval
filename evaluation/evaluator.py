@@ -171,7 +171,7 @@ class IREvaluator(Evaluator):
             scores = euclidean_distances(cands, query).flatten()
             run[qid] = dict()
             for i, cid in enumerate(qrels[qid]):
-                run[qid][cid] = scores[i]
+                run[qid][cid] = -scores[i]
 
         evaluator = pytrec_eval.RelevanceEvaluator(qrels, set(self.metrics))
         results = evaluator.evaluate(run)

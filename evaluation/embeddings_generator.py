@@ -43,6 +43,6 @@ class EmbeddingsGenerator:
         with open(embeddings_path, 'r') as f:
             for line in tqdm(f, desc=f'reading embeddings from {embeddings_path}'):
                 line_json = json.loads(line)
-                embeddings[line_json['paper_id']] = np.array(line_json['embedding'])
+                embeddings[line_json['doc_id']] = np.array(line_json['embedding'])
         logger.info(f"Loaded {len(embeddings)} embeddings")
         return embeddings

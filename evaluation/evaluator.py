@@ -117,7 +117,7 @@ class SupervisedEvaluator(Evaluator):
                     f"Metric {m} not found...skipping, try one of {SUPSERVISED_TASK_METRICS[self.task].keys()}")
         self.print_results(results)
 
-    def regression(self, data, embeddings, cv=3, n_jobs=5):
+    def regression(self, data, embeddings, cv=3, n_jobs=1):
         x_train, x_test, y_train, y_test = self.read_dataset(data, embeddings)
         svm = LinearSVR(random_state=RANDOM_STATE)
         Cs = np.logspace(-4, 2, 7)

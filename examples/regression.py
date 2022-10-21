@@ -10,7 +10,7 @@ model = Model(base_checkpoint="../lightning_logs/full_run/scincl_ctrl/checkpoint
 # model = Model(base_checkpoint="malteos/scincl", variant="adapters",
 #               adapters_load_from="../lightning_logs/full_run/scincl_adapters/checkpoints/", task_id="[CLF]")
 evaluator = SupervisedEvaluator("max hIndex", SupervisedTask.REGRESSION, ("allenai/scirepeval", "peer_review_score_hIndex"),
-                                ("allenai/scirepeval_test", "hIndex"), model, metrics=("pearsonr","kendelltau"))
+                                ("allenai/scirepeval_test", "hIndex"), model, metrics=("pearsonr","kendalltau"))
 
 embeddings = evaluator.generate_embeddings()
 

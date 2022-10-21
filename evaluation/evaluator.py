@@ -15,7 +15,6 @@ import logging
 import datasets
 import os
 from enum import Enum
-import json
 from sklearn.metrics.pairwise import euclidean_distances
 import pytrec_eval
 
@@ -44,7 +43,8 @@ class Evaluator(ABC):
             logger.info("*****************************************************")
             logger.info(f"                 {self.name}")
             logger.info("*****************************************************")
-            logger.info(json.dumps(results, indent=4))
+            for k, v in results.items():
+                logger.info(f"                  {k}: {v}")
             logger.info("*****************************************************")
 
 

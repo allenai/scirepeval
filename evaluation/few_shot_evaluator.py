@@ -19,7 +19,7 @@ class FewShotEvaluator(SupervisedEvaluator):
         self.sample_size = sample_size
         self.num_iterations = num_iterations
 
-    def classify(self, x, x_test, y, y_test, cv=3, n_jobs=1):
+    def classify(self, x, x_test, y, cv=3, n_jobs=1):
         stage_results = dict()
         if self.task == SupervisedTask.MULTILABEL_CLASSIFICATION:
             for k in tqdm(range(self.num_iterations)):
@@ -30,7 +30,7 @@ class FewShotEvaluator(SupervisedEvaluator):
                         np.random.choice(np.where(y[:, yi] == 1)[0], self.sample_size, replace=False).tolist())
                 req_idx = list(idx_set)
                 x_train, y_train = x[req_idx], y[req_idx]
-                res = self.classify(x_train, x_test, y_train, y_test)
+                res = self.classify(x_train, x_test, y_train)
                 for k, v in res.items():
                     if k not in stage_results:
                         stage_results[k] = []
@@ -41,7 +41,7 @@ class FewShotEvaluator(SupervisedEvaluator):
             count = 0
             for _, train in tqdm(skf.split(x, y), total=self.num_iterations):
                 x_train, y_train = x[train], y[train]
-                res = super().classify(x_train, x_test, y_train, y_test, cv=0)
+                res = super().classify(x_train, x_test, y_train, cv=0)
                 for k, v in res.items():
                     if k not in stage_results:
                         stage_results[k] = []

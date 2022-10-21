@@ -36,7 +36,11 @@ class Evaluator(ABC):
         return self.embeddings_generator.generate_embeddings(save_path)
 
     @abstractmethod
-    def evaluate(self, embeddings: Union[str, Dict[str, np.ndarray]], kwargs) -> Dict[str, float]:
+    def evaluate(self, embeddings: Union[str, Dict[str, np.ndarray]], **kwargs) -> Dict[str, float]:
+        pass
+
+    @abstractmethod
+    def calc_metrics(self, test, preds) -> Dict[str, float]:
         pass
 
     def print_results(self, results: Dict[str, float]):
@@ -66,13 +70,13 @@ SUPSERVISED_TASK_METRICS = {
 class SupervisedEvaluator(Evaluator):
     def __init__(self, name: str, task: SupervisedTask, meta_dataset: Union[str, tuple],
                  test_dataset: Union[str, tuple],
-                 model: Model, metrics: tuple = None, batch_size: int = 16, fields: list = None):
+                 model: Model, metrics: tuple, batch_size: int = 16, fields: list = None):
         super(SupervisedEvaluator, self).__init__(name, meta_dataset, SimpleDataset, model, batch_size, fields)
         self.test_dataset = test_dataset
         self.metrics = metrics
         self.task = task
 
-    def evaluate(self, embeddings, kwargs=None):
+    def evaluate(self, embeddings, **kwargs):
         logger.info(f"Loading test dataset from {self.test_dataset}")
         if type(self.test_dataset) == str and os.path.isdir(self.test_dataset):
             split_dataset = datasets.load_dataset("csv", data_files={"train": f"{self.test_dataset}/train.csv",
@@ -84,7 +88,8 @@ class SupervisedEvaluator(Evaluator):
             embeddings = EmbeddingsGenerator.load_embeddings_from_jsonl(embeddings)
         x_train, x_test, y_train, y_test = self.read_dataset(split_dataset, embeddings)
         eval_fn = self.regression if self.task == SupervisedTask.REGRESSION else self.classify
-        results = eval_fn(x_train, x_test, y_train, y_test)
+        preds = eval_fn(x_train, x_test, y_train)
+        results = self.calc_metrics(y_test, preds)
         self.print_results(results)
         return results
 
@@ -97,7 +102,7 @@ class SupervisedEvaluator(Evaluator):
         y_train, y_test = np.array([paper["label"] for paper in train]), np.array([paper["label"] for paper in test])
         return x_train, x_test, y_train, y_test
 
-    def classify(self, x_train: np.ndarray, x_test: np.ndarray, y_train: np.ndarray, y_test: np.ndarray, cv: int = 3,
+    def classify(self, x_train: np.ndarray, x_test: np.ndarray, y_train: np.ndarray, cv: int = 3,
                  n_jobs: int = 1):
 
         Cs = np.logspace(-4, 2, 7)
@@ -113,44 +118,48 @@ class SupervisedEvaluator(Evaluator):
                 svm = estimator
         svm.fit(x_train, y_train)
         preds = svm.predict(x_test)
-        results = dict()
-        for m in self.metrics:
-            split_m = m.split("_")
-            if split_m[0] in SUPSERVISED_TASK_METRICS[self.task]:
-                if len(split_m) > 1:
-                    result = SUPSERVISED_TASK_METRICS[self.task][split_m[0]](y_test, preds, average=split_m[1])
-                else:
-                    result = SUPSERVISED_TASK_METRICS[self.task][split_m[0]](y_test, preds)
-                results[m] = np.round(100 * result, 2)
-            else:
-                logger.warning(
-                    f"Metric {m} not found...skipping, try one of {SUPSERVISED_TASK_METRICS[self.task].keys()}")
-        return results
+        return preds
 
-    def regression(self, x_train: np.ndarray, x_test: np.ndarray, y_train: np.ndarray, y_test: np.ndarray, cv: int = 3,
+    def regression(self, x_train: np.ndarray, x_test: np.ndarray, y_train: np.ndarray, cv: int = 3,
                    n_jobs: int = 1):
         svm = LinearSVR(random_state=RANDOM_STATE)
         Cs = np.logspace(-4, 2, 7)
         svm = GridSearchCV(estimator=svm, cv=cv, param_grid={'C': Cs}, verbose=1, n_jobs=n_jobs)
         svm.fit(x_train, y_train)
         preds = svm.predict(x_test)
+        return preds
+
+    def calc_metrics(self, test, preds):
         results = dict()
-        for m in self.metrics:
-            if m in SUPSERVISED_TASK_METRICS[self.task]:
-                result = tuple(SUPSERVISED_TASK_METRICS[self.task][m](y_test, preds))[0]
-                if m != "mse":
-                    result = np.round(100 * result, 2)
-                results[m] = result
-            else:
-                logger.warning(
-                    f"Metric {m} not found...skipping, try one of {SUPSERVISED_TASK_METRICS[self.task].keys()}")
+        if self.task == SupervisedTask.REGRESSION:
+            for m in self.metrics:
+                if m in SUPSERVISED_TASK_METRICS[self.task]:
+                    result = tuple(SUPSERVISED_TASK_METRICS[self.task][m](test, preds))[0]
+                    if m != "mse":
+                        result = np.round(100 * result, 2)
+                    results[m] = result
+                else:
+                    logger.warning(
+                        f"Metric {m} not found...skipping, try one of {SUPSERVISED_TASK_METRICS[self.task].keys()}")
+        else:
+            for m in self.metrics:
+                split_m = m.split("_")
+                if split_m[0] in SUPSERVISED_TASK_METRICS[self.task]:
+                    if len(split_m) > 1:
+                        result = SUPSERVISED_TASK_METRICS[self.task][split_m[0]](test, preds, average=split_m[1])
+                    else:
+                        result = SUPSERVISED_TASK_METRICS[self.task][split_m[0]](test, preds)
+                    results[m] = np.round(100 * result, 2)
+                else:
+                    logger.warning(
+                        f"Metric {m} not found...skipping, try one of {SUPSERVISED_TASK_METRICS[self.task].keys()}")
         return results
 
 
 class IREvaluator(Evaluator):
     def __init__(self, name: str, meta_dataset: Union[str, tuple], test_dataset: Union[str, tuple], model: Model,
-                 metrics, batch_size: int = 16, fields: list = None):
-        super(IREvaluator, self).__init__(name, meta_dataset, IRDataset, model, batch_size, fields)
+                 metrics: tuple, dataset_class=IRDataset, batch_size: int = 16, fields: list = None):
+        super(IREvaluator, self).__init__(name, meta_dataset, dataset_class, model, batch_size, fields)
         self.test_dataset = test_dataset
         self.metrics = metrics
 
@@ -162,26 +171,7 @@ class IREvaluator(Evaluator):
             pairs[row["query_id"]][row["cand_id"]] = row["score"]
         return pairs
 
-    def evaluate(self, embeddings, kwargs=None):
-        logger.info(f"Loading test dataset from {self.test_dataset}")
-        if type(self.test_dataset) == str and os.path.isdir(self.test_dataset):
-            split_dataset = datasets.load_dataset("json", data_files={"test": f"{self.test_dataset}/test_qrel.jsonl"})
-        else:
-            split_dataset = datasets.load_dataset(self.test_dataset[0], self.test_dataset[1])
-        logger.info(f"Loaded {len(split_dataset['test'])} test query-candidate pairs")
-        if type(embeddings) == str and os.path.isfile(embeddings):
-            embeddings = EmbeddingsGenerator.load_embeddings_from_jsonl(embeddings)
-
-        qrels = self.get_qc_pairs(split_dataset["test"])
-        run = dict()
-        for qid in qrels:
-            query = np.array([embeddings[qid]])
-            cands = np.array([embeddings[cid] for cid in qrels[qid]])
-            scores = euclidean_distances(cands, query).flatten()
-            run[qid] = dict()
-            for i, cid in enumerate(qrels[qid]):
-                run[qid][cid] = -scores[i]
-
+    def calc_metrics(self, qrels, run):
         evaluator = pytrec_eval.RelevanceEvaluator(qrels, set(self.metrics))
         results = evaluator.evaluate(run)
 
@@ -192,5 +182,31 @@ class IREvaluator(Evaluator):
                 [query_measures[measure] for query_measures in results.values()]
             )
             metric_values[measure] = np.round(100 * res, 2)
-        self.print_results(metric_values)
         return metric_values
+
+    def evaluate(self, embeddings, **kwargs):
+        logger.info(f"Loading test dataset from {self.test_dataset}")
+        if type(self.test_dataset) == str and os.path.isdir(self.test_dataset):
+            split_dataset = datasets.load_dataset("json", data_files={"test": f"{self.test_dataset}/test_qrel.jsonl"})
+        else:
+            split_dataset = datasets.load_dataset(self.test_dataset[0], self.test_dataset[1])
+        logger.info(f"Loaded {len(split_dataset['test'])} test query-candidate pairs")
+        if type(embeddings) == str and os.path.isfile(embeddings):
+            embeddings = EmbeddingsGenerator.load_embeddings_from_jsonl(embeddings)
+
+        qrels = self.get_qc_pairs(split_dataset["test"])
+        preds = self.retrieval(embeddings, qrels)
+        results = self.calc_metrics(qrels, preds)
+        self.print_results(results)
+        return results
+
+    def retrieval(self, embeddings, qrels: Dict[str, Dict[str, int]]) -> Dict[str, Dict[str, float]]:
+        run = dict()
+        for qid in qrels:
+            query = np.array([embeddings[qid]])
+            cands = np.array([embeddings[cid] for cid in qrels[qid]])
+            scores = euclidean_distances(cands, query).flatten()
+            run[qid] = dict()
+            for i, cid in enumerate(qrels[qid]):
+                run[qid][cid] = -scores[i]
+        return run

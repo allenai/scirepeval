@@ -11,7 +11,7 @@ model = Model(base_checkpoint="../lightning_logs/full_run/scincl_ctrl/checkpoint
 # model = Model(base_checkpoint="malteos/scincl", variant="adapters",
 #               adapters_load_from="../lightning_logs/full_run/scincl_adapters/checkpoints/", task_id="[CLF]")
 evaluator = FewShotEvaluator("drsm", SupervisedTask.CLASSIFICATION, ("allenai/scirepeval", "drsm"),
-                             ("allenai/scirepeval_test", "biomimicry"), model=model, metrics=("f1_macro",),
+                             ("allenai/scirepeval_test", "drsm"), model=model, metrics=("f1_macro",),
                              sample_size=16, num_iterations=50)
 
 embeddings = evaluator.generate_embeddings()

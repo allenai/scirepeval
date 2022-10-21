@@ -7,7 +7,7 @@ from evaluation.evaluator import IREvaluator
 from reviewer_matching import ReviewerMatchingEvaluator
 # model = Model(base_checkpoint="allenai/specter")
 model = Model(base_checkpoint="../lightning_logs/full_run/scincl_ctrl/checkpoints/",
-              task_id={"query": "[QRY]", "candidate": "[SAL]"},
+              task_id="[SAL]",
               use_ctrl_codes=True)
 # model = Model(base_checkpoint="malteos/scincl", variant="adapters",
 #               adapters_load_from="../lightning_logs/full_run/scincl_adapters/checkpoints/", task_id="[CLF]")

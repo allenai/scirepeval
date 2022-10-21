@@ -44,7 +44,7 @@ class SimpleDataset:
                 self.seen_ids.add(bid)
                 text = []
                 for field in self.fields:
-                    if d[field]:
+                    if d.get(field):
                         text.append(str(d[field]))
                 text = (f" {self.sep_token} ".join(text)).strip()
                 if ctrl_token:

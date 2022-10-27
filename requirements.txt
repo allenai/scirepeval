@@ -55,7 +55,6 @@ pyasn1-modules==0.2.8
 pycparser==2.21
 pyDeprecate==0.3.2
 pyparsing==3.0.9
-pys2==0.1.8
 python-dateutil==2.8.2
 pytorch-lightning==1.7.2
 pytrec-eval==0.5
@@ -83,10 +82,10 @@ tensorboard-plugin-wit==1.8.1
 tensorboardX==2.5.1
 threadpoolctl==3.1.0
 tokenizers==0.12.1
-torch==1.12.1+cu113
-torchaudio==0.12.1+cu113
+torch==1.12.1
+torchaudio==0.12.1
 torchmetrics==0.9.3
-torchvision==0.13.1+cu113
+torchvision==0.13.1
 tqdm==4.64.0
 transformers==4.21.1
 typing_extensions==4.3.0

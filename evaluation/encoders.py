@@ -43,7 +43,8 @@ class Model:
                  all_tasks: list = None, hidden_dim: int = 768, max_len: int = 512):
         self.variant = variant
         self.encoder = EncoderFactory(base_checkpoint, adapters_load_from, task_id, all_tasks).get_encoder(variant)
-        self.encoder.to('cuda')
+        if torch.cuda.is_available():
+            self.encoder.to('cuda')
         tokenizer_checkpoint = f"{base_checkpoint}/tokenizer" if os.path.isdir(base_checkpoint) else base_checkpoint
         self.tokenizer = AutoTokenizer.from_pretrained(tokenizer_checkpoint)
         self.reqd_token_idx = 0 if not use_ctrl_codes else 1

@@ -39,7 +39,7 @@ class SciRepEval:
             model.task_id = TASK_IDS[task["type"]]
             kwargs = dict()
             task_data = task["data"]
-            if not task_data.get(["meta"]):
+            if not task_data.get("meta"):
                 raise ValueError(f"Task {task_name} has no test metadata")
             if task_data.get("meta"):
                 metadata = task_data["meta"]

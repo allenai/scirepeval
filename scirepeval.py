@@ -1,3 +1,4 @@
+import argparse
 import json
 from typing import List
 
@@ -6,6 +7,9 @@ from evaluation.evaluator import IREvaluator, SupervisedEvaluator, SupervisedTas
 from evaluation.few_shot_evaluator import FewShotEvaluator
 from reviewer_matching import ReviewerMatchingEvaluator
 from evaluation.eval_datasets import SimpleDataset, IRDataset
+
+TASK_IDS = {"classification": "[CLF]", "regression": "[RGN]", "proximity": "[PRX]",
+            "search": {"query": "[QRY]", "candidates": "[PRX]"}}
 
 
 class SciRepEval:
@@ -32,6 +36,7 @@ class SciRepEval:
 
     def evaluate(self, model: Model):
         for task_name, task in self.tasks.items():
+            model.task_id = TASK_IDS[task["type"]]
             kwargs = dict()
             task_data = task["data"]
             if not task_data.get(["meta"]):
@@ -88,3 +93,21 @@ class SciRepEval:
             evaluator.evaluate(embeddings)
             for few_shot in few_shot_evaluators:
                 few_shot.evaluate(embeddings)
+
+
+if __name__ == "__main__":
+    parser = argparse.ArgumentParser()
+    parser.add_argument('--tasks-confg', help='path to the task config file', default="scirepeval_tasks.jsonl")
+    parser.add_argument('--mtype', help='Model variant to be used (default, pals, adapters, fusion)', default="default")
+    parser.add_argument('model', help='HuggingFace model to be used')
+    parser.add_argument('--ctrl-tokens', action='store_true', default=False, help='use control codes for tasks')
+    parser.add_argument('--adapters-dir', help='path to the adapter checkpoints', default=None)
+
+    args = parser.parse_args()
+
+    model = Model(variant=args.mtype, base_checkpoint=args.model, adapters_load_from=args.adapters_dir, use_ctrl_codes=args.ctrl_tokens,
+                  task_id="", all_tasks=["[CLF]", "[PRX]", "[RGN]", "[QRY]"])
+    evaluator = SciRepEval(tasks_config=args.tasks_confg)
+    evaluator.evaluate(model)
+
+

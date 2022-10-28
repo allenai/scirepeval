@@ -10,7 +10,7 @@ logger = logging.getLogger(__name__)
 class SimpleDataset:
 
     def __init__(self, data_path: Union[str, tuple], sep_token: str, batch_size=32, ctrl_token: str = None,
-                 fields: List = None):
+                 fields: List = None, key: str = None):
         self.batch_size = batch_size
         self.sep_token = sep_token
         self.ctrl_token = ctrl_token
@@ -24,6 +24,7 @@ class SimpleDataset:
             self.data = datasets.load_dataset(data_path[0], data_path[1], split="evaluation")
         logger.info(f"Loaded {len(self.data)} documents")
         self.seen_ids = set()
+        self.key = key
 
     def __len__(self):
         return len(self.data)
@@ -37,7 +38,7 @@ class SimpleDataset:
         batch_ids = []
         batch_size = self.batch_size
         i = 0
-        key = "doc_id"
+        key = "doc_id" if not self.key else self.key
         for d in data:
             if key in d and d[key] not in self.seen_ids:
                 bid = d[key]

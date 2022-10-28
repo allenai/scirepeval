@@ -26,8 +26,8 @@ RANDOM_STATE = 42
 
 class Evaluator(ABC):
     def __init__(self, name: str, meta_dataset: Union[str, tuple], dataset_class, model: Model, batch_size: int,
-                 fields: list):
-        dataset = dataset_class(meta_dataset, model.tokenizer.sep_token, batch_size, model.task_id, fields)
+                 fields: list, key: str = None):
+        dataset = dataset_class(meta_dataset, model.tokenizer.sep_token, batch_size, model.task_id, fields, key)
         self.embeddings_generator = EmbeddingsGenerator(dataset, model)
         self.name = name
 

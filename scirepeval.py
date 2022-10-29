@@ -88,7 +88,7 @@ class SciRepEval:
                     evaluator = ReviewerMatchingEvaluator(task_name, model=model, **kwargs)
                 else:
                     data_class = SimpleDataset if task_data.get("simple_format") else IRDataset
-                    evaluator = IREvaluator(task_name, model=model, data_class=data_class, **kwargs)
+                    evaluator = IREvaluator(task_name, model=model, dataset_class=data_class, **kwargs)
             embeddings = evaluator.generate_embeddings(save_path) if not load_path else load_path
             evaluator.evaluate(embeddings)
             for few_shot in few_shot_evaluators:

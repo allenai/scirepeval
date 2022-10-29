@@ -74,7 +74,7 @@ class SciRepEval:
                 if task.get("few_shot"):
                     for run in task["few_shot"]:
                         few_shot_evaluators.append(
-                            FewShotEvaluator(task_name, subtype, model=model,
+                            FewShotEvaluator(f"{task_name} {run['sample_size']} shot", subtype, model=model,
                                              sample_size=run["sample_size"], num_iterations=run["iterations"],
                                              **kwargs))
             else:
@@ -87,7 +87,7 @@ class SciRepEval:
                             reviewers["name"], reviewers["config"])
                     evaluator = ReviewerMatchingEvaluator(task_name, model=model, **kwargs)
                 else:
-                    data_class = SimpleDataset if task_data["ir_format"] else IRDataset
+                    data_class = SimpleDataset if task_data.get("simple_format") else IRDataset
                     evaluator = IREvaluator(task_name, model=model, data_class=data_class, **kwargs)
             embeddings = evaluator.generate_embeddings(save_path) if not load_path else load_path
             evaluator.evaluate(embeddings)

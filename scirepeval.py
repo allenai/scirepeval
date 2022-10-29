@@ -74,7 +74,7 @@ class SciRepEval:
                 if task.get("few_shot"):
                     for run in task["few_shot"]:
                         few_shot_evaluators.append(
-                            FewShotEvaluator(task_name, SupervisedTask.MULTILABEL_CLASSIFICATION, model=model,
+                            FewShotEvaluator(task_name, subtype, model=model,
                                              sample_size=run["sample_size"], num_iterations=run["iterations"],
                                              **kwargs))
             else:

@@ -121,7 +121,7 @@ class SupervisedEvaluator(Evaluator):
         return preds
 
     def regression(self, x_train: np.ndarray, x_test: np.ndarray, y_train: np.ndarray, cv: int = 3,
-                   n_jobs: int = 1):
+                   n_jobs: int = 5):
         svm = LinearSVR(random_state=RANDOM_STATE)
         Cs = np.logspace(-4, 2, 7)
         svm = GridSearchCV(estimator=svm, cv=cv, param_grid={'C': Cs}, verbose=1, n_jobs=n_jobs)

@@ -34,7 +34,7 @@ if __name__ == "__main__":
     parser.add_argument('--model', '--m', help='HuggingFace model to be used')
     parser.add_argument('--ctrl-tokens', action='store_true', default=False, help='use control codes for tasks')
     parser.add_argument('--adapters-dir', help='path to the adapter checkpoints', default=None)
-    parser.add_argument("--data-dir", help="path to the output dir")
+    parser.add_argument("--data-dir", help="path to the data directory")
     parser.add_argument("--suffix", help="suffix for output embedding files")
 
     args = parser.parse_args()

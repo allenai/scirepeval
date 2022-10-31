@@ -79,7 +79,7 @@ class SciRepEval:
                                              **kwargs))
             else:
                 if task_name == "Paper-Reviewer Matching":
-                    if not task_data.get(["reviewers"]) and not task_data.get("hf_reviewers"):
+                    if not task_data.get("reviewers") and not task_data.get("hf_reviewers"):
                         raise ValueError(f"Task {task_name} has no reviewer metadata locally or hf_metadata")
                     if task_data.get("reviewers"):
                         reviewers = task_data["reviewers"]

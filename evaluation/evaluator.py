@@ -204,10 +204,11 @@ class IREvaluator(Evaluator):
         run = dict()
         for qid in qrels:
             query = np.array([embeddings[qid]])
+            cids = [cid for cid in qrels[qid] if cid in embeddings]
             cands = np.array([embeddings[cid] for cid in qrels[qid] if cid in embeddings])
             scores = euclidean_distances(cands, query).flatten()
             run[qid] = dict()
-            for i, cid in enumerate(qrels[qid]):
+            for i, cid in enumerate(cids):
                 if cid in embeddings:
                     run[qid][cid] = -scores[i]
         return run

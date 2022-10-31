@@ -203,11 +203,12 @@ class IREvaluator(Evaluator):
     def retrieval(self, embeddings, qrels: Dict[str, Dict[str, int]]) -> Dict[str, Dict[str, float]]:
         run = dict()
         for qid in qrels:
-            query = np.array([embeddings[qid]])
-            cids = [cid for cid in qrels[qid] if cid in embeddings]
-            cands = np.array([embeddings[cid] for cid in qrels[qid] if cid in embeddings])
-            scores = euclidean_distances(cands, query).flatten()
-            run[qid] = dict()
-            for i, cid in enumerate(cids):
-                run[qid][cid] = -scores[i]
+            if qid in embeddings:
+                query = np.array([embeddings[qid]])
+                cids = [cid for cid in qrels[qid] if cid in embeddings]
+                cands = np.array([embeddings[cid] for cid in qrels[qid] if cid in embeddings])
+                scores = euclidean_distances(cands, query).flatten()
+                run[qid] = dict()
+                for i, cid in enumerate(cids):
+                    run[qid][cid] = -scores[i]
         return run

@@ -79,7 +79,7 @@ class IRDataset(SimpleDataset):
     def batches(self):
         query_gen = self.process_batches(self.queries,
                                          self.ctrl_token["query"] if type(self.ctrl_token) == dict else self.ctrl_token)
-        cand_gen = self.process_batches(self.candidates, self.ctrl_token["candidate"] if type(
+        cand_gen = self.process_batches(self.candidates, self.ctrl_token["candidates"] if type(
             self.ctrl_token) == dict else self.ctrl_token)
         for q, q_ids in query_gen:
             q_ids = [(v, "q") for v in q_ids]

@@ -78,7 +78,7 @@ class SciRepEval:
                                              sample_size=run["sample_size"], num_iterations=run["iterations"],
                                              **kwargs))
             else:
-                if task_name == "paper reviewer matching":
+                if task_name == "Paper-Reviewer Matching":
                     if not task_data.get(["reviewers"]) and not task_data.get("hf_reviewers"):
                         raise ValueError(f"Task {task_name} has no reviewer metadata locally or hf_metadata")
                     if task_data.get("reviewers"):
@@ -105,9 +105,8 @@ if __name__ == "__main__":
 
     args = parser.parse_args()
 
-    model = Model(variant=args.mtype, base_checkpoint=args.model, adapters_load_from=args.adapters_dir, use_ctrl_codes=args.ctrl_tokens,
+    model = Model(variant=args.mtype, base_checkpoint=args.model, adapters_load_from=args.adapters_dir,
+                  use_ctrl_codes=args.ctrl_tokens,
                   task_id="", all_tasks=["[CLF]", "[PRX]", "[RGN]", "[QRY]"])
     evaluator = SciRepEval(tasks_config=args.tasks_confg)
     evaluator.evaluate(model)
-
-

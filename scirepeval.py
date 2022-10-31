@@ -69,7 +69,7 @@ class SciRepEval:
                 subtype = SupervisedTask.CLASSIFICATION if task[
                                                                "type"] == "classification" else SupervisedTask.REGRESSION
                 if task.get("multi_label"):
-                    subtype = SupervisedTask.MULTI_LABEL_CLASSIFICATION
+                    subtype = SupervisedTask.MULTILABEL_CLASSIFICATION
                 evaluator = SupervisedEvaluator(task_name, subtype, model=model,
                                                 **kwargs)
                 if task.get("few_shot"):

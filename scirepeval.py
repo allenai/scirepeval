@@ -35,6 +35,7 @@ class SciRepEval:
                 self.tasks.update({k: tasks_dict[k] for k in task_by_formats[task_format]})
 
     def evaluate(self, model: Model):
+        final_results = dict()
         for task_name, task in self.tasks.items():
             model.task_id = TASK_IDS[task["type"]]
             kwargs = dict()
@@ -90,9 +91,17 @@ class SciRepEval:
                     data_class = SimpleDataset if task_data.get("simple_format") else IRDataset
                     evaluator = IREvaluator(task_name, model=model, dataset_class=data_class, **kwargs)
             embeddings = evaluator.generate_embeddings(save_path) if not load_path else load_path
-            evaluator.evaluate(embeddings)
+            results = evaluator.evaluate(embeddings)
+            if not few_shot_evaluators:
+                final_results[task_name] = results
+            else:
+                final_results[task_name] = dict()
+                final_results[task_name]["complete"] = results
+                final_results[task_name]["few_shot"] = []
+
             for few_shot in few_shot_evaluators:
-                few_shot.evaluate(embeddings)
+                final_results[task_name]["few_shot"].append(
+                    {"sample_size": few_shot.sample_size, "results": few_shot.evaluate(embeddings)})
 
 
 if __name__ == "__main__":

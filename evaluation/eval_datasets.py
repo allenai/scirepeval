@@ -64,7 +64,7 @@ class SimpleDataset:
 
 class IRDataset(SimpleDataset):
     def __init__(self, data_path, sep_token, batch_size=32, ctrl_token=None, fields=None):
-        super().__init__(data_path, sep_token, batch_size, ctrl_token, fields)
+        super().__init__(data_path, sep_token, batch_size, ctrl_token, fields, None)
         self.queries, self.candidates = [], []
         for d in self.data:
             if type(d["query"]) == str:

@@ -209,6 +209,5 @@ class IREvaluator(Evaluator):
             scores = euclidean_distances(cands, query).flatten()
             run[qid] = dict()
             for i, cid in enumerate(cids):
-                if cid in embeddings:
-                    run[qid][cid] = -scores[i]
+                run[qid][cid] = -scores[i]
         return run

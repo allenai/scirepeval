@@ -9,7 +9,7 @@ from reviewer_matching import ReviewerMatchingEvaluator
 from evaluation.eval_datasets import SimpleDataset, IRDataset
 
 TASK_IDS = {"classification": "[CLF]", "regression": "[RGN]", "proximity": "[PRX]",
-            "search": {"query": "[QRY]", "candidates": "[PRX]"}}
+            "adhoc_search": {"query": "[QRY]", "candidates": "[PRX]"}}
 
 
 class SciRepEval:

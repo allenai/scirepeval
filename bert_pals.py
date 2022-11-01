@@ -828,8 +828,11 @@ class BertPalsEncoder(torch.nn.Module):
                     module.bias.data.zero_()
 
         if type(checkpoint) == str:
-            chk = torch.load(checkpoint, map_location='cpu')
-            update = {k.replace("bert.", ""): v for k, v in chk.items()}
+            if type(config) != str:
+                update = checkpoint.state_dict()
+            else:
+                chk = torch.load(checkpoint, map_location='cpu')
+                update = {k.replace("bert.", ""): v for k, v in chk.items()}
 
         else:
             self.apply(init_weights)

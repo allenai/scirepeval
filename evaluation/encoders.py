@@ -24,8 +24,12 @@ class EncoderFactory:
             return AutoModel.from_pretrained(self.base_checkpoint)
         elif variant == "pals":
             # needs all task names and a local checkpoint path
-            return BertPalsEncoder(config=f"{self.base_checkpoint}/config.json", task_ids=self.all_tasks,
-                                   checkpoint=f"{self.base_checkpoint}/pytorch_model.bin")
+            if os.path.isdir(self.base_checkpoint):
+                return BertPalsEncoder(config=f"{self.base_checkpoint}/config.json", task_ids=self.all_tasks,
+                                       checkpoint=f"{self.base_checkpoint}/pytorch_model.bin")
+            else:
+                base_encoder = AutoModel.from_pretrained(self.base_checkpoint)
+                return BertPalsEncoder(config=base_encoder.config, task_ids=self.all_tasks, checkpoint=base_encoder)
         elif variant == "adapters":
             # needs a base model checkpoint and the adapters to be loaded from local path or dict of (task_id,
             # adapter) from adapters hub

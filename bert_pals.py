@@ -807,7 +807,7 @@ class BertForMultipleChoice(nn.Module):
 class BertPalsEncoder(torch.nn.Module):
     def __init__(self, config: str, task_ids: List[str], checkpoint):
         super(BertPalsEncoder, self).__init__()
-        self.bert_config = BertPalConfig.from_json_file(config)
+        self.bert_config = BertPalConfig.from_json_file(config) if type(config) == str else config
         self.bert_config.num_tasks = len(task_ids)
         if type(checkpoint) != str:
             self.bert_config.vocab_size = checkpoint.config.vocab_size

@@ -111,7 +111,7 @@ if __name__ == "__main__":
     parser.add_argument('--model', '--m', help='HuggingFace model to be used')
     parser.add_argument('--ctrl-tokens', action='store_true', default=False, help='use control codes for tasks')
     parser.add_argument('--adapters-dir', help='path to the adapter checkpoints', default=None)
-    parser.add_argument("--output", help="path to the output file", default="scirepeval_results.json")
+    parser.add_argument('--output', help="path to the output file", default="scirepeval_results.json")
 
     args = parser.parse_args()
 

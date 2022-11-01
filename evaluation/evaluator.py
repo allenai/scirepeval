@@ -107,7 +107,7 @@ class SupervisedEvaluator(Evaluator):
         return x_train, x_test, y_train, y_test
 
     def classify(self, x_train: np.ndarray, x_test: np.ndarray, y_train: np.ndarray, cv: int = 3,
-                 n_jobs: int = 1):
+                 n_jobs: int = 5):
 
         Cs = np.logspace(-4, 2, 7)
         if self.task == SupervisedTask.MULTILABEL_CLASSIFICATION:

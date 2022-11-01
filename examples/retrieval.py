@@ -1,6 +1,6 @@
 import sys
 
-from evaluator import IREvaluator
+from evaluation.evaluator import IREvaluator
 
 sys.path.append('../')
 

@@ -55,14 +55,27 @@ class Model:
         tokenizer_checkpoint = f"{base_checkpoint}/tokenizer" if os.path.isdir(base_checkpoint) else base_checkpoint
         self.tokenizer = AutoTokenizer.from_pretrained(tokenizer_checkpoint)
         self.reqd_token_idx = 0 if not use_ctrl_codes else 1
-        self.task_id = task_id
-        if use_ctrl_codes:
-            logger.info(f"Control code used: {self.task_id}")
-        elif variant != "default":
-            logger.info(f"Task id used: {self.task_id}")
+        self._task_id = task_id
+        if self._task_id:
+            if use_ctrl_codes:
+                logger.info(f"Control code used: {self._task_id}")
+            elif variant != "default":
+                logger.info(f"Task id used: {self._task_id}")
 
         self.hidden_dim = hidden_dim
         self.max_length = max_len
+
+    @property
+    def task_id(self):
+        return self._task_id
+
+    @task_id.setter
+    def task_id(self, value):
+        if self.reqd_token_idx == 1:
+            logger.info(f"Control code used: {value}")
+        elif self.variant != "default":
+            logger.info(f"Task id used: {value}")
+        self._task_id = value
 
     def __call__(self, batch, batch_ids):
         input_ids = self.tokenizer(batch, padding=True, truncation=True,
@@ -70,8 +83,8 @@ class Model:
         input_ids.to('cuda')
         if self.variant == "default":
             output = self.encoder(**input_ids)
-        elif type(self.task_id) != dict:
-            output = self.encoder(task_id=self.task_id, **input_ids)
+        elif type(self._task_id) != dict:
+            output = self.encoder(task_id=self._task_id, **input_ids)
         else:
             x = input_ids["input_ids"]
             output = torch.zeros(x.shape[0], x.shape[1], self.hidden_dim).to("cuda")
@@ -79,9 +92,9 @@ class Model:
             c_idx = torch.tensor([i for i, b in enumerate(batch_ids) if b[1] == "c"])
 
             if not q_idx.shape[0]:
-                output = self.encoder(task_id=self.task_id["candidates"], **input_ids)
+                output = self.encoder(task_id=self._task_id["candidates"], **input_ids)
             else:
-                for i, v in enumerate(sorted(self.task_id.values())):
+                for i, v in enumerate(sorted(self._task_id.values())):
                     curr_input_idx = q_idx if v == "[QRY]" else c_idx
                     curr_input = x[curr_input_idx]
                     curr_output = self.encoder(task_id=v, input_ids=curr_input,

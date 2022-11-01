@@ -23,6 +23,7 @@ import json
 import math
 from typing import List, Optional
 
+import os
 import six
 import torch
 import torch.nn as nn
@@ -807,7 +808,7 @@ class BertForMultipleChoice(nn.Module):
 class BertPalsEncoder(torch.nn.Module):
     def __init__(self, config: str, task_ids: List[str], checkpoint):
         super(BertPalsEncoder, self).__init__()
-        self.bert_config = BertPalConfig.from_json_file(config) if type(config) == str else config
+        self.bert_config = BertPalConfig.from_json_file(config) if os.path.isfile(config) else config
         self.bert_config.num_tasks = len(task_ids)
         if type(checkpoint) != str:
             self.bert_config.vocab_size = checkpoint.config.vocab_size
@@ -828,26 +829,27 @@ class BertPalsEncoder(torch.nn.Module):
                     module.bias.data.zero_()
 
         if type(checkpoint) == str:
-            if type(config) != str:
-                update = checkpoint.state_dict()
-            else:
-                chk = torch.load(checkpoint, map_location='cpu')
-                update = {k.replace("bert.", ""): v for k, v in chk.items()}
+            chk = torch.load(checkpoint, map_location='cpu')
+            update = {k.replace("bert.", ""): v for k, v in chk.items()}
 
         else:
-            self.apply(init_weights)
-            partial = checkpoint.state_dict()
-            model_dict = self.bert.state_dict()
-            update = {}
-            for n, p in model_dict.items():
-                if 'aug' in n or 'mult' in n:
-                    update[n] = p
-                    if 'pooler.mult' in n and 'bias' in n:
-                        update[n] = partial['pooler.dense.bias']
-                    if 'pooler.mult' in n and 'weight' in n:
-                        update[n] = partial['pooler.dense.weight']
-                else:
-                    update[n] = partial[n]
+            if not os.path.isfile(config):
+                update = checkpoint.state_dict()
+                update = {k: v for k, v in update.items() if k in self.bert.state_dict()}
+            else:
+                self.apply(init_weights)
+                partial = checkpoint.state_dict()
+                model_dict = self.bert.state_dict()
+                update = {}
+                for n, p in model_dict.items():
+                    if 'aug' in n or 'mult' in n:
+                        update[n] = p
+                        if 'pooler.mult' in n and 'bias' in n:
+                            update[n] = partial['pooler.dense.bias']
+                        if 'pooler.mult' in n and 'weight' in n:
+                            update[n] = partial['pooler.dense.weight']
+                    else:
+                        update[n] = partial[n]
         self.bert.load_state_dict(update)
 
     def forward(self, input_ids, attention_mask=None, task_id=None):

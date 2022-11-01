@@ -98,9 +98,12 @@ class SupervisedEvaluator(Evaluator):
     def read_dataset(data: datasets.DatasetDict, embeddings: Dict[str, np.ndarray]) -> Tuple[
         np.ndarray, np.ndarray, np.ndarray, np.ndarray]:
         train, test = data["train"], data["test"]
-        x_train, x_test = np.array([embeddings[str(paper["paper_id"])] for paper in train]), np.array(
-            [embeddings[str(paper["paper_id"])] for paper in test])
-        y_train, y_test = np.array([paper["label"] for paper in train]), np.array([paper["label"] for paper in test])
+        x_train, x_test = np.array(
+            [embeddings[str(paper["paper_id"])] for paper in train if str(paper["paper_id"]) in embeddings]), np.array(
+            [embeddings[str(paper["paper_id"])] for paper in test if str(paper["paper_id"]) in embeddings])
+        y_train, y_test = np.array(
+            [paper["label"] for paper in train if str(paper["paper_id"]) in embeddings]), np.array(
+            [paper["label"] for paper in test if str(paper["paper_id"]) in embeddings])
         return x_train, x_test, y_train, y_test
 
     def classify(self, x_train: np.ndarray, x_test: np.ndarray, y_train: np.ndarray, cv: int = 3,

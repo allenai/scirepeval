@@ -10,6 +10,9 @@ from evaluation.eval_datasets import SimpleDataset, IRDataset
 
 TASK_IDS = {"classification": "[CLF]", "regression": "[RGN]", "proximity": "[PRX]",
             "adhoc_search": {"query": "[QRY]", "candidates": "[PRX]"}}
+import pytorch_lightning as pl
+
+pl.seed_everything(42, workers=True)
 
 
 class SciRepEval:
@@ -34,7 +37,7 @@ class SciRepEval:
             for task_format in task_formats:
                 self.tasks.update({k: tasks_dict[k] for k in task_by_formats[task_format]})
 
-    def evaluate(self, model: Model):
+    def evaluate(self, model: Model, output: str):
         final_results = dict()
         for task_name, task in self.tasks.items():
             model.task_id = TASK_IDS[task["type"]]
@@ -102,6 +105,8 @@ class SciRepEval:
             for few_shot in few_shot_evaluators:
                 final_results[task_name]["few_shot"].append(
                     {"sample_size": few_shot.sample_size, "results": few_shot.evaluate(embeddings)})
+        with open(output, "w") as f:
+            json.dump(final_results, f, indent=4)
 
 
 if __name__ == "__main__":
@@ -119,6 +124,4 @@ if __name__ == "__main__":
                   use_ctrl_codes=args.ctrl_tokens,
                   task_id="", all_tasks=["[CLF]", "[QRY]", "[RGN]", "[PRX]"])
     evaluator = SciRepEval(tasks_config=args.tasks_confg)
-    results = evaluator.evaluate(model)
-    with open(args.output, "w") as f:
-        json.dump(results, f, indent=4)
+    evaluator.evaluate(model, args.output)

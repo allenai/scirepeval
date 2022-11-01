@@ -10,7 +10,7 @@ logger = logging.getLogger(__name__)
 class SimpleDataset:
 
     def __init__(self, data_path: Union[str, tuple], sep_token: str, batch_size=32, ctrl_token: str = None,
-                 fields: List = None, key: str = None):
+                 fields: List = None, key: str = None, processing_fn=None):
         self.batch_size = batch_size
         self.sep_token = sep_token
         self.ctrl_token = ctrl_token
@@ -18,10 +18,13 @@ class SimpleDataset:
             fields = ["title", "abstract"]
         self.fields = fields
         logger.info(f"Loading test metadata from {data_path}")
-        if type(data_path) == str and os.path.isfile(data_path):
-            self.data = datasets.load_dataset("json", data_files={"test": data_path})["test"]
+        if not processing_fn:
+            if type(data_path) == str and os.path.isfile(data_path):
+                self.data = datasets.load_dataset("json", data_files={"test": data_path})["test"]
+            else:
+                self.data = datasets.load_dataset(data_path[0], data_path[1], split="evaluation")
         else:
-            self.data = datasets.load_dataset(data_path[0], data_path[1], split="evaluation")
+            self.data = processing_fn(data_path)
         logger.info(f"Loaded {len(self.data)} documents")
         self.seen_ids = set()
         self.key = key
@@ -63,8 +66,8 @@ class SimpleDataset:
 
 
 class IRDataset(SimpleDataset):
-    def __init__(self, data_path, sep_token, batch_size=32, ctrl_token=None, fields=None, key=None):
-        super().__init__(data_path, sep_token, batch_size, ctrl_token, fields, key)
+    def __init__(self, data_path, sep_token, batch_size=32, ctrl_token=None, fields=None, key=None, processing_fn=None):
+        super().__init__(data_path, sep_token, batch_size, ctrl_token, fields, key, processing_fn)
         self.queries, self.candidates = [], []
         for d in self.data:
             if type(d["query"]) == str:

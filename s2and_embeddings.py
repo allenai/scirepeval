@@ -8,6 +8,14 @@ from evaluation.evaluator import Evaluator
 import argparse
 from tqdm import tqdm
 
+import json
+
+
+def read_data(file_path):
+    task_data = json.load(open(file_path, "r"))
+    task_data = list(task_data.values())
+    return task_data
+
 
 class S2ANDEvaluator:
 
@@ -16,7 +24,7 @@ class S2ANDEvaluator:
         self.data_dir = data_dir
         self.evaluators = [
             Evaluator(block, f"{data_dir}/{block}/{block}_papers.json", SimpleDataset, model, batch_size, [],
-                      "paper_id") for block in blocks]
+                      "paper_id", process_fn=read_data) for block in blocks]
 
     def generate_embeddings(self, suffix: str):
         for evaluator in tqdm(self.evaluators):

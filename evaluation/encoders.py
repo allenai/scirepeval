@@ -34,7 +34,7 @@ class EncoderFactory:
             # needs a base model checkpoint and the adapters to be loaded from local path or dict of (task_id,
             # adapter) from adapters hub
             reqd_tasks = [self.task_id] if type(self.task_id) == str else list(self.task_id.values())
-            return AdapterEncoder(self.base_checkpoint, reqd_tasks, load_as=self.adapters_load_from)
+            return AdapterEncoder(self.base_checkpoint, self.all_tasks, load_as=self.adapters_load_from)
         elif variant == "fusion":
             # needs a base model and list of adapters/local adapter checkpoint paths to be fused
             return AdapterFusion(self.base_checkpoint, self.all_tasks, load_adapters_as=self.adapters_load_from,

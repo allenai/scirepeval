@@ -5,6 +5,9 @@ import os
 from bert_pals import BertPalsEncoder
 from adapter_fusion import AdapterEncoder, AdapterFusion
 import torch
+import logging
+
+logger = logging.getLogger(__name__)
 
 
 class EncoderFactory:
@@ -49,6 +52,11 @@ class Model:
         self.tokenizer = AutoTokenizer.from_pretrained(tokenizer_checkpoint)
         self.reqd_token_idx = 0 if not use_ctrl_codes else 1
         self.task_id = task_id
+        if use_ctrl_codes:
+            logger.info(f"Control code used: {self.task_id}")
+        elif variant != "default":
+            logger.info(f"Task id used: {self.task_id}")
+
         self.hidden_dim = hidden_dim
         self.max_length = max_len
 

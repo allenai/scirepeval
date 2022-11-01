@@ -100,14 +100,6 @@ class BertPalConfig(BertConfig):
         self.num_tasks = num_tasks
 
     @classmethod
-    def from_dict(cls, json_object):
-        """Constructs a `BertConfig` from a Python dictionary of parameters."""
-        config = BertPalConfig(vocab_size=None)
-        for (key, value) in six.iteritems(json_object):
-            config.__dict__[key] = value
-        return config
-
-    @classmethod
     def from_json_file(cls, json_file):
         """Constructs a `BertConfig` from a json file of parameters."""
         with open(json_file, "r") as reader:
@@ -118,6 +110,14 @@ class BertPalConfig(BertConfig):
         """Serializes this instance to a Python dictionary."""
         output = copy.deepcopy(self.__dict__)
         return output
+
+    @classmethod
+    def from_dict(cls, json_object):
+        """Constructs a `BertConfig` from a Python dictionary of parameters."""
+        config = BertPalConfig(vocab_size=None)
+        for (key, value) in six.iteritems(json_object):
+            config.__dict__[key] = value
+        return config
 
     def to_json_string(self, use_diff: bool = True):
         """Serializes this instance to a JSON string."""
@@ -808,7 +808,8 @@ class BertForMultipleChoice(nn.Module):
 class BertPalsEncoder(torch.nn.Module):
     def __init__(self, config: str, task_ids: List[str], checkpoint):
         super(BertPalsEncoder, self).__init__()
-        self.bert_config = BertPalConfig.from_json_file(config) if os.path.isfile(config) else config
+        self.bert_config = BertPalConfig.from_json_file(config) if type(config) == str else BertPalConfig.from_dict(
+            config)
         self.bert_config.num_tasks = len(task_ids)
         if type(checkpoint) != str:
             self.bert_config.vocab_size = checkpoint.config.vocab_size
@@ -833,7 +834,7 @@ class BertPalsEncoder(torch.nn.Module):
             update = {k.replace("bert.", ""): v for k, v in chk.items()}
 
         else:
-            if not os.path.isfile(config):
+            if type(config)==dict:
                 update = checkpoint.state_dict()
                 update = {k: v for k, v in update.items() if k in self.bert.state_dict()}
             else:

@@ -29,7 +29,7 @@ class EncoderFactory:
                                        checkpoint=f"{self.base_checkpoint}/pytorch_model.bin")
             else:
                 base_encoder = BertModel.from_pretrained(self.base_checkpoint)
-                return BertPalsEncoder(config=base_encoder.config, task_ids=self.all_tasks, checkpoint=base_encoder)
+                return BertPalsEncoder(config=base_encoder.config.to_dict(), task_ids=self.all_tasks, checkpoint=base_encoder)
         elif variant == "adapters":
             # needs a base model checkpoint and the adapters to be loaded from local path or dict of (task_id,
             # adapter) from adapters hub

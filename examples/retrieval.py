@@ -1,9 +1,7 @@
 import sys
 
-from evaluation.evaluator import IREvaluator
-
 sys.path.append('../')
-
+from evaluation.evaluator import IREvaluator
 from evaluation.encoders import Model
 from reviewer_matching import ReviewerMatchingEvaluator
 

@@ -93,6 +93,8 @@ class Model:
 
             if not q_idx.shape[0]:
                 output = self.encoder(task_id=self._task_id["candidates"], **input_ids)
+            elif not c_idx.shape[0]:
+                output = self.encoder(task_id=self._task_id["query"], **input_ids)
             else:
                 for i, v in enumerate(sorted(self._task_id.values())):
                     curr_input_idx = q_idx if v == "[QRY]" else c_idx

@@ -12,10 +12,9 @@ logger = logging.getLogger(__name__)
 
 class EncoderFactory:
     def __init__(self, base_checkpoint: str = None, adapters_load_from: Union[str, Dict] = None,
-                 task_id: Union[str, Dict] = None, all_tasks: list = None):
+                 all_tasks: list = None):
         self.base_checkpoint = f"{base_checkpoint}/model" if os.path.isdir(base_checkpoint) else base_checkpoint
         self.all_tasks = all_tasks
-        self.task_id = task_id
         self.adapters_load_from = f"{adapters_load_from}/model/adapters" if adapters_load_from and os.path.isdir(
             adapters_load_from) else adapters_load_from
 
@@ -29,11 +28,11 @@ class EncoderFactory:
                                        checkpoint=f"{self.base_checkpoint}/pytorch_model.bin")
             else:
                 base_encoder = BertModel.from_pretrained(self.base_checkpoint)
-                return BertPalsEncoder(config=base_encoder.config.to_dict(), task_ids=self.all_tasks, checkpoint=base_encoder)
+                return BertPalsEncoder(config=base_encoder.config.to_dict(), task_ids=self.all_tasks,
+                                       checkpoint=base_encoder)
         elif variant == "adapters":
             # needs a base model checkpoint and the adapters to be loaded from local path or dict of (task_id,
             # adapter) from adapters hub
-            reqd_tasks = [self.task_id] if type(self.task_id) == str else list(self.task_id.values())
             return AdapterEncoder(self.base_checkpoint, self.all_tasks, load_as=self.adapters_load_from)
         elif variant == "fusion":
             # needs a base model and list of adapters/local adapter checkpoint paths to be fused
@@ -49,7 +48,7 @@ class Model:
                  use_ctrl_codes: bool = False, task_id: Union[str, Dict] = None,
                  all_tasks: list = None, hidden_dim: int = 768, max_len: int = 512):
         self.variant = variant
-        self.encoder = EncoderFactory(base_checkpoint, adapters_load_from, task_id, all_tasks).get_encoder(variant)
+        self.encoder = EncoderFactory(base_checkpoint, adapters_load_from, all_tasks).get_encoder(variant)
         if torch.cuda.is_available():
             self.encoder.to('cuda')
         self.encoder.eval()

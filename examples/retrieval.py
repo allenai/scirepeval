@@ -17,7 +17,7 @@ model = Model(base_checkpoint="malteos/scincl", variant="adapters",
               adapters_load_from="../../../phantasm/phantasm_new/lightning_logs/full_run/scincl_adapters/checkpoints/",
               task_id="[PRX]", all_tasks=["[PRX]"])
 encoder = AdapterEncoder("malteos/scincl", ["[PRX]"],
-                         "../../../phantasm/phantasm_new/lightning_logs/full_run/scincl_adapters/checkpoints/")
+                         "../../../phantasm/phantasm_new/lightning_logs/full_run/scincl_adapters/checkpoints/model/adapters")
 model.encoder = encoder
 model.encoder.cuda()
 model.encoder.eval()

@@ -3,6 +3,7 @@ import sys
 sys.path.append('../')
 from evaluation.evaluator import IREvaluator
 from evaluation.encoders import Model
+from adapter_fusion import AdapterEncoder
 from reviewer_matching import ReviewerMatchingEvaluator
 
 # default no control codes
@@ -15,7 +16,11 @@ from reviewer_matching import ReviewerMatchingEvaluator
 model = Model(base_checkpoint="malteos/scincl", variant="adapters",
               adapters_load_from="../../../phantasm/phantasm_new/lightning_logs/full_run/scincl_adapters/checkpoints/",
               task_id="[PRX]", all_tasks=["[PRX]"])
-
+encoder = AdapterEncoder("malteos/scincl", ["[PRX]"],
+                         "../../../phantasm/phantasm_new/lightning_logs/full_run/scincl_adapters/checkpoints/")
+model.encoder = encoder
+model.encoder.cuda()
+model.encoder.eval()
 evaluator = IREvaluator("feeds_1", ("allenai/scirepeval", "feeds_1"), ("allenai/scirepeval_test", "feeds_1"), model,
                         metrics=("map", "ndcg",))
 #

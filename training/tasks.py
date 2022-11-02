@@ -7,11 +7,12 @@ import json
 
 
 class TaskFamily:
-    def __init__(self, name, loss, data_files, type, multi_label=False, input_fields=None,
-                 labels_field=None, labels=None, ctrl_token=None, head=None, contrastive_loss=None):
+    def __init__(self, name, loss, type, dataset=None, data_files=None, multi_label=False, input_fields=None,
+                 labels_field=None, labels=None, ctrl_token=None, head=None, contrastive_loss=None, sample_size=-1):
         if input_fields is None:
             input_fields = ["title", "abstract"]
         self.name = name
+        self.dataset = dataset
         self.data_files = data_files
         self.type = type
         self.multi_label = multi_label
@@ -22,6 +23,9 @@ class TaskFamily:
         self.labels = labels
         self.labels_field = labels_field
         self.input_fields = input_fields
+        self.sample_size = sample_size
+        if not self.dataset and not self.data_files:
+            raise ValueError("Either dataset or data_files must be provided")
 
     def __str__(self):
         obj_dict = self.__dict__.copy()

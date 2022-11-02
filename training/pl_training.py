@@ -1,28 +1,31 @@
-from typing import Dict, Optional, Any
+import sys
+ 
+# setting path
+sys.path.append('../')
+
 import argparse
+from typing import Dict, Optional, Any
+
 import pytorch_lightning as pl
 import torch
 import torch.nn
 from pytorch_lightning.callbacks import ModelCheckpoint
 from pytorch_lightning.loggers import TensorBoardLogger
-from pytorch_lightning.utilities.types import TRAIN_DATALOADERS, EVAL_DATALOADERS, STEP_OUTPUT
 from pytorch_lightning.utilities.distributed import rank_zero_only
+from pytorch_lightning.utilities.distributed import sync_ddp_if_available
+from pytorch_lightning.utilities.types import TRAIN_DATALOADERS, EVAL_DATALOADERS, STEP_OUTPUT
+from torch.distributed import ReduceOp
 from torch.utils.data import DataLoader
 from transformers import AdamW, get_linear_schedule_with_warmup
 from transformers import AutoTokenizer, AutoModel
 
-from datasets import ClassificationDataset, multi_collate, MultiLabelClassificationDataset, IRDataset, \
+from adapter_fusion import AdapterFactory
+from bert_pals import BertPalsEncoder
+from mtl_datasets import ClassificationDataset, multi_collate, MultiLabelClassificationDataset, IRDataset, \
     CustomChainDataset, TripletDataset, RegressionDataset
 from schedulers import InverseSquareRootSchedule, InverseSquareRootScheduleConfig
 from strategies import BatchingStrategy
 from tasks import TaskFamily, load_tasks
-from bert_pals import BertPalsEncoder
-from adapter_fusion import AdapterFactory
-import numpy as np
-import torch.nn.functional as F
-from pytorch_lightning.utilities.distributed import sync_ddp_if_available
-from torch.distributed import ReduceOp
-import json
 
 pl.seed_everything(42, workers=True)
 
@@ -37,12 +40,12 @@ def init_weights(modules):
 pl_to_split_map = {"fit": "train", "validate": "dev", "test": "test", "predict": "test"}
 
 
-class PhantasmLight(pl.LightningModule):
+class SciRepTrain(pl.LightningModule):
     def __init__(self, batch_size: int, init_lr: float, peak_lr: float, tokenizer: str, model: str, warmup_steps: int,
                  log_dir: str,
                  use_ctrl_tokens=False,
                  task_dict: Dict[str, TaskFamily] = None,
-                 pals_cfg: str = None, adapter_type: str = None):
+                 pals_cfg: str = None, adapter_type: str = None, max_len: int = 512):
         super().__init__()
         self.task_dict = load_tasks() if not task_dict else task_dict
         print(self.task_dict.keys())
@@ -92,16 +95,17 @@ class PhantasmLight(pl.LightningModule):
         self.batch_size = batch_size
         self.init_lr = init_lr
         self.peak_lr = peak_lr
+        self.max_len = max_len
         self.save_hyperparameters(ignore=["task_dict"])
 
-    def forward(self, x, attention_mask=None, token_idx=0, task_id=None):
+    def forward(self, input_ids, attention_mask=None, token_idx=0, task_id=None):
         if not self.pals:
-            embedding = self.encoder(x, attention_mask=attention_mask) if not self.adapters else self.encoder(x,
-                                                                                                              attention_mask=attention_mask,
-                                                                                                              task_id=task_id)
+            embedding = self.encoder(input_ids, attention_mask=attention_mask) if not self.adapters else self.encoder(input_ids,
+                                                                                                                      attention_mask=attention_mask,
+                                                                                                                      task_id=task_id)
             return embedding.last_hidden_state[:, token_idx, :]
         else:
-            embedding = self.encoder(x, attention_mask=attention_mask, task_id=task_id)
+            embedding = self.encoder(input_ids, attention_mask=attention_mask, task_id=task_id)
             return embedding[:, token_idx, :]
 
     def configure_optimizers(self):
@@ -144,7 +148,6 @@ class PhantasmLight(pl.LightningModule):
         losses, loss_per_task = [], torch.zeros(len(self.task_dict)).cuda()
         scl = torch.tensor(0.0)
         for name, batch in train_batch.items():
-            # print(name, batch[0]["input_ids"].shape if name not in ("s2and", "search", "specter", "cite_context") else batch[0][0]["input_ids"].shape, self.global_rank)
             task = self.task_dict[name]
             idx = 0 if not self.use_ctrl_tokens else 1
             task_id = task.ctrl_token
@@ -236,50 +239,28 @@ class PhantasmLight(pl.LightningModule):
     # def on_train_epoch_start(self) -> None:
     #     self.init_loss = None
 
-    # def validation_epoch_end(self, outputs: list) -> dict:
-    #     # avg_loss = torch.stack([x['val_loss'] for x in outputs]).mean()
-    #     # print(avg_loss)
-    #     # avg_loss = torch.mean(self.all_gather(avg_loss))
-    #     # self.log("avg_val_loss", avg_loss, on_epoch=True, prog_bar=True, rank_zero_only=True, logger=True, sync_dist=True)
-    #     for task in self.task_counts:
-    #         self.task_counts[task] = torch.tensor(0)
-
     def load_data(self, split) -> CustomChainDataset:
+        hf_split = "validation" if split == "dev" else "train"
         dataset_list = []
+        task_dataset_map = {"classification": ClassificationDataset, "regression": RegressionDataset, "ir": IRDataset}
         for t_name, task in self.task_dict.items():
+            data_file = {hf_split: task.data_files[split]} if task.data_files else None
+            dataset_name = (task.dataset, hf_split)
+            data_src = data_file if data_file else dataset_name
             op_token = task.ctrl_token if self.use_ctrl_tokens else None
+
+            kwargs = {"data_src": data_src, "ctrl_token": op_token, "max_len": self.max_len, "task_name": t_name,
+                      "tokenizer": self.tokenizer, "fields": task.input_fields,
+                      "sample_size": task.sample_size[split] if type(task.sample_size) == dict else task.sample_size}
+
             if task.type == "classification":
-                if task.multi_label:
-                    dataset_list.append(
-                        MultiLabelClassificationDataset(task_name=t_name, json_file=task.data_files[split],
-                                                        tokenizer=self.tokenizer, ctrl_token=op_token,
-                                                        fields=task.input_fields,
-                                                        label_field=task.labels_field,
-                                                        labels=task.labels,
-                                                        sample_size=600000 if split == "train" else 40000))
-                else:
-                    dataset_list.append(ClassificationDataset(task_name=t_name, json_file=task.data_files[split],
-                                                              tokenizer=self.tokenizer, ctrl_token=op_token,
-                                                              fields=task.input_fields,
-                                                              label_field=task.labels_field,
-                                                              labels=task.labels,
-                                                              sample_size=600000 if split == "train" else 40000))
+                kwargs.update({"label_field": task.labels_field, "labels": task.labels})
             elif task.type == "regression":
-                dataset_list.append(RegressionDataset(task_name=t_name, json_file=task.data_files[split],
-                                                      tokenizer=self.tokenizer, ctrl_token=op_token,
-                                                      fields=task.input_fields,
-                                                      label_field=task.labels_field,
-                                                      sample_size=600000 if split == "train" else 40000))
-            elif task.type == "ir":
-                dataset_list.append(
-                    IRDataset(task_name=t_name, json_file=task.data_files[split], ctrl_token=op_token,
-                              tokenizer=self.tokenizer, fields=task.input_fields,
-                              sample_size=600000 if split == "train" else 40000))
+                kwargs.update({"label_field": task.labels_field})
+            if task.multi_label:
+                dataset_list.append(MultiLabelClassificationDataset(**kwargs))
             else:
-                dataset_list.append(
-                    TripletDataset(task_name=t_name, json_file=task.data_files[split], ctrl_token=op_token,
-                                   tokenizer=self.tokenizer, fields=task.input_fields,
-                                   sample_size=600000 if split == "train" else 40000))
+                dataset_list.append(task_dataset_map.get(task.type, TripletDataset)(**kwargs))
         multi_dataset = CustomChainDataset(dataset_list, batch_size=self.batch_size,
                                            device_rank=self.trainer.global_rank, num_devices=self.trainer.world_size,
                                            batching_strategy=BatchingStrategy.MIXED_PROPORTIONAL)
@@ -323,7 +304,7 @@ if __name__ == '__main__':
     parser.add_argument('tokenizer', help='HuggingFace tokenizer to be used')
     parser.add_argument('--output', help='dir to save checkpoints and finetuned model', default="./lightning_logs/")
     parser.add_argument('version', help='experiment version')
-    parser.add_argument('--pals-confg', default=None, help='path to config file for PALS architecture')
+    parser.add_argument('--pals-config', default=None, help='path to config file for PALS architecture')
     parser.add_argument('--adapter-type', default=None, help='type of adapter architecture (single/fusion)')
     parser.add_argument('--batch-size', type=int, default=16, help='batch size')
     parser.add_argument('--lr', type=float, default=1e-4, help='initial learning rate')
@@ -333,14 +314,13 @@ if __name__ == '__main__':
     parser.add_argument('--grad-accum', type=int, default=8, help='grad accumulation steps')
     parser.add_argument('--ctrl-tokens', action='store_true', default=False, help='use control codes for tasks')
     parser.add_argument('--gpu', type=int, default=None, help='number of gpus')
-    parser.add_argument('--max_len', type=int, default=1024, help='max sequence length')
+    parser.add_argument('--max_len', type=int, default=512, help='max sequence length')
     parser.add_argument('--val_check_interval', type=float, default=1.0, help='validation loop interval')
     parser.add_argument('--checkpoint', default=None, help='resume from checkpoint path')
 
     args = parser.parse_args()
 
     tasks_dict = load_tasks(args.tasks_confg)
-    resume_from_checkpoint = './checkpoints/last.ckpt'
     log_dir = args.output
     logger = TensorBoardLogger(
         save_dir=log_dir,
@@ -359,25 +339,18 @@ if __name__ == '__main__':
         mode='min'
     )
 
-    model = PhantasmLight(batch_size=args.batch_size, init_lr=args.lr,
-                          peak_lr=args.peak_lr,
-                          tokenizer=args.model,
-                          model=args.tokenizer,
-                          warmup_steps=args.warmup,
-                          use_ctrl_tokens=args.ctrl_tokens, task_dict=tasks_dict, pals_cfg=args.pals_confg,
-                          adapter_type=args.adapter_type, log_dir=filepath)
+    model = SciRepTrain(batch_size=args.batch_size, init_lr=args.lr,
+                        peak_lr=args.peak_lr,
+                        tokenizer=args.model,
+                        model=args.tokenizer,
+                        warmup_steps=args.warmup,
+                        use_ctrl_tokens=args.ctrl_tokens, task_dict=tasks_dict, pals_cfg=args.pals_config,
+                        adapter_type=args.adapter_type, log_dir=filepath, max_len=args.max_len)
 
     hparams = {"gpus": args.gpu, "val_check_interval": args.val_check_interval, "num_sanity_val_steps": 4,
                "max_epochs": args.epochs,
                "accumulate_grad_batches": args.grad_accum, "resume_from_checkpoint": args.checkpoint}
 
-    # for name, param in model.named_parameters():
-    #     if param.requires_grad:
-    #         print('name: ', name)
-    #         print(type(param))
-    #         print('param.shape: ', param.shape)
-    #         print('param.requires_grad: ', param.requires_grad)
-    #         print('=====')
     trainer = pl.Trainer(logger=logger,
                          strategy="ddp" if hparams["gpus"] else None,
                          enable_checkpointing=True,

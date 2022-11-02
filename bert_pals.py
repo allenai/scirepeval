@@ -23,6 +23,7 @@ import json
 import math
 from typing import List, Optional
 
+import os
 import six
 import torch
 import torch.nn as nn
@@ -99,14 +100,6 @@ class BertPalConfig(BertConfig):
         self.num_tasks = num_tasks
 
     @classmethod
-    def from_dict(cls, json_object):
-        """Constructs a `BertConfig` from a Python dictionary of parameters."""
-        config = BertPalConfig(vocab_size=None)
-        for (key, value) in six.iteritems(json_object):
-            config.__dict__[key] = value
-        return config
-
-    @classmethod
     def from_json_file(cls, json_file):
         """Constructs a `BertConfig` from a json file of parameters."""
         with open(json_file, "r") as reader:
@@ -117,6 +110,14 @@ class BertPalConfig(BertConfig):
         """Serializes this instance to a Python dictionary."""
         output = copy.deepcopy(self.__dict__)
         return output
+
+    @classmethod
+    def from_dict(cls, json_object):
+        """Constructs a `BertConfig` from a Python dictionary of parameters."""
+        config = BertPalConfig(vocab_size=None)
+        for (key, value) in six.iteritems(json_object):
+            config.__dict__[key] = value
+        return config
 
     def to_json_string(self, use_diff: bool = True):
         """Serializes this instance to a JSON string."""
@@ -807,9 +808,11 @@ class BertForMultipleChoice(nn.Module):
 class BertPalsEncoder(torch.nn.Module):
     def __init__(self, config: str, task_ids: List[str], checkpoint):
         super(BertPalsEncoder, self).__init__()
-        self.bert_config = BertPalConfig.from_json_file(config)
+        self.bert_config = BertPalConfig.from_json_file(config) if type(config) == str else config
         self.bert_config.num_tasks = len(task_ids)
-        self.bert = BertModel(self.bert_config)
+        if type(checkpoint) != str:
+            self.bert_config.vocab_size = checkpoint.config.vocab_size
+        self.bert = BertModel(self.bert_config) if type(config) == str else checkpoint
         self.task_idx = {task: i for i, task in enumerate(task_ids)}
         print(self.task_idx)
 
@@ -825,28 +828,28 @@ class BertPalsEncoder(torch.nn.Module):
                 if module.bias is not None:
                     module.bias.data.zero_()
 
-        if type(checkpoint) == str:
-            chk = torch.load(checkpoint, map_location='cpu')
-            update = {k.replace("bert.", ""): v for k, v in chk.items()}
+        if type(config) == str:
+            if type(checkpoint) == str:
+                chk = torch.load(checkpoint, map_location='cpu')
+                update = {k.replace("bert.", ""): v for k, v in chk.items()}
+            else:
+                self.apply(init_weights)
+                partial = checkpoint.state_dict()
+                model_dict = self.bert.state_dict()
+                update = {}
+                for n, p in model_dict.items():
+                    if 'aug' in n or 'mult' in n:
+                        update[n] = p
+                        if 'pooler.mult' in n and 'bias' in n:
+                            update[n] = partial['pooler.dense.bias']
+                        if 'pooler.mult' in n and 'weight' in n:
+                            update[n] = partial['pooler.dense.weight']
+                    else:
+                        update[n] = partial[n]
+            self.bert.load_state_dict(update)
 
-        else:
-            self.apply(init_weights)
-            partial = checkpoint.state_dict()
-            model_dict = self.bert.state_dict()
-            update = {}
-            for n, p in model_dict.items():
-                if 'aug' in n or 'mult' in n:
-                    update[n] = p
-                    if 'pooler.mult' in n and 'bias' in n:
-                        update[n] = partial['pooler.dense.bias']
-                    if 'pooler.mult' in n and 'weight' in n:
-                        update[n] = partial['pooler.dense.weight']
-                else:
-                    update[n] = partial[n]
-        self.bert.load_state_dict(update)
-
-    def forward(self, x, attention_mask=None, task_id=None):
-        embedding = self.bert(x, attention_mask=attention_mask, i=self.task_idx[task_id])
+    def forward(self, input_ids, attention_mask=None, task_id=None):
+        embedding = self.bert(input_ids, attention_mask=attention_mask, i=self.task_idx[task_id])
         return embedding[0][-1]
 
     def resize_token_embeddings(self, new_num_tokens: Optional[int] = None):

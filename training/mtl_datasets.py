@@ -4,7 +4,7 @@ import torch
 from torch.utils.data import IterableDataset, DataLoader, ChainDataset, get_worker_info
 from torch.utils.data.dataset import T_co, Dataset
 from transformers import PreTrainedTokenizer, BatchEncoding, AutoTokenizer
-import ijson
+import datasets
 import numpy as np
 from sklearn.model_selection import train_test_split
 from sklearn.preprocessing import MultiLabelBinarizer
@@ -16,12 +16,13 @@ from collections import defaultdict
 from strategies import BatchingStrategy
 import random
 
+datasets.logging.set_verbosity_error()
 
 class AbstractMultiTaskDataset(ABC, IterableDataset):
-    def __init__(self, task_name: str, json_file: str, tokenizer: PreTrainedTokenizer, fields: List[str],
+    def __init__(self, task_name: str, data_src: Union[Dict[str,str],Tuple[str, str]], tokenizer: PreTrainedTokenizer, fields: List[str],
                  sample_size, ctrl_token: str, max_len: int):
         self.task_name = task_name
-        self.data_file = json_file
+        self.data_src = data_src
         self.tokenizer = tokenizer
         self.fields = fields
         self.sample_size = sample_size
@@ -57,15 +58,19 @@ class AbstractMultiTaskDataset(ABC, IterableDataset):
 
     def __iter__(self) -> Iterator[T_co]:
         # data is assumed to be a json file
-        try:
-            file_iter = open(self.data_file, "rb")
-            json_parse = ijson.items(file_iter, 'item')
-            peek = next(json_parse)
-            json_parse = itertools.chain([peek], json_parse)
-        except:
-            file_iter = open(self.data_file, "rb")
-            json_parse = ijson.items(file_iter, '', multiple_values=True)
-
+        # try:
+        #     file_iter = open(self.data_src, "rb")
+        #     json_parse = ijson.items(file_iter, 'item')
+        #     peek = next(json_parse)
+        #     json_parse = itertools.chain([peek], json_parse)
+        # except:
+        #     file_iter = open(self.data_src, "rb")
+        #     json_parse = ijson.items(file_iter, '', multiple_values=True)
+        if type(self.data_src) == dict:
+            json_parse = datasets.load_dataset("json", data_files=self.data_src, streaming=True)[next(iter(self.data_src.keys()))]
+        else:
+            json_parse = datasets.load_dataset(**self.data_src[0], split=self.data_src[1], streaming=True)
+        json_parse = iter(json_parse)
         if self.sample_size == -1:
             map_itr = map(self.preprocess, json_parse)
         else:
@@ -77,7 +82,7 @@ class AbstractMultiTaskDataset(ABC, IterableDataset):
         if type(input_data) == dict:
             for field in self.fields:
                 if input_data[field]:
-                    if type(input_data[field]) == decimal.Decimal:
+                    if type(input_data[field]) in set([decimal.Decimal, float]):
                         input_data[field] = str(int(input_data[field]))
                     text.append(input_data[field])
             text = (f" {self.tokenizer.sep_token} ".join(text)).strip()
@@ -95,9 +100,9 @@ class AbstractMultiTaskDataset(ABC, IterableDataset):
 
 
 class ClassificationDataset(AbstractMultiTaskDataset):
-    def __init__(self, task_name: str, json_file: str, tokenizer: PreTrainedTokenizer, fields: List[str],
+    def __init__(self, task_name: str, data_src: Union[Dict[str,str],Tuple[str, str]], tokenizer: PreTrainedTokenizer, fields: List[str],
                  label_field: str, labels: Dict[str, int], sample_size=-1, ctrl_token: str = None, max_len: int = 512):
-        super().__init__(task_name, json_file, tokenizer, fields, sample_size, ctrl_token, max_len)
+        super().__init__(task_name, data_src, tokenizer, fields, sample_size, ctrl_token, max_len)
         self.labels = labels
         self.label_field = label_field
 
@@ -126,9 +131,9 @@ class ClassificationDataset(AbstractMultiTaskDataset):
 
 
 class MultiLabelClassificationDataset(ClassificationDataset):
-    def __init__(self, task_name: str, json_file: str, tokenizer: PreTrainedTokenizer, fields: List[str],
+    def __init__(self, task_name: str, data_src: Union[Dict[str,str],Tuple[str, str]], tokenizer: PreTrainedTokenizer, fields: List[str],
                  label_field: str, labels: Dict[str, int], sample_size=-1, ctrl_token: str = None, max_len: int = 512):
-        super().__init__(task_name, json_file, tokenizer, fields, label_field, labels, sample_size, ctrl_token, max_len)
+        super().__init__(task_name, data_src, tokenizer, fields, label_field, labels, sample_size, ctrl_token, max_len)
         self.labels = dict(sorted(labels.items()))
         self.mlb = MultiLabelBinarizer()
         self.mlb.fit([list(self.labels.keys())])
@@ -155,9 +160,9 @@ class MultiLabelClassificationDataset(ClassificationDataset):
 
 
 class IRDataset(AbstractMultiTaskDataset):
-    def __init__(self, task_name: str, json_file: str, tokenizer: PreTrainedTokenizer, fields: List[str],
+    def __init__(self, task_name: str, data_src: Union[Dict[str,str],Tuple[str, str]], tokenizer: PreTrainedTokenizer, fields: List[str],
                  sample_size=-1, ctrl_token: str = None, max_len: int = 512):
-        super().__init__(task_name, json_file, tokenizer, fields, sample_size, ctrl_token, max_len)
+        super().__init__(task_name, data_src, tokenizer, fields, sample_size, ctrl_token, max_len)
         self.effective_sample_size //= 5
 
     def preprocess(self, line: Dict[str, str]) -> List[Tuple[str, List[BatchEncoding]]]:
@@ -201,9 +206,9 @@ class IRDataset(AbstractMultiTaskDataset):
 
 
 class TripletDataset(AbstractMultiTaskDataset):
-    def __init__(self, task_name: str, json_file: str, tokenizer: PreTrainedTokenizer, fields: List[str],
+    def __init__(self, task_name: str, data_src: Union[Dict[str,str],Tuple[str, str]], tokenizer: PreTrainedTokenizer, fields: List[str],
                  sample_size=-1, ctrl_token: str = None, max_len: int = 512):
-        super().__init__(task_name, json_file, tokenizer, fields, sample_size, ctrl_token, max_len)
+        super().__init__(task_name, data_src, tokenizer, fields, sample_size, ctrl_token, max_len)
 
     def preprocess(self, line: Dict[str, str]) -> Union[
         Tuple[str, BatchEncoding, torch.Tensor], List[Tuple[str, List[BatchEncoding]]]]:
@@ -248,9 +253,9 @@ class CustomChainDataset(ChainDataset):
 
 
 class RegressionDataset(AbstractMultiTaskDataset):
-    def __init__(self, task_name: str, json_file: str, tokenizer: PreTrainedTokenizer, fields: List[str],
+    def __init__(self, task_name: str, data_src: Union[Dict[str,str],Tuple[str, str]], tokenizer: PreTrainedTokenizer, fields: List[str],
                  label_field: str, sample_size=-1, ctrl_token: str = None, max_len: int = 512):
-        super().__init__(task_name, json_file, tokenizer, fields, sample_size, ctrl_token, max_len)
+        super().__init__(task_name, data_src, tokenizer, fields, sample_size, ctrl_token, max_len)
         self.label_field = label_field
 
     def preprocess(self, line: Dict[str, str]) -> Tuple[str, Dict[str, BatchEncoding], Union[int, float]]:
@@ -273,24 +278,24 @@ if __name__ == '__main__':
     with open("sample_data/mesh_descriptors.txt", "r") as f:
         labels = f.readlines()
     labels = {l.strip(): i for i, l in enumerate(labels)}
-    cls_dataset = ClassificationDataset(task_name="mesh", json_file="../../scidocs/data/mesh_plus/train.json",
+    cls_dataset = ClassificationDataset(task_name="mesh", data_src="../../scidocs/data/mesh_plus/train.json",
                                         tokenizer=tokenizer,
                                         fields=["title", "abstract"],
                                         label_field="descriptor", labels=labels, sample_size=400000)
-    trip_dataset = IRDataset(task_name="s2and", json_file="sample_data/s2and_small.json",
+    trip_dataset = IRDataset(task_name="s2and", data_src="sample_data/s2and_small.json",
                              tokenizer=tokenizer,
                              fields=["title", "abstract"], sample_size=400000)
-    specter_dataset = TripletDataset(task_name="specter", json_file="../../scidocs/data/specter_triplets/train.json",
+    specter_dataset = TripletDataset(task_name="specter", data_src="../../scidocs/data/specter_triplets/train.json",
                                      tokenizer=tokenizer,
                                      fields=["title", "abstract"], sample_size=400000)
-    search_dataset = IRDataset(task_name="search", json_file="sample_data/search_small.jsonl",
+    search_dataset = IRDataset(task_name="search", data_src="sample_data/search_small.jsonl",
                                tokenizer=tokenizer,
                                fields=["title", "abstract", "venue", "year"], sample_size=100)
     with open("sample_data/fos_labels.txt", "r") as f:
         mlc_labels = f.readlines()
     mlc_labels = {l.strip(): i for i, l in enumerate(mlc_labels)}
 
-    ml_cls_dataset = MultiLabelClassificationDataset(task_name="fos", json_file="sample_data/fos_small.json",
+    ml_cls_dataset = MultiLabelClassificationDataset(task_name="fos", data_src="sample_data/fos_small.json",
                                                      tokenizer=tokenizer,
                                                      fields=["title", "abstract"],
                                                      label_field="labels_text", labels=mlc_labels, sample_size=100,

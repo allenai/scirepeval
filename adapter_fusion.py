@@ -39,7 +39,7 @@ class AdapterEncoder(AbstractAdapter):
                 self.model.add_adapter(t_id, config="pfeiffer")
             else:
                 # load_as can str for a local path or dict to be loaded from adapters hub
-                if os.path.isdir(load_as):
+                if type(load_as) == str:
                     self.model.load_adapter(f"{load_as}/{t_id}/", load_as=t_id)
                 else:
                     self.model.load_adapter(load_as[t_id], load_as=t_id)

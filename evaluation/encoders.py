@@ -1,8 +1,8 @@
 from typing import Dict, Union, List
 
-from transformers import AutoModel, AutoTokenizer, BertModel
+from transformers import AutoModel, AutoTokenizer
 import os
-from bert_pals import BertPalsEncoder
+from bert_pals import BertPalsEncoder, BertPalConfig, BertModel
 from adapter_fusion import AdapterEncoder, AdapterFusion
 import torch
 import logging
@@ -28,9 +28,10 @@ class EncoderFactory:
                 return BertPalsEncoder(config=f"{self.base_checkpoint}/config.json", task_ids=self.all_tasks,
                                        checkpoint=f"{self.base_checkpoint}/pytorch_model.bin")
             else:
-                base_encoder = BertModel.from_pretrained(self.base_checkpoint)
-                return BertPalsEncoder(config=base_encoder.config.to_dict(), task_ids=self.all_tasks,
-                                       checkpoint=base_encoder)
+                pals_config = BertPalConfig.from_pretrained(self.base_checkpoint)
+                pals_model = BertModel.from_pretrained(self.base_checkpoint)
+                return BertPalsEncoder(config=pals_config, task_ids=self.all_tasks,
+                                       checkpoint=pals_model)
         elif variant == "adapters":
             # needs a base model checkpoint and the adapters to be loaded from local path or dict of (task_id,
             # adapter) from adapters hub

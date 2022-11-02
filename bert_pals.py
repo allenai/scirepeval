@@ -808,12 +808,11 @@ class BertForMultipleChoice(nn.Module):
 class BertPalsEncoder(torch.nn.Module):
     def __init__(self, config: str, task_ids: List[str], checkpoint):
         super(BertPalsEncoder, self).__init__()
-        self.bert_config = BertPalConfig.from_json_file(config) if type(config) == str else BertPalConfig.from_dict(
-            config)
+        self.bert_config = BertPalConfig.from_json_file(config) if type(config) == str else config
         self.bert_config.num_tasks = len(task_ids)
         if type(checkpoint) != str:
             self.bert_config.vocab_size = checkpoint.config.vocab_size
-        self.bert = BertModel(self.bert_config)
+        self.bert = BertModel(self.bert_config) if type(config) == str else checkpoint
         self.task_idx = {task: i for i, task in enumerate(task_ids)}
         print(self.task_idx)
 
@@ -829,14 +828,10 @@ class BertPalsEncoder(torch.nn.Module):
                 if module.bias is not None:
                     module.bias.data.zero_()
 
-        if type(checkpoint) == str:
-            chk = torch.load(checkpoint, map_location='cpu')
-            update = {k.replace("bert.", ""): v for k, v in chk.items()}
-
-        else:
-            if type(config)==dict:
-                update = checkpoint.state_dict()
-                update = {k: v for k, v in update.items() if k in self.bert.state_dict()}
+        if type(config) == str:
+            if type(checkpoint) == str:
+                chk = torch.load(checkpoint, map_location='cpu')
+                update = {k.replace("bert.", ""): v for k, v in chk.items()}
             else:
                 self.apply(init_weights)
                 partial = checkpoint.state_dict()
@@ -851,7 +846,7 @@ class BertPalsEncoder(torch.nn.Module):
                             update[n] = partial['pooler.dense.weight']
                     else:
                         update[n] = partial[n]
-        self.bert.load_state_dict(update)
+            self.bert.load_state_dict(update)
 
     def forward(self, input_ids, attention_mask=None, task_id=None):
         embedding = self.bert(input_ids, attention_mask=attention_mask, i=self.task_idx[task_id])

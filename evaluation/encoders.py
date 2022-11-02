@@ -15,8 +15,9 @@ class EncoderFactory:
                  all_tasks: list = None):
         self.base_checkpoint = f"{base_checkpoint}/model" if os.path.isdir(base_checkpoint) else base_checkpoint
         self.all_tasks = all_tasks
-        self.adapters_load_from = f"{adapters_load_from}/model/adapters" if type(adapters_load_from)==str and os.path.isdir(
-            adapters_load_from) else adapters_load_from
+        self.adapters_load_from = f"{adapters_load_from}/model/adapters" if (type(
+            adapters_load_from) == str and os.path.isdir(
+            adapters_load_from)) else adapters_load_from
 
     def get_encoder(self, variant: str):
         if variant == "default":

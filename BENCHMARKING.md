@@ -17,6 +17,11 @@ We provide our trained models on the HuggingFace models [hub](https://huggingfac
 We provide a test script - [scirepeval.py](https://github.com/allenai/scirepeval/blob/main/scirepeval.py) to evaluate one of the above models or a custom trained model on all the tasks in the benchmark.
 The tasks can be configured as required in [scirepeval_tasks.jsonl](https://github.com/allenai/scirepeval/blob/main/scirepeval_tasks.jsonl).
 
+The following are used as task ids in the code as serve as either control codes or module identifiers:
+
+``TASK_IDS = {"classification": "[CLF]", "regression": "[RGN]", "proximity": "[PRX]",
+            "adhoc_search": {"query": "[QRY]", "candidates": "[PRX]"}}``
+
 Execute one of the following commands to evaluate a model on SciRepEval:
 
 **Base/MTL CLS**

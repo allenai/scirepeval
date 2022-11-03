@@ -60,6 +60,7 @@ To run the training script with default params, based upon the type of models yo
     python pl_training.py --gpu 2 --ctrl-tokens <base model name/chkpoint path> <tokenizer name/chkpoint path> <expt name>
 
 **PALs**
+
 Requires pals config file for additional model configuration. Files present under `bert_pals_config` directory.
 
     python pl_training.py --gpu 2 --pals-config pals.config.json <base model name/chkpoint path> <tokenizer name/chkpoint path> <expt name>

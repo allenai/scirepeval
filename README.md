@@ -56,7 +56,7 @@ Since we want to evaluate document representations, every dataset consists of tw
 |SRCH|Feeds-Title|N|MAP|[feeds_title](https://huggingface.co/datasets/allenai/scirepeval/viewer/feeds_title)|[feeds_title](https://huggingface.co/datasets/allenai/scirepeval_test/viewer/feeds_title)|
 |SRCH|[TREC-CoVID](https://ir.nist.gov/trec-covid/data.html)|N|NDCG|[trec_covid](https://huggingface.co/datasets/allenai/scirepeval/viewer/trec_covid)|[trec_covid](https://huggingface.co/datasets/allenai/scirepeval_test/viewer/trec_covid)|
 
-*S2AND requires the evaluation dataset in a specific format so to evaluate your model on the task please follow these instructions.
+*S2AND requires the evaluation dataset in a specific format so to evaluate your model on the task please follow [these](https://github.com/allenai/scirepeval/blob/main/BENCHMARKING.md#s2and) instructions.
 
 **Combinations of multiple datasets - [1](https://mimno.infosci.cornell.edu/data/nips_reviewer_data.tar.gz), [2](https://web.archive.org/web/20211015210300/http://sifaka.cs.uiuc.edu/ir/data/review.html), [3](https://ieee-dataport.org/open-access/retrorevmatchevalicip16-retrospective-reviewer-matching-dataset-and-evaluation-ieee-icip), also dataset of papers authored by potential reviewers is required for evaluation; hence the multiple dataset configs.
 

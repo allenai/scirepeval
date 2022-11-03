@@ -48,17 +48,21 @@ The script generates embeddings and evaluates on each task as per the metric men
 <a name="s2and"></a>
 ### S2AND evaluation
 S2AND evaluation requires the data to be cached locally in a specific format. We provide a helper script to generate the document representations for S2AND before evaluating them.
+
 **Step 1**
+
 Obtain the data from AWS S3:
 
     aws s3 sync s3://ai2-s2-research-public/scirepeval/test/s2and .
 
 **Step 2** 
+
 Generate Embeddings for all the paper blocks
 
     python s2and_embeddings.py --mtype <model type> --m <model checkpoint> --adapters-dir <adapters dir or chkpt> --data-dir <path to S2AND data> --suffix <suffix for embedding file name>
 
 **Step 3**
+
 Run S2AND evaluation.
 Setup S2AND as in [repo](https://github.com/allenai/S2AND) and change the configuration to point to your data location.
 

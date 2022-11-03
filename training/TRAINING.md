@@ -11,7 +11,7 @@ Post the quick setup step in ReadMe, you can choose to train the following base 
 #### Step 1
 Define the tasks and associated metadata in a json config file. Refer to [sample_data/tasks_config.json](https://github.com/allenai/scirepeval/blob/main/training/sample_data/tasks_config.json) for SciRepEval training config.
 *Example config:*
-```
+```json
 {
     "name": "fos",
     "type": "classification",
@@ -53,23 +53,25 @@ Define the tasks and associated metadata in a json config file. Refer to [sample
 #### Step 2
 To run the training script with default params, based upon the type of models you want to train run one of the following commands:
 **MTL CLS**
-
-    python pl_training.py --gpu 2 <base model name/chkpoint path> <tokenizer name/chkpoint path> <expt name>
+```bash
+python pl_training.py --gpu 2 <base model name/chkpoint path> <tokenizer name/chkpoint path> <expt name>
+```
 
 **MTL CTRL**
-
-    python pl_training.py --gpu 2 --ctrl-tokens <base model name/chkpoint path> <tokenizer name/chkpoint path> <expt name>
+```bash
+python pl_training.py --gpu 2 --ctrl-tokens <base model name/chkpoint path> <tokenizer name/chkpoint path> <expt name>
+```
 
 **PALs**
 
 Requires pals config file for additional model configuration. Files present under `bert_pals_config` directory.
-
-    python pl_training.py --gpu 2 --pals-config pals.config.json <base model name/chkpoint path> <tokenizer name/chkpoint path> <expt name>
-
+```bash
+python pl_training.py --gpu 2 --pals-config pals.config.json <base model name/chkpoint path> <tokenizer name/chkpoint path> <expt name>
+```
 **Adapters**
-
-    python pl_training.py --gpu 2 --ctrl-tokens --adapter-type single <base model name/chkpoint path> <tokenizer name/chkpoint path> <expt name>
-
+```bash
+python pl_training.py --gpu 2 --ctrl-tokens --adapter-type single <base model name/chkpoint path> <tokenizer name/chkpoint path> <expt name>
+```
 **Fusion**
 
     python pl_training.py --gpu 2 --ctrl-tokens --adapter-type fusion <base model name/chkpoint path> <tokenizer name/chkpoint path> <expt name>

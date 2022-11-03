@@ -69,3 +69,8 @@ Since we want to evaluate document representations, every dataset consists of tw
 *S2AND requires the evaluation dataset in a specific format so to evaluate your model on the task please follow [these](https://github.com/allenai/scirepeval/blob/main/BENCHMARKING.md#s2and) instructions.
 
 **Combinations of multiple datasets - [1](https://mimno.infosci.cornell.edu/data/nips_reviewer_data.tar.gz), [2](https://web.archive.org/web/20211015210300/http://sifaka.cs.uiuc.edu/ir/data/review.html), [3](https://ieee-dataport.org/open-access/retrorevmatchevalicip16-retrospective-reviewer-matching-dataset-and-evaluation-ieee-icip), also dataset of papers authored by potential reviewers is required for evaluation; hence the multiple dataset configs.
+
+### License
+The aggregate benchmark is released under [ODC-BY](https://opendatacommons.org/licenses/by/1.0/) license. By downloading this data you acknowledge that you have read and agreed to all the terms in this license.
+For constituent datasets, also go through the individual licensing requirements, as applicable. 
+

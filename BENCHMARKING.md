@@ -35,7 +35,7 @@ Execute one of the following commands to evaluate a model on SciRepEval:
 
     python scirepeval.py --mtype adapters --m <huggingface base model name/local checkpoint path> --adapters-dir <local checkpoint path with adapter module weights>
 										    OR 
-	python scirepeval.py --mtype adapters --m <huggingface base model name/local checkpoint path> --adapters-chkpt '{"[CLF]": "huggingface adapter", "[QRY]": "huggingface adapter", "[RGN]": "huggingface adapter", "[PRX]": "huggingface adapter"
+	python scirepeval.py --mtype adapters --m <huggingface base model name/local checkpoint path> --adapters-chkpt '{"[CLF]": "<huggingface adapter>, "[QRY]": <huggingface adapter>, "[RGN]": <huggingface adapter>, "[PRX]": <huggingface adapter>}'
 
 
 **Fusion**

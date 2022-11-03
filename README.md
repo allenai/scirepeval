@@ -3,28 +3,32 @@ This repo contains the code to train, evaluate and reproduce the representation 
 
 ## Quick Setup
 Clone the repo and setup the environment as follows:
-
-    git clone git@github.com:allenai/scirepeval.git
-    cd scirepeval
-    conda create -n scirepeval python=3.8
-    conda activate scirepeval
-    pip install -r requirements.txt
+```bash
+git clone git@github.com:allenai/scirepeval.git
+cd scirepeval
+conda create -n scirepeval python=3.8
+conda activate scirepeval
+pip install -r requirements.txt
+```
 
 ## Benchmark Details
 SciRepEval consists of 25 scientific document tasks to train and evaluate scientific document representation models. The tasks are divided across 4 task formats- classification **CLF**, regression **RGN**, proximity (nearest neighbors) retrieval **PRX** and ad-hoc search **SRCH**.  The table below gives a brief overview of the tasks with their HuggingFace datasets config names, if applicable. 
 The benchmark dataset can be downloaded from AWS S3 or HuggingFace as follows:
 #### AWS S3 via CLI
-
-    mkdir scirepeval_data && scirepeval_data
-    aws s3 sync s3://ai2-s2-research-public/scirepeval/train .
-    aws s3 sync s3://ai2-s2-research-public/scirepeval/test .
+```bash
+mkdir scirepeval_data && scirepeval_data
+aws s3 sync s3://ai2-s2-research-public/scirepeval/train .
+aws s3 sync s3://ai2-s2-research-public/scirepeval/test .
+```
 The AWS CLI commands can be run with the `--dryrun`  flag to list the files being copied. The entire dataset is ~24 GB in size.
 
 #### HuggingFace Datasets
 The training, validation and evaluation data is available at [allenai/scirepeval](https://huggingface.co/datasets/allenai/scirepeval), while the test examples are available at [allenai/scirepeval_test](https://huggingface.co/datasets/allenai/scirepeval_test).
 
-    import datasets
-    dataset = datsets.load_dataset(<dataset name>, <hf config name>)
+```python
+import datasets
+dataset = datsets.load_dataset(<dataset name>, <hf config name>)
+```
 
 Since we want to evaluate document representations, every dataset consists of two parts: test metadata (text for representation generation available under allenai/scirepeval) and labelled examples (available under allenai/scirepeval_test)
 

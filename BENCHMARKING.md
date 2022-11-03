@@ -33,7 +33,7 @@ Execute one of the following commands to evaluate a model on SciRepEval:
 
 **Adapters**
 
-     python scirepeval.py --mtype adapters --m <huggingface base model name/local checkpoint path> --adapters-dir <local checkpoint path with adapter module weights>
+    python scirepeval.py --mtype adapters --m <huggingface base model name/local checkpoint path> --adapters-dir <local checkpoint path with adapter module weights>
 										    OR 
 	python scirepeval.py --mtype adapters --m <huggingface base model name/local checkpoint path> --adapters-chkpt '{"[CLF]": "huggingface adapter", "[QRY]": "huggingface adapter", "[RGN]": "huggingface adapter", "[PRX]": "huggingface adapter"
 
@@ -45,7 +45,7 @@ Execute one of the following commands to evaluate a model on SciRepEval:
 
 The script generates embeddings and evaluates on each task as per the metric mentioned in the paper. By default the result report is created in `<ROOT>/scirepeval_results.json`
 
-
+<a name="s2and"></a>
 ### S2AND evaluation
 S2AND evaluation requires the data to be cached locally in a specific format. We provide a helper script to generate the document representations for S2AND before evaluating them.
 **Step 1**

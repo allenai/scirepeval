@@ -25,28 +25,28 @@ The following are used as task ids in the code as serve as either control codes 
 Execute one of the following commands to evaluate a model on SciRepEval:
 
 **Base/MTL CLS**
-
-    python scirepeval.py --m <huggingface model name/local checkpoint path>
-
+```bash
+python scirepeval.py --m <huggingface model name/local checkpoint path>
+```
 **MTL CTRL**
-
-    python scirepeval.py --m <huggingface model name/local checkpoint path> --ctrl-tokens
-
+```bash
+python scirepeval.py --m <huggingface model name/local checkpoint path> --ctrl-tokens
+```
 **PALs**
-
-    python scirepeval.py --mtype pals --m <huggingface model name/local checkpoint path>
-
+```bash
+python scirepeval.py --mtype pals --m <huggingface model name/local checkpoint path>
+```
 **Adapters**
-
-    python scirepeval.py --mtype adapters --m <huggingface base model name/local checkpoint path> --adapters-dir <local checkpoint path with adapter module weights>
-										    OR 
-	python scirepeval.py --mtype adapters --m <huggingface base model name/local checkpoint path> --adapters-chkpt '{"[CLF]": "<huggingface adapter>, "[QRY]": <huggingface adapter>, "[RGN]": <huggingface adapter>, "[PRX]": <huggingface adapter>}'
-
+```bash
+python scirepeval.py --mtype adapters --m <huggingface base model name/local checkpoint path> --adapters-dir <local checkpoint path with adapter module weights>
+									OR
+python scirepeval.py --mtype adapters --m <huggingface base model name/local checkpoint path> --adapters-chkpt '{"[CLF]": "<huggingface adapter>, "[QRY]": <huggingface adapter>, "[RGN]": <huggingface adapter>, "[PRX]": <huggingface adapter>}'
+```
 
 **Fusion**
-
-    python scirepeval.py --mtype fusion --m <huggingface base model name/local checkpoint path> --adapters-dir <local checkpoint path with fusion module weights>
-
+```bash
+python scirepeval.py --mtype fusion --m <huggingface base model name/local checkpoint path> --adapters-dir <local checkpoint path with fusion module weights>
+```
 
 The script generates embeddings and evaluates on each task as per the metric mentioned in the paper. By default the result report is created in `<ROOT>/scirepeval_results.json`
 
@@ -57,27 +57,27 @@ S2AND evaluation requires the data to be cached locally in a specific format. We
 **Step 1**
 
 Obtain the data from AWS S3:
-
-    aws s3 sync s3://ai2-s2-research-public/scirepeval/test/s2and .
-
+```bash
+aws s3 sync s3://ai2-s2-research-public/scirepeval/test/s2and .
+```
 **Step 2** 
 
 Generate Embeddings for all the paper blocks
-
-    python s2and_embeddings.py --mtype <model type> --m <model checkpoint> --adapters-dir <adapters dir or chkpt> --data-dir <path to S2AND data> --suffix <suffix for embedding file name>
-
+```bash
+python s2and_embeddings.py --mtype <model type> --m <model checkpoint> --adapters-dir <adapters dir or chkpt> --data-dir <path to S2AND data> --suffix <suffix for embedding file name>
+```
 **Step 3**
 
 Run S2AND evaluation.
 Setup S2AND as in [repo](https://github.com/allenai/S2AND) and change the configuration to point to your data location.
 
 Run the following command:
-
-    cd S2AND; python scripts/custom_block_transfer_experiment_seed_paper.py --custom_block_path <data>/blocks --experiment_name mini_customblock_phantasm_v1 --exclude_medline --emb_suffix _<suffix>.pkl
-
+```bash
+cd S2AND; python scripts/custom_block_transfer_experiment_seed_paper.py --custom_block_path <data>/blocks --experiment_name mini_customblock_phantasm_v1 --exclude_medline --emb_suffix _<suffix>.pkl
+```
 ### Filtering Tasks
 #### By Name
-```
+```python
 from scirepeval import SciRepEval
 from evaluation.encoders import Model
 
@@ -100,7 +100,7 @@ evaluator.evaluate(model, <output jsonl path>)
 ```
 
 #### By Task Type
-```
+```python
 from scirepeval import SciRepEval
 from evaluation.encoders import Model
 

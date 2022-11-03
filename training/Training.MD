@@ -36,6 +36,7 @@ Define the tasks and associated metadata in a json config file. Refer to [sample
  - For multi label classification, add  `"multi_label": true` as in the above example.
  - By default the pre-processing code expects "title" and "abstract" in every example. To process specific fields, provide  additional property as `"input_fields": ["title", "abstract", "venue", "year"]`.
  - For MTL CTRL training, provide the `"ctrl_token"` associated with each task.
+ - Some "ir" tasks like ad-hoc search might require different control codes forthe query and candidates which can be provided as `"ctrl_token": {"query": "[QRY]", "candidates": "[PRX]"}`.
  - `"sample_size"` is not required if all the samples are to be processed for the splits.
  - If loading data from Huggingface datsets, instead of `"data_files"`, you can provide parameters for `load_dataset` method as - `"dataset": {"path": <hf dataset name>, "name": <optional config name for dataset with multiple configs>}`.
  - ``if "type"=="regresion": <provide the "labels_field"> elif "type" =="classification": <provide the "labels" and "labels_field"> ``

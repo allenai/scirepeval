@@ -16,8 +16,8 @@ The benchmark dataset can be downloaded from AWS S3 or HuggingFace as follows:
 #### AWS S3 via CLI
 
     mkdir scirepeval_data && scirepeval_data
-    aws s3 sync s3://ai2-s2-research-public/scirepeval/train
-    aws s3 sync s3://ai2-s2-research-public/scirepeval/test
+    aws s3 sync s3://ai2-s2-research-public/scirepeval/train .
+    aws s3 sync s3://ai2-s2-research-public/scirepeval/test .
 The AWS CLI commands can be run with the `--dryrun`  flag to list the files being copied. The entire dataset is ~24 GB in size.
 
 #### HuggingFace Datasets

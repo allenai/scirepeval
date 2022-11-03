@@ -3,10 +3,10 @@ The code available as part of this sub-directory can be used to train a general 
 
 Post the quick setup step in ReadMe, you can choose to train the following base models:
 (Parenthesis denote how they are referred in the paper)
- 1. General multi task model (MTL CLS)
- 2. Multi-task training w. Control Codes (MTL CTRL)
- 3. [BERT PALs](https://github.com/AsaCooperStickland/Bert-n-Pals) (PALs)
- 4. [Adapters and Fusion](https://github.com/adapter-hub/adapter-transformers)
+ 1. General multi task model (MTL CLS) - \[CLS\] token embedding is considered document representation
+ 2. Multi-task training w. Control Codes (MTL CTRL) - Control codes prepended to input and their embedding is considered document representation
+ 3. [BERT PALs](https://github.com/AsaCooperStickland/Bert-n-Pals) (PALs) - Task specific modules
+ 4. [Adapters and Fusion](https://github.com/adapter-hub/adapter-transformers) - Task specific adapters
 
 #### Step 1
 Define the tasks and associated metadata in a json config file. Refer to [sample_data/tasks_config.json](https://github.com/allenai/scirepeval/blob/main/training/sample_data/tasks_config.json) for SciRepEval training config.
@@ -35,8 +35,8 @@ Define the tasks and associated metadata in a json config file. Refer to [sample
  - `"classification"` is suitable for tasks with categorical (discrete) labels,;`"regression"` for tasks with continuous labels; `"ir"` for retrieval tasks formatted as `{"query": X, "candidates": [{}]}` and `"triplet"` for contrastive learning tasks formatted as `{"query": q, "pos": p, "neg": n}`.
  - For multi label classification, add  `"multi_label": true` as in the above example.
  - By default the pre-processing code expects "title" and "abstract" in every example. To process specific fields, provide  additional property as `"input_fields": ["title", "abstract", "venue", "year"]`.
- - For MTL CTRL training, provide the `"ctrl_token"` associated with each task.
- - Some "ir" tasks like ad-hoc search might require different control codes forthe query and candidates which can be provided as `"ctrl_token": {"query": "[QRY]", "candidates": "[PRX]"}`.
+ - For models apart from MTL CLS, provide the `"ctrl_token"` associated with each task, for MTL CTRL it works as the special control code and for PALs and Adapters it acts as the task id to determine the module to be used in the forward pass.
+ - Some "ir" tasks like ad-hoc search \[SRCH\] might require different control codes forthe query and candidates which can be provided as `"ctrl_token": {"query": "[QRY]", "candidates": "[PRX]"}`. For PALs and Adapters, this task id is internally resolved to feed the queries and candidates to their relevant modules.
  - `"sample_size"` is not required if all the samples are to be processed for the splits.
  - If loading data from Huggingface datsets, instead of `"data_files"`, you can provide parameters for `load_dataset` method as - `"dataset": {"path": <hf dataset name>, "name": <optional config name for dataset with multiple configs>}`.
  - ``if "type"=="regresion": <provide the "labels_field"> elif "type" =="classification": <provide the "labels" and "labels_field"> ``

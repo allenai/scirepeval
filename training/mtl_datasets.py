@@ -18,8 +18,10 @@ import random
 
 datasets.logging.set_verbosity_error()
 
+
 class AbstractMultiTaskDataset(ABC, IterableDataset):
-    def __init__(self, task_name: str, data_src: Union[Dict[str,str],Tuple[str, str]], tokenizer: PreTrainedTokenizer, fields: List[str],
+    def __init__(self, task_name: str, data_src: Union[Dict[str, str], Tuple[str, str]], tokenizer: PreTrainedTokenizer,
+                 fields: List[str],
                  sample_size, ctrl_token: str, max_len: int):
         self.task_name = task_name
         self.data_src = data_src
@@ -67,7 +69,8 @@ class AbstractMultiTaskDataset(ABC, IterableDataset):
         #     file_iter = open(self.data_src, "rb")
         #     json_parse = ijson.items(file_iter, '', multiple_values=True)
         if type(self.data_src) == dict:
-            json_parse = datasets.load_dataset("json", data_files=self.data_src, streaming=True)[next(iter(self.data_src.keys()))]
+            json_parse = datasets.load_dataset("json", data_files=self.data_src, streaming=True)[
+                next(iter(self.data_src.keys()))]
         else:
             json_parse = datasets.load_dataset(**self.data_src[0], split=self.data_src[1], streaming=True)
         json_parse = iter(json_parse)
@@ -100,7 +103,8 @@ class AbstractMultiTaskDataset(ABC, IterableDataset):
 
 
 class ClassificationDataset(AbstractMultiTaskDataset):
-    def __init__(self, task_name: str, data_src: Union[Dict[str,str],Tuple[str, str]], tokenizer: PreTrainedTokenizer, fields: List[str],
+    def __init__(self, task_name: str, data_src: Union[Dict[str, str], Tuple[str, str]], tokenizer: PreTrainedTokenizer,
+                 fields: List[str],
                  label_field: str, labels: Dict[str, int], sample_size=-1, ctrl_token: str = None, max_len: int = 512):
         super().__init__(task_name, data_src, tokenizer, fields, sample_size, ctrl_token, max_len)
         self.labels = labels
@@ -131,7 +135,8 @@ class ClassificationDataset(AbstractMultiTaskDataset):
 
 
 class MultiLabelClassificationDataset(ClassificationDataset):
-    def __init__(self, task_name: str, data_src: Union[Dict[str,str],Tuple[str, str]], tokenizer: PreTrainedTokenizer, fields: List[str],
+    def __init__(self, task_name: str, data_src: Union[Dict[str, str], Tuple[str, str]], tokenizer: PreTrainedTokenizer,
+                 fields: List[str],
                  label_field: str, labels: Dict[str, int], sample_size=-1, ctrl_token: str = None, max_len: int = 512):
         super().__init__(task_name, data_src, tokenizer, fields, label_field, labels, sample_size, ctrl_token, max_len)
         self.labels = dict(sorted(labels.items()))
@@ -160,7 +165,8 @@ class MultiLabelClassificationDataset(ClassificationDataset):
 
 
 class IRDataset(AbstractMultiTaskDataset):
-    def __init__(self, task_name: str, data_src: Union[Dict[str,str],Tuple[str, str]], tokenizer: PreTrainedTokenizer, fields: List[str],
+    def __init__(self, task_name: str, data_src: Union[Dict[str, str], Tuple[str, str]], tokenizer: PreTrainedTokenizer,
+                 fields: List[str],
                  sample_size=-1, ctrl_token: str = None, max_len: int = 512):
         super().__init__(task_name, data_src, tokenizer, fields, sample_size, ctrl_token, max_len)
         self.effective_sample_size //= 5
@@ -206,7 +212,8 @@ class IRDataset(AbstractMultiTaskDataset):
 
 
 class TripletDataset(AbstractMultiTaskDataset):
-    def __init__(self, task_name: str, data_src: Union[Dict[str,str],Tuple[str, str]], tokenizer: PreTrainedTokenizer, fields: List[str],
+    def __init__(self, task_name: str, data_src: Union[Dict[str, str], Tuple[str, str]], tokenizer: PreTrainedTokenizer,
+                 fields: List[str],
                  sample_size=-1, ctrl_token: str = None, max_len: int = 512):
         super().__init__(task_name, data_src, tokenizer, fields, sample_size, ctrl_token, max_len)
 
@@ -253,7 +260,8 @@ class CustomChainDataset(ChainDataset):
 
 
 class RegressionDataset(AbstractMultiTaskDataset):
-    def __init__(self, task_name: str, data_src: Union[Dict[str,str],Tuple[str, str]], tokenizer: PreTrainedTokenizer, fields: List[str],
+    def __init__(self, task_name: str, data_src: Union[Dict[str, str], Tuple[str, str]], tokenizer: PreTrainedTokenizer,
+                 fields: List[str],
                  label_field: str, sample_size=-1, ctrl_token: str = None, max_len: int = 512):
         super().__init__(task_name, data_src, tokenizer, fields, sample_size, ctrl_token, max_len)
         self.label_field = label_field

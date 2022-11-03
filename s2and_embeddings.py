@@ -42,12 +42,13 @@ if __name__ == "__main__":
     parser.add_argument('--model', '--m', help='HuggingFace model to be used')
     parser.add_argument('--ctrl-tokens', action='store_true', default=False, help='use control codes for tasks')
     parser.add_argument('--adapters-dir', help='path to the adapter checkpoints', default=None)
+    parser.add_argument('--adapters-chkpt', help='hf adapter names keyed on tasks', default=None, type=json.loads)
     parser.add_argument("--data-dir", help="path to the data directory")
     parser.add_argument("--suffix", help="suffix for output embedding files")
 
     args = parser.parse_args()
-
-    model = Model(variant=args.mtype, base_checkpoint=args.model, adapters_load_from=args.adapters_dir,
+    adapters_load_from = args.adapters_dir if args.adapters_dir else args.adapters_chkpt
+    model = Model(variant=args.mtype, base_checkpoint=args.model, adapters_load_from=adapters_load_from,
                   use_ctrl_codes=args.ctrl_tokens,
                   task_id="[PRX]", all_tasks=["[CLF]", "[PRX]", "[RGN]", "[QRY]"])
     evaluator = S2ANDEvaluator(args.data_dir, model)

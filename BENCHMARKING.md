@@ -1,5 +1,4 @@
-## Reproducing Results
-
+## Benchmarking
 We provide our trained models on the HuggingFace models [hub](https://huggingface.co/models?search=scirepeval) to replicate the results in Table 2 from the paper.
 
 |Model|In-Train|Out-of-Train|SciDocs|Average|
@@ -66,3 +65,42 @@ Setup S2AND as in [repo](https://github.com/allenai/S2AND) and change the config
 Run the following command:
 
     cd S2AND; python scripts/custom_block_transfer_experiment_seed_paper.py --custom_block_path <data>/blocks --experiment_name mini_customblock_phantasm_v1 --exclude_medline --emb_suffix _<suffix>.pkl
+
+### Filtering Tasks
+#### By Name
+```
+from scirepeval import SciRepEval
+from evaluation.encoders import Model
+
+#Base/MTL CLS
+model = Model(variant="default", base_checkpoint="allenai/specter")
+
+#MTL CTRL
+model = Model(variant="default", base_checkpoint="allenai/scirepeval_ctrl", use_ctrl_codes=True)
+
+#PALs
+model = Model(variant="pals", base_checkpoint="allenai/scirepeval_pals", all_tasks=["[CLF]", "[QRY]", "[RGN]", "[PRX]"])
+
+#Adapters/Fusion
+adapters_dict = {"[CLF]": "allenai/scirepeval_adapters_clf", "[QRY]": "allenai/scirepeval_adapters_qry", "[RGN]": "allenai/scirepeval_adapters_rgn", "[PRX]": "allenai/scirepeval_prx"}
+model = Model(variant=<"adapters"|"fusion">, base_checkpoint="malteos/scincl", adapters_load_from=adapters_dict, all_tasks=["[CLF]", "[QRY]", "[RGN]", "[PRX]"])
+
+#Choose the task names from scirepeval_tasks.jsonl
+evaluator = SciRepEval(task_list=["Biomimicry", "DRSM", "TREC-CoVID", "Feeds-1"])
+evaluator.evaluate(model, <output jsonl path>) 
+```
+
+#### By Task Type
+```
+from scirepeval import SciRepEval
+from evaluation.encoders import Model
+
+#Create a model as in previous example
+model = Model(variant="default", base_checkpoint="allenai/specter")
+
+#Choose the task types from (classification, regression, proximity and adhoc_search)
+evaluator = SciRepEval(task_formats=["classification", "regression"])
+evaluator.evaluate(model, <output jsonl path>) 
+```
+
+

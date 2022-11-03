@@ -10,6 +10,12 @@ conda create -n scirepeval python=3.8
 conda activate scirepeval
 pip install -r requirements.txt
 ```
+## Usage
+Please refer to the following for further usage:
+
+[Training](https://github.com/allenai/scirepeval/blob/main/training/Training.MD)
+
+[Benchmarking](https://github.com/allenai/scirepeval/blob/main/BENCHMARKING.md)
 
 ## Benchmark Details
 SciRepEval consists of 25 scientific document tasks to train and evaluate scientific document representation models. The tasks are divided across 4 task formats- classification **CLF**, regression **RGN**, proximity (nearest neighbors) retrieval **PRX** and ad-hoc search **SRCH**.  The table below gives a brief overview of the tasks with their HuggingFace datasets config names, if applicable. 
@@ -63,11 +69,3 @@ Since we want to evaluate document representations, every dataset consists of tw
 *S2AND requires the evaluation dataset in a specific format so to evaluate your model on the task please follow [these](https://github.com/allenai/scirepeval/blob/main/BENCHMARKING.md#s2and) instructions.
 
 **Combinations of multiple datasets - [1](https://mimno.infosci.cornell.edu/data/nips_reviewer_data.tar.gz), [2](https://web.archive.org/web/20211015210300/http://sifaka.cs.uiuc.edu/ir/data/review.html), [3](https://ieee-dataport.org/open-access/retrorevmatchevalicip16-retrospective-reviewer-matching-dataset-and-evaluation-ieee-icip), also dataset of papers authored by potential reviewers is required for evaluation; hence the multiple dataset configs.
-
-
-Please refer to the following for further usage:
-
-[Training](https://github.com/allenai/scirepeval/blob/main/training/Training.MD)
-
-[Benchmarking](https://github.com/allenai/scirepeval/blob/main/BENCHMARKING.md)
-

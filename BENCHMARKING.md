@@ -23,7 +23,7 @@ The following are used as task ids in the code and serve as either control codes
             "adhoc_search": {"query": "[QRY]", "candidates": "[PRX]"}}``
 
 Execute one of the following commands to evaluate a model on SciRepEval:
-
+<a name="models"></a>
 **Base/MTL CLS**
 ```bash
 python scirepeval.py --m <huggingface model name/local checkpoint path>

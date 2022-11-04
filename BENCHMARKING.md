@@ -62,7 +62,7 @@ aws s3 sync s3://ai2-s2-research-public/scirepeval/test/s2and .
 ```
 **Step 2** 
 
-Generate Embeddings for all the paper blocks
+Generate Embeddings for all the paper blocks. The various model parameters are same as scirepeval.py, provide those to initialize the required model type.
 ```bash
 python s2and_embeddings.py --mtype <model type> --m <model checkpoint> --adapters-dir <adapters dir or chkpt> --data-dir <path to S2AND data> --suffix <suffix for embedding file name>
 ```

@@ -104,7 +104,7 @@ evaluator.evaluate(model, <output jsonl path>)
 from scirepeval import SciRepEval
 from evaluation.encoders import Model
 
-#Create a model as in previous example
+#Create a model instance as in previous example
 model = Model(variant="default", base_checkpoint="allenai/specter")
 
 #Choose the task types from (classification, regression, proximity and adhoc_search)

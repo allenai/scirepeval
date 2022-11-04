@@ -50,6 +50,56 @@ python scirepeval.py --mtype fusion --m <huggingface base model name/local check
 
 The script generates embeddings and evaluates on each task as per the metric mentioned in the paper. By default the result report is created in `<ROOT>/scirepeval_results.json`
 
+### Sample Report
+```json
+{
+    "Biomimicry": {
+        "complete": {
+            "f1": 71.18
+        },
+        "few_shot": [
+            {
+                "sample_size": 64,
+                "results": {
+                    "f1": 38.514
+                }
+            },
+            {
+                "sample_size": 16,
+                "results": {
+                    "f1": 22.3444
+                }
+            }
+        ]
+    },
+    "DRSM": {
+        "complete": {
+            "f1_macro": 76.36
+        },
+        "few_shot": [
+            {
+                "sample_size": 64,
+                "results": {
+                    "f1_macro": 61.842000000000006
+                }
+            },
+            {
+                "sample_size": 24,
+                "results": {
+                    "f1_macro": 53.21420000000001
+                }
+            }
+        ]
+    },
+    "Feeds-1": {
+        "map": 81.03
+    },
+    "Feeds Title": {
+        "map": 78.85
+    }
+}
+```
+
 <a name="s2and"></a>
 ### S2AND evaluation
 S2AND evaluation requires the data to be cached locally in a specific format. We provide a helper script to generate the document representations for S2AND before evaluating them.

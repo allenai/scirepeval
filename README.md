@@ -15,6 +15,8 @@ Please refer to the following for further usage:
 
 [Training](https://github.com/allenai/scirepeval/blob/main/training/TRAINING.md)
 
+[Evaluation](https://github.com/allenai/scirepeval/blob/main/evaluation/EVALUATION.md)
+
 [Benchmarking](https://github.com/allenai/scirepeval/blob/main/BENCHMARKING.md)
 
 ## Benchmark Details

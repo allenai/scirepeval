@@ -13,7 +13,7 @@ pip install -r requirements.txt
 ## Usage
 Please refer to the following for further usage:
 
-[Training](https://github.com/allenai/scirepeval/blob/main/training/TRAINING.MD)
+[Training](https://github.com/allenai/scirepeval/blob/main/training/TRAINING.md)
 
 [Benchmarking](https://github.com/allenai/scirepeval/blob/main/BENCHMARKING.md)
 

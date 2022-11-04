@@ -29,7 +29,7 @@ aws s3 sync s3://ai2-s2-research-public/scirepeval/test .
 The AWS CLI commands can be run with the `--dryrun`  flag to list the files being copied. The entire dataset is ~24 GB in size.
 
 #### HuggingFace Datasets
-The training, validation and evaluation data is available at [allenai/scirepeval](https://huggingface.co/datasets/allenai/scirepeval), while the test examples are available at [allenai/scirepeval_test](https://huggingface.co/datasets/allenai/scirepeval_test).
+The training, validation and raw evaluation data is available at [allenai/scirepeval](https://huggingface.co/datasets/allenai/scirepeval), while the labelled test examples are available at [allenai/scirepeval_test](https://huggingface.co/datasets/allenai/scirepeval_test).
 
 ```python
 import datasets

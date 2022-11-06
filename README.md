@@ -24,7 +24,7 @@ SciRepEval consists of 25 scientific document tasks to train and evaluate scient
 The benchmark dataset can be downloaded from AWS S3 or HuggingFace as follows:
 #### AWS S3 via CLI
 ```bash
-mkdir scirepeval_data && mkdir scirepeval_data/train && scirepeval_data/test && cd scirepeval_data
+mkdir scirepeval_data && mkdir scirepeval_data/train && mkdir scirepeval_data/test && cd scirepeval_data
 aws s3 --no-sign-request sync s3://ai2-s2-research-public/scirepeval/train train
 aws s3 --no-sign-request sync s3://ai2-s2-research-public/scirepeval/test test
 ```

@@ -26,26 +26,26 @@ Execute one of the following commands to evaluate a model on SciRepEval:
 <a name="models"></a>
 **Base/MTL CLS**
 ```bash
-python scirepeval.py --m <huggingface model name/local checkpoint path>
+python scirepeval.py --m allenai/specter
 ```
 **MTL CTRL**
 ```bash
-python scirepeval.py --m <huggingface model name/local checkpoint path> --ctrl-tokens
+python scirepeval.py --m allenai/scirepeval_ctrl --ctrl-tokens
 ```
 **PALs**
 ```bash
-python scirepeval.py --mtype pals --m <huggingface model name/local checkpoint path>
+python scirepeval.py --mtype pals --m allenai/scirepeval_pals
 ```
 **Adapters**
 ```bash
-python scirepeval.py --mtype adapters --m <huggingface base model name/local checkpoint path> --adapters-dir <local checkpoint path with adapter module weights>
+python scirepeval.py --mtype adapters --m malteos/scincl --adapters-dir <local checkpoint directory with adapter module weights>
 									OR
-python scirepeval.py --mtype adapters --m <huggingface base model name/local checkpoint path> --adapters-chkpt '{"[CLF]": "<huggingface adapter>, "[QRY]": <huggingface adapter>, "[RGN]": <huggingface adapter>, "[PRX]": <huggingface adapter>}'
+python scirepeval.py --mtype adapters --m malteos/scincl --adapters-chkpt '{"[CLF]": "allenai/scirepeval_adapters_clf", "[QRY]": "allenai/scirepeval_adapters_qry", "[RGN]": "allenai/scirepeval_adapters_rgn", "[PRX]": "allenai/scirepeval_adapters_prx"}'
 ```
 
 **Fusion**
 ```bash
-python scirepeval.py --mtype fusion --m <huggingface base model name/local checkpoint path> --adapters-dir <local checkpoint path with fusion module weights>
+python scirepeval.py --mtype fusion --m <huggingface base model name/local checkpoint path> --adapters-dir <local checkpoint directory with fusion module weights>
 ```
 
 The script generates embeddings and evaluates on each task as per the metric mentioned in the paper. By default the result report is created in `<ROOT>/scirepeval_results.json`
@@ -108,7 +108,8 @@ S2AND evaluation requires the data to be cached locally in a specific format. We
 
 Obtain the data from AWS S3:
 ```bash
-aws s3 sync s3://ai2-s2-research-public/scirepeval/test/s2and .
+mkdir s2and && cd s2and
+aws s3 --no-sign-request sync s3://ai2-s2-research-public/scirepeval/test/s2and .
 ```
 **Step 2** 
 
@@ -146,7 +147,7 @@ model = Model(variant=<"adapters"|"fusion">, base_checkpoint="malteos/scincl", a
 
 #Choose the task names from scirepeval_tasks.jsonl
 evaluator = SciRepEval(task_list=["Biomimicry", "DRSM", "TREC-CoVID", "Feeds-1"])
-evaluator.evaluate(model, <output jsonl path>) 
+evaluator.evaluate(model, "scirepeval_results.json") 
 ```
 
 #### By Task Type
@@ -159,7 +160,7 @@ model = Model(variant="default", base_checkpoint="allenai/specter")
 
 #Choose the task types from (classification, regression, proximity and adhoc_search)
 evaluator = SciRepEval(task_formats=["classification", "regression"])
-evaluator.evaluate(model, <output jsonl path>) 
+evaluator.evaluate(model, "scirepeval_results.json") 
 ```
 
 

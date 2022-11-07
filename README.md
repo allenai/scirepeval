@@ -13,11 +13,11 @@ pip install -r requirements.txt
 ## Usage
 Please refer to the following for further usage:
 
-[Training](https://github.com/allenai/scirepeval/blob/main/training/TRAINING.md)
+[Training](https://github.com/allenai/scirepeval/blob/main/training/TRAINING.md) - Train multi-task/multi-format transformer models or adapter modules
 
-[Evaluation](https://github.com/allenai/scirepeval/blob/main/evaluation/EVALUATION.md)
+[Evaluation](https://github.com/allenai/scirepeval/blob/main/evaluation/EVALUATION.md) - Evaluate trained models on custom tasks/customize existing evaluation config for SciRepEval benchmark tasks
 
-[Benchmarking](https://github.com/allenai/scirepeval/blob/main/BENCHMARKING.md)
+[Benchmarking](https://github.com/allenai/scirepeval/blob/main/BENCHMARKING.md) - Simply evaluate models(pretrained from HuggingFace/local checkpoints) on SciRepEval 
 
 ## Benchmark Details
 SciRepEval consists of 25 scientific document tasks to train and evaluate scientific document representation models. The tasks are divided across 4 task formats- classification **CLF**, regression **RGN**, proximity (nearest neighbors) retrieval **PRX** and ad-hoc search **SRCH**.  The table below gives a brief overview of the tasks with their HuggingFace datasets config names, if applicable. 

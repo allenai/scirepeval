@@ -18,8 +18,8 @@ Define the tasks and associated metadata in a json config file. Refer to [sample
     "multi_label": true,
     "data_files":
     {
-        "train": "../../scirepeval_data/train/fos/train.jsonl",
-        "dev": "../../scirepeval_data/train/fos/val.jsonl"
+        "train": "<scirepeval_data_dir>/train/fos/train.jsonl",
+        "dev": "<scirepeval_data_dir>/train/fos/val.jsonl"
     },
     "labels": "sample_data/fos_labels.txt",
     "labels_field": "labels_text",

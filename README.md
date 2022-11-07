@@ -17,7 +17,7 @@ Please refer to the following for further usage:
 
 [Evaluation](https://github.com/allenai/scirepeval/blob/main/evaluation/EVALUATION.md) - Evaluate trained models on custom tasks/customize existing evaluation config for SciRepEval benchmark tasks
 
-[Benchmarking](https://github.com/allenai/scirepeval/blob/main/BENCHMARKING.md) - Simply evaluate models(pretrained from HuggingFace/local checkpoints) on SciRepEval 
+[Benchmarking](https://github.com/allenai/scirepeval/blob/main/BENCHMARKING.md) - Simply evaluate models(pretrained from HuggingFace/local checkpoints) on SciRepEval and generate a report
 
 ## Benchmark Details
 SciRepEval consists of 25 scientific document tasks to train and evaluate scientific document representation models. The tasks are divided across 4 task formats- classification **CLF**, regression **RGN**, proximity (nearest neighbors) retrieval **PRX** and ad-hoc search **SRCH**.  The table below gives a brief overview of the tasks with their HuggingFace datasets config names, if applicable. 

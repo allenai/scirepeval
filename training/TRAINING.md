@@ -9,6 +9,10 @@ Post the quick setup step in ReadMe, you can choose to train the following base 
  4. [Adapters and Fusion](https://github.com/adapter-hub/adapter-transformers) - Task specific adapters
 
 #### Step 1
+```bash
+cd ${ROOT}/training
+```
+
 Define the tasks and associated metadata in a json config file. Refer to [sample_data/tasks_config.json](https://github.com/allenai/scirepeval/blob/main/training/sample_data/tasks_config.json) for SciRepEval training config**.
 
 ** The example config below assumes the training data has been downloaded locally and uses the `"data_files"` property. For using HuggingFace datasets please follow the notes following the example config and use the `"dataset"` property.

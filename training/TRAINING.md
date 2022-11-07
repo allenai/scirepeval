@@ -16,18 +16,20 @@ Define the tasks and associated metadata in a json config file. Refer to [sample
     "name": "fos",
     "type": "classification",
     "multi_label": true,
-    "data_files": {
-      "train": "../../scirepeval_data/train/fos/train.jsonl",
-      "dev": "../../scirepeval_data/train/fos/val.jsonl"
+    "data_files":
+    {
+        "train": "../../scirepeval_data/train/fos/train.jsonl",
+        "dev": "../../scirepeval_data/train/fos/val.jsonl"
     },
     "labels": "sample_data/fos_labels.txt",
     "labels_field": "labels_text",
     "ctrl_token": "[CLF]",
-    "sample_size": {
-      "train": 600000,
-      "dev": 40000
+    "sample_size":
+    {
+        "train": 600000,
+        "dev": 40000
     }
-  }
+}
 ```
 **Note**
 

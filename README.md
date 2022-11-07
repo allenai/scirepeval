@@ -35,7 +35,11 @@ The training, validation and raw evaluation data is available at [allenai/scirep
 
 ```python
 import datasets
-dataset = datsets.load_dataset(<dataset name>, <hf config name>)
+#training/validation/eval metadata
+dataset = datsets.load_dataset(allenai/scirepeval, <hf config name>)
+
+#labelled test examples
+dataset = datsets.load_dataset(allenai/scirepeval_test, <hf config name>)
 ```
 
 Since we want to evaluate document representations, every dataset consists of two parts: test metadata (text for representation generation available under allenai/scirepeval) and labelled examples (available under allenai/scirepeval_test)

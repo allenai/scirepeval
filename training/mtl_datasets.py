@@ -20,11 +20,11 @@ datasets.logging.set_verbosity_error()
 
 
 class AbstractMultiTaskDataset(ABC, IterableDataset):
-    def __init__(self, task_name: str, data_src: Union[Dict[str, str], Tuple[str, str]], tokenizer: PreTrainedTokenizer,
+    def __init__(self, task_name: str, data: datasets.Dataset, tokenizer: PreTrainedTokenizer,
                  fields: List[str],
                  sample_size, ctrl_token: str, max_len: int):
         self.task_name = task_name
-        self.data_src = data_src
+        self.data = data
         self.tokenizer = tokenizer
         self.fields = fields
         self.sample_size = sample_size
@@ -59,21 +59,7 @@ class AbstractMultiTaskDataset(ABC, IterableDataset):
         self._effective_sample_size = val
 
     def __iter__(self) -> Iterator[T_co]:
-        # data is assumed to be a json file
-        # try:
-        #     file_iter = open(self.data_src, "rb")
-        #     json_parse = ijson.items(file_iter, 'item')
-        #     peek = next(json_parse)
-        #     json_parse = itertools.chain([peek], json_parse)
-        # except:
-        #     file_iter = open(self.data_src, "rb")
-        #     json_parse = ijson.items(file_iter, '', multiple_values=True)
-        if type(self.data_src) == dict:
-            json_parse = datasets.load_dataset("json", data_files=self.data_src, streaming=True)[
-                next(iter(self.data_src.keys()))]
-        else:
-            json_parse = datasets.load_dataset(**self.data_src[0], split=self.data_src[1], streaming=True)
-        json_parse = iter(json_parse)
+        json_parse = iter(self.data)
         if self.sample_size == -1:
             map_itr = map(self.preprocess, json_parse)
         else:

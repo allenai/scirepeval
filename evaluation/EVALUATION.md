@@ -65,7 +65,7 @@ else:
  5. Classification tasks can be additionally evaluated in few shot mode, provide a list of `"sample_size"` and `"iterations"`.
  6. To avoid generating embeddings in every run, these can be cached and re-loaded in future runs by providing the `"embedding"` config as-
  ```json
- "embeddings":{"save":<save jsonl path>} OR "embeddings":{"load":<load jsonl path>}
+ "embeddings":{"save":"<embeddings_dir>/<embeddings_file>.jsonl"} OR "embeddings":{"load":<embeddings_dir>/<embeddings_file>.jsonl}
  ``` 
 
 #### Custom Tasks

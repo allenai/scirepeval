@@ -246,10 +246,10 @@ class CustomChainDataset(ChainDataset):
 
 
 class RegressionDataset(AbstractMultiTaskDataset):
-    def __init__(self, task_name: str, data_src: Union[Dict[str, str], Tuple[str, str]], tokenizer: PreTrainedTokenizer,
+    def __init__(self, task_name: str, data: datasets.Dataset, tokenizer: PreTrainedTokenizer,
                  fields: List[str],
                  label_field: str, sample_size=-1, ctrl_token: str = None, max_len: int = 512):
-        super().__init__(task_name, data_src, tokenizer, fields, sample_size, ctrl_token, max_len)
+        super().__init__(task_name, data, tokenizer, fields, sample_size, ctrl_token, max_len)
         self.label_field = label_field
 
     def preprocess(self, line: Dict[str, str]) -> Tuple[str, Dict[str, BatchEncoding], Union[int, float]]:
@@ -272,17 +272,21 @@ if __name__ == '__main__':
     with open("sample_data/mesh_descriptors.txt", "r") as f:
         labels = f.readlines()
     labels = {l.strip(): i for i, l in enumerate(labels)}
-    cls_dataset = ClassificationDataset(task_name="mesh", data_src="../../scidocs/data/mesh_plus/train.json",
+    cls_dataset = ClassificationDataset(task_name="mesh", data=
+    datasets.load_dataset("json", data_files="../../scidocs/data/mesh_plus/train.json", streaming=True)["train"],
                                         tokenizer=tokenizer,
                                         fields=["title", "abstract"],
                                         label_field="descriptor", labels=labels, sample_size=400000)
-    trip_dataset = IRDataset(task_name="s2and", data_src="sample_data/s2and_small.json",
+    trip_dataset = IRDataset(task_name="s2and", data=
+    datasets.load_dataset("json", data_files="sample_data/s2and_small.json", streaming=True)["train"],
                              tokenizer=tokenizer,
                              fields=["title", "abstract"], sample_size=400000)
-    specter_dataset = TripletDataset(task_name="specter", data_src="../../scidocs/data/specter_triplets/train.json",
+    specter_dataset = TripletDataset(task_name="specter", data=
+    datasets.load_dataset("json", data_files="../../scidocs/data/specter_triplets/train.json", streaming=True)["train"],
                                      tokenizer=tokenizer,
                                      fields=["title", "abstract"], sample_size=400000)
-    search_dataset = IRDataset(task_name="search", data_src="sample_data/search_small.jsonl",
+    search_dataset = IRDataset(task_name="search", data=
+    datasets.load_dataset("json", data_files="sample_data/search_small.jsonl", streaming=True)["train"],
                                tokenizer=tokenizer,
                                fields=["title", "abstract", "venue", "year"], sample_size=100)
     with open("sample_data/fos_labels.txt", "r") as f:

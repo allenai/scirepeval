@@ -65,16 +65,22 @@ else:
  5. Classification tasks can be additionally evaluated in few shot mode, provide a list of `"sample_size"` and `"iterations"`.
  6. To avoid generating embeddings in every run, these can be cached and re-loaded in future runs by providing the `"embedding"` config as-
  ```json
- "embeddings":{"save":"<embeddings_dir>/<embeddings_file>.jsonl"} OR "embeddings":{"load":<embeddings_dir>/<embeddings_file>.jsonl}
+ "embeddings":{"save":"<embeddings_dir>/<embeddings_file>.jsonl"}
  ``` 
+ 
+ OR
+ 
+ ```json
+  "embeddings":{"load":"<embeddings_dir>/<embeddings_file>.jsonl"}
+ ```
 
 #### Custom Tasks
 For evaluating on new tasks from any of the four task types in SciRepEval, create the task config json as above and either append it to **scirepeval_tasks.jsonl** or add it to a new config file.
 
 To evaluate on all tasks: 
-Select model parameters as in [here](https://github.com/allenai/scirepeval/blob/main/BENCHMARKING.md#models).
+Select model parameters as in [here](https://github.com/allenai/scirepeval/blob/main/BENCHMARKING.md#models). eg.
 ```bash
-python scirepeval.py --m <huggingface model name/local checkpoint path> --tasks-confg <tasks config file path> --output <output path>
+python scirepeval.py --m allenai/scirepeval_ctrl --ctrl-tokens --tasks-confg scirepeval_tasks.jsonl --output scirepeval_results.json
 ```
 OR
 
@@ -96,8 +102,8 @@ adapters_dict = {"[CLF]": "allenai/scirepeval_adapters_clf", "[QRY]": "allenai/s
 model = Model(variant=<"adapters"|"fusion">, base_checkpoint="malteos/scincl", adapters_load_from=adapters_dict, all_tasks=["[CLF]", "[QRY]", "[RGN]", "[PRX]"])
 
 #Choose the task names from scirepeval_tasks.jsonl
-evaluator = SciRepEval(tasks_config=<task config path>, task_list:Optional=[...], task_format:Optional=[...])
-evaluator.evaluate(model, <output jsonl path>) 
+evaluator = SciRepEval(tasks_config="scirepeval_tasks.jsonl", task_list:Optional=[...], task_format:Optional=[...])
+evaluator.evaluate(model, "scirepeval_results.json") 
 ```
 
 

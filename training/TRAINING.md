@@ -63,27 +63,27 @@ Define the tasks and associated metadata in a json config file. Refer to [sample
 To run the training script with default params, based upon the type of models you want to train run one of the following commands:
 **MTL CLS**
 ```bash
-python pl_training.py --gpu 2 <base model name/chkpoint path> <tokenizer name/chkpoint path> <expt name>
+python pl_training.py --gpu 2 --tasks-confg sample_data/tasks_config.json <base model name/chkpoint path> <tokenizer name/chkpoint path> <expt name>
 ```
 
 **MTL CTRL**
 ```bash
-python pl_training.py --gpu 2 --ctrl-tokens <base model name/chkpoint path> <tokenizer name/chkpoint path> <expt name>
+python pl_training.py --gpu 2 --ctrl-tokens --tasks-confg sample_data/tasks_config.json <base model name/chkpoint path> <tokenizer name/chkpoint path> <expt name>
 ```
 
 **PALs**
 
 Requires pals config file for additional model configuration. Files present under `bert_pals_config` directory.
 ```bash
-python pl_training.py --gpu 2 --pals-config pals.config.json <base model name/chkpoint path> <tokenizer name/chkpoint path> <expt name>
+python pl_training.py --gpu 2 --pals-config pals.config.json --tasks-confg sample_data/tasks_config.json <base model name/chkpoint path> <tokenizer name/chkpoint path> <expt name>
 ```
 **Adapters**
 ```bash
-python pl_training.py --gpu 2 --ctrl-tokens --adapter-type single <base model name/chkpoint path> <tokenizer name/chkpoint path> <expt name>
+python pl_training.py --gpu 2 --ctrl-tokens --adapter-type single --tasks-confg sample_data/tasks_config.json <base model name/chkpoint path> <tokenizer name/chkpoint path> <expt name>
 ```
 **Fusion**
 
-    python pl_training.py --gpu 2 --ctrl-tokens --adapter-type fusion <base model name/chkpoint path> <tokenizer name/chkpoint path> <expt name>
+    python pl_training.py --gpu 2 --ctrl-tokens --adapter-type fusion --tasks-confg sample_data/tasks_config.json <base model name/chkpoint path> <tokenizer name/chkpoint path> <expt name>
 
 ### Additional Parameters
 

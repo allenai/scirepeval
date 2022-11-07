@@ -147,17 +147,18 @@ class SupervisedEvaluator(Evaluator):
                     logger.warning(
                         f"Metric {m} not found...skipping, try one of {SUPSERVISED_TASK_METRICS[self.task].keys()}")
         else:
+            metric_task = SupervisedTask.CLASSIFICATION
             for m in self.metrics:
                 split_m = m.split("_")
-                if split_m[0] in SUPSERVISED_TASK_METRICS[self.task]:
+                if split_m[0] in SUPSERVISED_TASK_METRICS[metric_task]:
                     if len(split_m) > 1:
-                        result = SUPSERVISED_TASK_METRICS[self.task][split_m[0]](test, preds, average=split_m[1])
+                        result = SUPSERVISED_TASK_METRICS[metric_task][split_m[0]](test, preds, average=split_m[1])
                     else:
-                        result = SUPSERVISED_TASK_METRICS[self.task][split_m[0]](test, preds)
+                        result = SUPSERVISED_TASK_METRICS[metric_task][split_m[0]](test, preds)
                     results[m] = np.round(100 * result, 2)
                 else:
                     logger.warning(
-                        f"Metric {m} not found...skipping, try one of {SUPSERVISED_TASK_METRICS[self.task].keys()}")
+                        f"Metric {m} not found...skipping, try one of {SUPSERVISED_TASK_METRICS[metric_task].keys()}")
         return results
 
 

@@ -5,7 +5,7 @@ sys.path.append('../')
 
 import argparse
 from typing import Dict, Optional, Any
-
+import datasets
 import pytorch_lightning as pl
 import torch
 import torch.nn
@@ -248,8 +248,12 @@ class SciRepTrain(pl.LightningModule):
             dataset_name = (task.dataset, hf_split)
             data_src = data_file if data_file else dataset_name
             op_token = task.ctrl_token if self.use_ctrl_tokens else None
-
-            kwargs = {"data_src": data_src, "ctrl_token": op_token, "max_len": self.max_len, "task_name": t_name,
+            if type(data_src) == dict:
+                data = datasets.load_dataset("json", data_files=self.data_src, streaming=True)[
+                    next(iter(self.data_src.keys()))]
+            else:
+                data = datasets.load_dataset(**self.data_src[0], split=self.data_src[1], streaming=True)
+            kwargs = {"data": data, "ctrl_token": op_token, "max_len": self.max_len, "task_name": t_name,
                       "tokenizer": self.tokenizer, "fields": task.input_fields,
                       "sample_size": task.sample_size[split] if type(task.sample_size) == dict else task.sample_size}
 

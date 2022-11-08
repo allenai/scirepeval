@@ -135,4 +135,4 @@ optional arguments:
 --checkpoint CHECKPOINT resume from checkpoint path
 ```
 
-TensorBoard logs and checkpoints are written to `<output>/<version>` directory.
+TensorBoard logs and checkpoints are written to `<output>/full_run/<version>` directory, by default `./lightning_logs/full_run/<expt name>`.

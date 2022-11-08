@@ -143,7 +143,7 @@ def load_tasks(tasks_config_file: str = "sample_data/tasks_config.json", hidden_
                 if use_contrastive:
                     task["contrastive_loss"] = SCLLoss()
         elif task["type"] == "regression":
-            task["head"] = TaskHead(num_labels=1)
+            task["head"] = TaskHead(num_labels=1, dim=hidden_size)
             task["loss"] = nn.MSELoss(reduction="none")
         else:
             task["loss"] = TripletLoss(reduction="none")

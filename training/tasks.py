@@ -121,7 +121,7 @@ class TripletLoss(nn.Module):
             raise TypeError(f"Unrecognized option for `reduction`:{self.reduction}")
 
 
-def load_tasks(tasks_config_file: str = "sample_data/tasks_config.json") -> Dict[str, TaskFamily]:
+def load_tasks(tasks_config_file: str = "sample_data/tasks_config.json", hidden_size=768) -> Dict[str, TaskFamily]:
     def load_labels(labels_file: str) -> Dict[str, str]:
         with open(labels_file, "r") as f:
             labels = f.readlines()
@@ -134,7 +134,7 @@ def load_tasks(tasks_config_file: str = "sample_data/tasks_config.json") -> Dict
     for task in task_config:
         if task["type"] == "classification":
             task["labels"] = load_labels(task["labels"])
-            task["head"] = TaskHead(num_labels=len(task["labels"]))
+            task["head"] = TaskHead(num_labels=len(task["labels"]), dim=hidden_size)
             if task.get("multi_label"):
                 task["loss"] = nn.BCEWithLogitsLoss(reduction="none")
             else:

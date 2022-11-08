@@ -1,5 +1,5 @@
 import sys
- 
+
 # setting path
 sys.path.append('../')
 
@@ -17,7 +17,7 @@ from pytorch_lightning.utilities.types import TRAIN_DATALOADERS, EVAL_DATALOADER
 from torch.distributed import ReduceOp
 from torch.utils.data import DataLoader
 from transformers import AdamW, get_linear_schedule_with_warmup
-from transformers import AutoTokenizer, AutoModel
+from transformers import AutoTokenizer, AutoModel, AutoConfig
 
 from adapter_fusion import AdapterFactory
 from bert_pals import BertPalsEncoder
@@ -85,13 +85,7 @@ class SciRepTrain(pl.LightningModule):
             print("Using Control Tokens", spl_ctrl_tokens)
             special_tokens_dict = {'additional_special_tokens': spl_ctrl_tokens}
             num_added_toks = self.tokenizer.add_special_tokens(special_tokens_dict)
-            # rand_noise = torch.mean(self.encoder.embeddings.word_embeddings.weight, dim=0).reshape(1, -1)
-            # rand_noise = torch.nn.functional.normalize(rand_noise, p=2.0, dim=1)
             self.encoder.resize_token_embeddings(len(self.tokenizer))
-            # if num_added_toks:
-            #     with torch.no_grad():
-            #         self.encoder.embeddings.word_embeddings.weight[-num_added_toks:,
-            #         :] += (self.encoder.embeddings.word_embeddings.weight[self.tokenizer.cls_token_id, :] + rand_noise)
         self.batch_size = batch_size
         self.init_lr = init_lr
         self.peak_lr = peak_lr
@@ -100,9 +94,10 @@ class SciRepTrain(pl.LightningModule):
 
     def forward(self, input_ids, attention_mask=None, token_idx=0, task_id=None):
         if not self.pals:
-            embedding = self.encoder(input_ids, attention_mask=attention_mask) if not self.adapters else self.encoder(input_ids,
-                                                                                                                      attention_mask=attention_mask,
-                                                                                                                      task_id=task_id)
+            embedding = self.encoder(input_ids, attention_mask=attention_mask) if not self.adapters else self.encoder(
+                input_ids,
+                attention_mask=attention_mask,
+                task_id=task_id)
             return embedding.last_hidden_state[:, token_idx, :]
         else:
             embedding = self.encoder(input_ids, attention_mask=attention_mask, task_id=task_id)
@@ -177,46 +172,8 @@ class SciRepTrain(pl.LightningModule):
             loss_per_task[self.task_idx[name]] = torch.mean(curr_loss)
         return loss_per_task
 
-    # def get_share_params(self):
-    #     return self.encoder.encoder.layer[-1]
-
-    # def backward(self, losses, optimizer, optimizer_idx, *args, **kwargs) -> None:
-    #     loss = torch.sum(losses)
-    #     loss.backward(retain_graph=True)
-    # losses = losses/self.loss_wt
-    # losses = sync_ddp_if_available(losses, reduce_op=ReduceOp.SUM)
-    # self.loss_wt.grad.data = self.loss_wt.grad.data * 0.0
-    # W = self.get_share_params()
-    # norms = []
-    # for i in range(losses.shape[0]):
-    #     # get the gradient of this task loss with respect to the shared parameters
-    #     gygw = torch.autograd.grad(losses[i], W.parameters(), retain_graph=True)
-    #     # compute the norm
-    #     reqd = sync_ddp_if_available(gygw[0], reduce_op="mean")
-    #     norms.append(torch.norm(torch.mul(self.loss_wt[i], reqd)))
-    # norms = torch.stack(norms)
-    # loss_ratio = losses.data.cpu().numpy()/(self.init_loss)
-    # inverse_train_rate = loss_ratio / np.mean(loss_ratio)
-    # mean_norm = np.mean(norms.data.cpu().numpy())
-    # constant_term = torch.tensor(mean_norm * (inverse_train_rate ** 1.5), requires_grad=False).cuda()
-    # grad_norm_loss = torch.sum(torch.abs(norms - constant_term))
-    # self.loss_wt.grad = torch.autograd.grad(grad_norm_loss, self.loss_wt, allow_unused=True)[0]
-
     def training_step(self, train_batch, batch_idx):
         loss_per_task = self.calc_loss(train_batch, batch_idx)
-        # if self.init_loss is None and self.opt._step_count >= self.warmup_steps:
-        #     init_vals = torch.ones(len(self.task_dict)).cuda().float()
-        #     self.init_loss = loss_per_task.data
-        #     self.init_loss = sync_ddp_if_available(self.init_loss, reduce_op=ReduceOp.SUM)
-        #     self.init_loss = torch.where(self.init_loss > 0, self.init_loss, init_vals)
-        #     print(self.init_loss)
-        # if self.init_loss is not None:
-        #     dist_loss_per_task = loss_per_task.clone().data
-        #     dist_loss_per_task = sync_ddp_if_available(dist_loss_per_task, reduce_op=ReduceOp.SUM)
-        #     loss_ratio = dist_loss_per_task/(self.init_loss)
-        #     inverse_train_rate = loss_ratio / torch.mean(loss_ratio)
-        #     self.loss_wt.data = len(self.task_dict) * F.softmax(inverse_train_rate, dim=-1)
-        # loss_per_task = torch.mul(self.loss_wt.cuda(), loss_per_task)
         loss = torch.sum(loss_per_task)
         self.log("train_loss", loss, prog_bar=True, on_step=True, on_epoch=True, batch_size=self.batch_size)
         self.log("lr", self.lr_schedulers().get_last_lr()[-1], on_step=True, on_epoch=False, prog_bar=True, logger=True)
@@ -235,9 +192,6 @@ class SciRepTrain(pl.LightningModule):
         self.log("val_loss", loss, on_step=True, on_epoch=False, prog_bar=True)
         self.log("avg_val_loss", loss, on_epoch=True, prog_bar=True, sync_dist=True, batch_size=self.batch_size)
         return {"val_loss": loss}
-
-    # def on_train_epoch_start(self) -> None:
-    #     self.init_loss = None
 
     def load_data(self, split) -> CustomChainDataset:
         hf_split = "validation" if split == "dev" else "train"
@@ -305,7 +259,8 @@ if __name__ == '__main__':
     parser = argparse.ArgumentParser()
     parser.add_argument('--tasks-confg', help='path to the task config file', default="sample_data/tasks_config.json")
     parser.add_argument('model', help='HuggingFace model to be used')
-    parser.add_argument('tokenizer', help='HuggingFace tokenizer to be used')
+    parser.add_argument('--tokenizer', help='HuggingFace tokenizer to be used (same as model name if not supplied)',
+                        default=None)
     parser.add_argument('--output', help='dir to save checkpoints and finetuned model', default="./lightning_logs/")
     parser.add_argument('version', help='experiment version')
     parser.add_argument('--pals-config', default=None, help='path to config file for PALS architecture')
@@ -323,8 +278,8 @@ if __name__ == '__main__':
     parser.add_argument('--checkpoint', default=None, help='resume from checkpoint path')
 
     args = parser.parse_args()
-
-    tasks_dict = load_tasks(args.tasks_confg)
+    mconfig = AutoConfig.from_pretrained(args.model)
+    tasks_dict = load_tasks(args.tasks_confg, mconfig.hidden_size)
     log_dir = args.output
     logger = TensorBoardLogger(
         save_dir=log_dir,
@@ -345,8 +300,8 @@ if __name__ == '__main__':
 
     model = SciRepTrain(batch_size=args.batch_size, init_lr=args.lr,
                         peak_lr=args.peak_lr,
-                        tokenizer=args.model,
-                        model=args.tokenizer,
+                        tokenizer=args.tokenizer if args.tokenizer else args.model,
+                        model=args.model,
                         warmup_steps=args.warmup,
                         use_ctrl_tokens=args.ctrl_tokens, task_dict=tasks_dict, pals_cfg=args.pals_config,
                         adapter_type=args.adapter_type, log_dir=filepath, max_len=args.max_len)

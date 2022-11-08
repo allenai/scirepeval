@@ -61,7 +61,7 @@ class SupervisedTask(Enum):
     REGRESSION = 3
 
 
-SUPSERVISED_TASK_METRICS = {
+SUPERVISED_TASK_METRICS = {
     SupervisedTask.CLASSIFICATION: {"f1": f1_score, "accuracy": accuracy_score, "precision": precision_score,
                                     "recall": recall_score},
     SupervisedTask.REGRESSION: {"mse": mean_squared_error, "r2": r2_score, "pearsonr": pearsonr,
@@ -110,10 +110,10 @@ class SupervisedEvaluator(Evaluator):
     def classify(self, x_train: np.ndarray, x_test: np.ndarray, y_train: np.ndarray, cv: int = 3,
                  n_jobs: int = 5):
 
-        Cs = np.logspace(-4, 2, 7)
+        Cs = np.logspace(-2, 2, 5)
         if self.task == SupervisedTask.MULTILABEL_CLASSIFICATION:
             estimator = LinearSVC(max_iter=10000)
-            svm = GridSearchCV(estimator=estimator, cv=cv, param_grid={'C': Cs}, n_jobs=n_jobs)
+            svm = GridSearchCV(estimator=estimator, cv=cv, param_grid={'C': Cs}, n_jobs=10)
             svm = OneVsRestClassifier(svm, n_jobs=1)
         else:
             estimator = LinearSVC(loss="squared_hinge", random_state=RANDOM_STATE)
@@ -138,27 +138,27 @@ class SupervisedEvaluator(Evaluator):
         results = dict()
         if self.task == SupervisedTask.REGRESSION:
             for m in self.metrics:
-                if m in SUPSERVISED_TASK_METRICS[self.task]:
-                    result = tuple(SUPSERVISED_TASK_METRICS[self.task][m](test, preds))[0]
+                if m in SUPERVISED_TASK_METRICS[self.task]:
+                    result = tuple(SUPERVISED_TASK_METRICS[self.task][m](test, preds))[0]
                     if m != "mse":
                         result = np.round(100 * result, 2)
                     results[m] = result
                 else:
                     logger.warning(
-                        f"Metric {m} not found...skipping, try one of {SUPSERVISED_TASK_METRICS[self.task].keys()}")
+                        f"Metric {m} not found...skipping, try one of {SUPERVISED_TASK_METRICS[self.task].keys()}")
         else:
             metric_task = SupervisedTask.CLASSIFICATION
             for m in self.metrics:
                 split_m = m.split("_")
-                if split_m[0] in SUPSERVISED_TASK_METRICS[metric_task]:
+                if split_m[0] in SUPERVISED_TASK_METRICS[metric_task]:
                     if len(split_m) > 1:
-                        result = SUPSERVISED_TASK_METRICS[metric_task][split_m[0]](test, preds, average=split_m[1])
+                        result = SUPERVISED_TASK_METRICS[metric_task][split_m[0]](test, preds, average=split_m[1])
                     else:
-                        result = SUPSERVISED_TASK_METRICS[metric_task][split_m[0]](test, preds)
+                        result = SUPERVISED_TASK_METRICS[metric_task][split_m[0]](test, preds)
                     results[m] = np.round(100 * result, 2)
                 else:
                     logger.warning(
-                        f"Metric {m} not found...skipping, try one of {SUPSERVISED_TASK_METRICS[metric_task].keys()}")
+                        f"Metric {m} not found...skipping, try one of {SUPERVISED_TASK_METRICS[metric_task].keys()}")
         return results
 
 

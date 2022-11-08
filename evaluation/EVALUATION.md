@@ -80,7 +80,7 @@ For evaluating on new tasks from any of the four task types in SciRepEval, creat
 To evaluate on all tasks: 
 Select model parameters as in [here](https://github.com/allenai/scirepeval/blob/main/BENCHMARKING.md#models). eg.
 ```bash
-python scirepeval.py --m allenai/scirepeval_ctrl --ctrl-tokens --tasks-confg scirepeval_tasks.jsonl --output scirepeval_results.json
+python scirepeval.py -m allenai/scirepeval_ctrl --ctrl-tokens --tasks-confg scirepeval_tasks.jsonl --output scirepeval_results.json
 ```
 OR
 

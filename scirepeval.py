@@ -111,7 +111,7 @@ class SciRepEval:
 
 if __name__ == "__main__":
     parser = argparse.ArgumentParser()
-    parser.add_argument('--tasks-confg', help='path to the task config file', default="scirepeval_tasks.jsonl")
+    parser.add_argument('--tasks-config', help='path to the task config file', default="scirepeval_tasks.jsonl")
     parser.add_argument('--mtype', help='Model variant to be used (default, pals, adapters, fusion)', default="default")
     parser.add_argument('--model', '-m', help='HuggingFace model to be used')
     parser.add_argument('--ctrl-tokens', action='store_true', default=False, help='use control codes for tasks')
@@ -124,5 +124,5 @@ if __name__ == "__main__":
     model = Model(variant=args.mtype, base_checkpoint=args.model, adapters_load_from=adapters_load_from,
                   use_ctrl_codes=args.ctrl_tokens,
                   task_id="", all_tasks=["[CLF]", "[QRY]", "[RGN]", "[PRX]"])
-    evaluator = SciRepEval(tasks_config=args.tasks_confg)
+    evaluator = SciRepEval(tasks_config=args.tasks_config)
     evaluator.evaluate(model, args.output)

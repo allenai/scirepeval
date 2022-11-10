@@ -257,7 +257,7 @@ class SciRepTrain(pl.LightningModule):
 
 if __name__ == '__main__':
     parser = argparse.ArgumentParser()
-    parser.add_argument('--tasks-confg', help='path to the task config file', default="sample_data/tasks_config.json")
+    parser.add_argument('--tasks-config', help='path to the task config file', default="sample_data/tasks_config.json")
     parser.add_argument('model', help='HuggingFace model to be used')
     parser.add_argument('--tokenizer', help='HuggingFace tokenizer to be used (same as model name if not supplied)',
                         default=None)
@@ -273,13 +273,13 @@ if __name__ == '__main__':
     parser.add_argument('--grad-accum', type=int, default=8, help='grad accumulation steps')
     parser.add_argument('--ctrl-tokens', action='store_true', default=False, help='use control codes for tasks')
     parser.add_argument('--gpu', type=int, default=None, help='number of gpus')
-    parser.add_argument('--max_len', type=int, default=512, help='max sequence length')
-    parser.add_argument('--val_check_interval', type=float, default=1.0, help='validation loop interval')
+    parser.add_argument('--max-len', type=int, default=512, help='max sequence length')
+    parser.add_argument('--val-check_interval', type=float, default=1.0, help='validation loop interval')
     parser.add_argument('--checkpoint', default=None, help='resume from checkpoint path')
 
     args = parser.parse_args()
     mconfig = AutoConfig.from_pretrained(args.model)
-    tasks_dict = load_tasks(args.tasks_confg, mconfig.hidden_size)
+    tasks_dict = load_tasks(args.tasks_config, mconfig.hidden_size)
     log_dir = args.output
     logger = TensorBoardLogger(
         save_dir=log_dir,

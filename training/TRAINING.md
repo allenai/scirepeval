@@ -66,27 +66,27 @@ Define the tasks and associated metadata in a json config file. Refer to [sample
 To run the training script with default params, based upon the type of models you want to train run one of the following commands:
 **MTL CLS**
 ```bash
-python pl_training.py --gpu 2 --tasks-confg sample_data/tasks_config.json <base model name/chkpoint path> <expt name>
+python pl_training.py --gpu 2 --tasks-config sample_data/tasks_config.json <base model name/chkpoint path> <expt name>
 ```
 
 **MTL CTRL**
 ```bash
-python pl_training.py --gpu 2 --ctrl-tokens --tasks-confg sample_data/tasks_config.json <base model name/chkpoint path> <expt name>
+python pl_training.py --gpu 2 --ctrl-tokens --tasks-config sample_data/tasks_config.json <base model name/chkpoint path> <expt name>
 ```
 
 **PALs**
 
 Requires pals config file for additional model configuration. Files present under `bert_pals_config` directory.
 ```bash
-python pl_training.py --gpu 2 --pals-config pals.config.json --tasks-confg sample_data/tasks_config.json <base model name/chkpoint path> <expt name>
+python pl_training.py --gpu 2 --pals-config pals.config.json --tasks-config sample_data/tasks_config.json <base model name/chkpoint path> <expt name>
 ```
 **Adapters**
 ```bash
-python pl_training.py --gpu 2 --ctrl-tokens --adapter-type single --tasks-confg sample_data/tasks_config.json <base model name/chkpoint path> <expt name>
+python pl_training.py --gpu 2 --ctrl-tokens --adapter-type single --tasks-config sample_data/tasks_config.json <base model name/chkpoint path> <expt name>
 ```
 **Fusion**
 
-    python pl_training.py --gpu 2 --ctrl-tokens --adapter-type fusion --tasks-confg sample_data/tasks_config.json <base model name/chkpoint path> <expt name>
+    python pl_training.py --gpu 2 --ctrl-tokens --adapter-type fusion --tasks-config sample_data/tasks_config.json <base model name/chkpoint path> <expt name>
 
 ### Additional Parameters
 
@@ -102,7 +102,7 @@ optional arguments:
 
 -h, --help  show this help message and exit
 
---tasks-confg TASKS_CONFG path to the task config file
+--tasks-config TASKS_CONFG path to the task config file
 
 --tokenizer TOKENIZER HuggingFace tokenizer to be used (same as model name if not supplied)
 
@@ -128,9 +128,9 @@ optional arguments:
 
 --gpu GPU number of gpus
 
---max_len MAX_LEN max sequence length
+--max-len MAX_LEN max sequence length
 
---val_check_interval VAL_CHECK_INTERVAL validation loop interval
+--val-check-interval VAL_CHECK_INTERVAL validation loop interval
 
 --checkpoint CHECKPOINT resume from checkpoint path
 ```

@@ -82,11 +82,11 @@ python pl_training.py --gpu 2 --pals-config pals.config.json --tasks-config samp
 ```
 **Adapters**
 ```bash
-python pl_training.py --gpu 2 --ctrl-tokens --adapter-type single --tasks-config sample_data/tasks_config.json <base model name/chkpoint path> <expt name>
+python pl_training.py --gpu 2 --adapter-type single --tasks-config sample_data/tasks_config.json <base model name/chkpoint path> <expt name>
 ```
 **Fusion**
 
-    python pl_training.py --gpu 2 --ctrl-tokens --adapter-type fusion --tasks-config sample_data/tasks_config.json <base model name/chkpoint path> <expt name>
+    python pl_training.py --gpu 2 --adapter-type fusion --tasks-config sample_data/tasks_config.json <base model name/chkpoint path> <expt name>
 
 ### Additional Parameters
 

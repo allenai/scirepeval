@@ -71,7 +71,7 @@ class AdapterFusion(AbstractAdapter):
         load_adapters_as = load_adapters_as.replace("fusion", "adapters") if type(
             load_adapters_as) == str else load_adapters_as
         for t_id in task_ids:
-            if os.path.isdir(load_adapters_as):
+            if type(load_adapters_as)==str and os.path.isdir(load_adapters_as):
                 self.model.load_adapter(f"{load_adapters_as}/{t_id}/", load_as=t_id)
             else:
                 self.model.load_adapter(load_adapters_as[t_id], load_as=t_id)

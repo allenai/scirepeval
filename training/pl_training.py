@@ -1,3 +1,4 @@
+import json
 import sys
 
 # setting path
@@ -45,7 +46,7 @@ class SciRepTrain(pl.LightningModule):
                  log_dir: str,
                  use_ctrl_tokens=False,
                  task_dict: Dict[str, TaskFamily] = None,
-                 pals_cfg: str = None, adapter_type: str = None, max_len: int = 512):
+                 pals_cfg: str = None, adapter_type: str = None, max_len: int = 512, load_adapters_as=None):
         super().__init__()
         self.task_dict = load_tasks() if not task_dict else task_dict
         print(self.task_dict.keys())
@@ -74,7 +75,11 @@ class SciRepTrain(pl.LightningModule):
         self.tokenizer = AutoTokenizer.from_pretrained(tokenizer)
 
         if self.adapters:
-            adapters_dir = f'{log_dir}/model/adapters/'
+            adapters_dir = f'{log_dir}/model/adapters/' if not load_adapters_as else load_adapters_as
+            try:
+                adapters_dir = json.loads(adapters_dir)
+            except:
+                pass
             self.encoder = AdapterFactory.get_adapter(model, task_ids,
                                                       adapter_type == "fusion", adapters_dir)
         else:
@@ -265,6 +270,8 @@ if __name__ == '__main__':
     parser.add_argument('version', help='experiment version')
     parser.add_argument('--pals-config', default=None, help='path to config file for PALS architecture')
     parser.add_argument('--adapter-type', default=None, help='type of adapter architecture (single/fusion)')
+    parser.add_argument('--adapters-chkpt', default=None,
+                        help='Adapters to be loaded either from a directory path or a dictionary of pretrained huggingface adapters with id')
     parser.add_argument('--batch-size', type=int, default=16, help='batch size')
     parser.add_argument('--lr', type=float, default=1e-4, help='initial learning rate')
     parser.add_argument('--peak-lr', type=float, default=5e-5, help='initial learning rate')
@@ -304,7 +311,8 @@ if __name__ == '__main__':
                         model=args.model,
                         warmup_steps=args.warmup,
                         use_ctrl_tokens=args.ctrl_tokens, task_dict=tasks_dict, pals_cfg=args.pals_config,
-                        adapter_type=args.adapter_type, log_dir=filepath, max_len=args.max_len)
+                        adapter_type=args.adapter_type, log_dir=filepath, max_len=args.max_len,
+                        load_adapters_as=args.adapters_chkpt)
 
     hparams = {"gpus": args.gpu, "val_check_interval": args.val_check_interval, "num_sanity_val_steps": 4,
                "max_epochs": args.epochs,

@@ -1,4 +1,4 @@
-from typing import List, Optional, Union
+from typing import List, Optional, Union, Dict
 from transformers.adapters import PfeifferConfig
 from transformers.adapters import AutoAdapterModel
 from transformers.adapters.composition import Fuse
@@ -9,7 +9,8 @@ import os
 
 class AdapterFactory:
     @staticmethod
-    def get_adapter(checkpoint_name: str, task_ids: List[str], fuse_adapters: bool, adapters_dir: str = None):
+    def get_adapter(checkpoint_name: str, task_ids: List[str], fuse_adapters: bool,
+                    adapters_dir: Union[str, Dict] = None):
         print(task_ids)
         if not fuse_adapters:
             return AdapterEncoder(checkpoint_name, task_ids)

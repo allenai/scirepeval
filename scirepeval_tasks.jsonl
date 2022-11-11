@@ -20,4 +20,4 @@
 {"name":"Citation Count","type":"regression","data":{"meta":{"name":"allenai/scirepeval","config":"cite_count"},"test":{"name":"allenai/scirepeval_test","config":"cite_count"}},"metrics":["kendalltau"]}
 {"name":"Publication Year","type":"regression","data":{"meta":{"name":"allenai/scirepeval","config":"pub_year"},"test":{"name":"allenai/scirepeval_test","config":"pub_year"}},"metrics":["kendalltau"]}
 {"name":"Fields of study","type":"classification","data":{"meta":{"name":"allenai/scirepeval","config":"fos"},"test":{"name":"allenai/scirepeval_test","config":"fos"}},"metrics":["f1_macro"],"few_shot":[{"sample_size":10,"iterations":50},{"sample_size":5,"iterations":100}],"multi_label":true}
-{"name":"MeSH","type":"classification","data":{"meta":{"name":"allenai/scirepeval","config":"mesh_descriptors"},"test":{"name":"allenai/scirepeval_test","config":"mesh"}},"metrics":["f1_macro"]}
+{"name":"MeSH","type":"classification","data":{"meta":{"name":"allenai/scirepeval","config":"mesh_descriptors"},"test":{"name":"allenai/scirepeval_test","config":"mesh_descriptors"}},"metrics":["f1_macro"]}

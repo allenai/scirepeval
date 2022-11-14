@@ -856,5 +856,6 @@ class BertPalsEncoder(torch.nn.Module):
         return self.bert.resize_token_embeddings(new_num_tokens)
 
     def save_pretrained(self, save_path: str):
+        os.makedirs(save_path, exist_ok=True)
         torch.save(self.bert.state_dict(), f'{save_path}/pytorch_model.bin')
         torch.save(self.bert.config.save_pretrained(save_path))

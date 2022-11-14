@@ -250,12 +250,7 @@ class SciRepTrain(pl.LightningModule):
             log_dir = f'{logger.save_dir}/{logger.name}/{logger.version}/checkpoints'
             self.tokenizer.save_pretrained(f'{log_dir}/tokenizer/')
             self.tokenizer.save_vocabulary(f'{log_dir}/tokenizer/')
-            if self.pals:
-                torch.save(self.encoder.state_dict(),
-                           f'{log_dir}/model/pytorch_model.bin')
-                self.encoder.bert_config.save_pretrained(f'{log_dir}/model/')
-            else:
-                self.encoder.save_pretrained(f'{log_dir}/model/')
+            self.encoder.save_pretrained(f'{log_dir}/model')
         except:
             print("Exception encountered while saving, try agin from checkpoint")
 

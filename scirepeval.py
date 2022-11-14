@@ -18,7 +18,7 @@ pl.seed_everything(42, workers=True)
 class SciRepEval:
 
     def __init__(self, tasks_config: str = "scirepeval_tasks.jsonl", task_list: List[str] = None,
-                 task_formats: List[str] = None):
+                 task_formats: List[str] = None, batch_size: int = 32):
         tasks_dict = dict()
         task_by_formats = dict()
         with open(tasks_config, encoding="utf-8") as f:
@@ -36,6 +36,7 @@ class SciRepEval:
             self.tasks = dict()
             for task_format in task_formats:
                 self.tasks.update({k: tasks_dict[k] for k in task_by_formats[task_format]})
+        self.batch_size = batch_size
 
     def evaluate(self, model: Model, output: str):
         final_results = dict()
@@ -59,8 +60,9 @@ class SciRepEval:
                 kwargs["test_dataset"] = testdata if type(testdata) != dict else (testdata["name"], testdata["config"])
 
             kwargs["metrics"] = tuple(task["metrics"])
-            if "batch_size" in task:
-                kwargs["batch_size"] = task["batch_size"]
+
+            kwargs["batch_size"] = task["batch_size"]  if "batch_size" in task else self.batch_size
+
             if "fields" in task:
                 kwargs["fields"] = task["fields"]
             save_path, load_path = None, None
@@ -114,6 +116,7 @@ if __name__ == "__main__":
     parser.add_argument('--tasks-config', help='path to the task config file', default="scirepeval_tasks.jsonl")
     parser.add_argument('--mtype', help='Model variant to be used (default, pals, adapters, fusion)', default="default")
     parser.add_argument('--model', '-m', help='HuggingFace model to be used')
+    parser.add_argument('--batch-size', type=int, default=32, help='batch size')
     parser.add_argument('--ctrl-tokens', action='store_true', default=False, help='use control codes for tasks')
     parser.add_argument('--adapters-dir', help='path to the adapter checkpoints', default=None)
     parser.add_argument('--adapters-chkpt', help='hf adapter names keyed on tasks', default=None, type=json.loads)

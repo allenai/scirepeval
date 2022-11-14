@@ -127,5 +127,5 @@ if __name__ == "__main__":
     model = Model(variant=args.mtype, base_checkpoint=args.model, adapters_load_from=adapters_load_from,
                   use_ctrl_codes=args.ctrl_tokens,
                   task_id="", all_tasks=["[CLF]", "[QRY]", "[RGN]", "[PRX]"])
-    evaluator = SciRepEval(tasks_config=args.tasks_config)
+    evaluator = SciRepEval(tasks_config=args.tasks_config, batch_size=args.batch_size)
     evaluator.evaluate(model, args.output)

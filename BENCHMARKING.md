@@ -46,7 +46,10 @@ python scirepeval.py --mtype adapters -m malteos/scincl --adapters-chkpt '{"[CLF
 
 **Fusion**
 ```bash
-python scirepeval.py --mtype fusion -m <huggingface base model name/local checkpoint path> --adapters-dir <local checkpoint directory with fusion module weights>
+python scirepeval.py --mtype fusion -m <huggingface base model name/local checkpoint path> --adapters-dir <local checkpoint directory with adapter module weights> --fusion-dir <local checkpoint directory with fusion module weights>
+									OR
+python scirepeval.py --mtype fusion -m <huggingface base model name/local checkpoint path> --adapters-chkpt '{"[CLF]": "allenai/scirepeval_adapters_clf", "[QRY]": "allenai/scirepeval_adapters_qry", "[RGN]": "allenai/scirepeval_adapters_rgn", "[PRX]": "allenai/scirepeval_adapters_prx"}' --fusion-dir <local checkpoint directory with fusion module weights>
+
 ```
 
 The script generates embeddings and evaluates on each task as per the metric mentioned in the paper. By default the result report is created in `<ROOT>/scirepeval_results.json`

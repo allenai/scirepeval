@@ -12,12 +12,13 @@ logger = logging.getLogger(__name__)
 
 class EncoderFactory:
     def __init__(self, base_checkpoint: str = None, adapters_load_from: Union[str, Dict] = None,
-                 all_tasks: list = None):
+                 fusion_load_from: str=None, all_tasks: list = None):
         self.base_checkpoint = f"{base_checkpoint}/model" if os.path.isdir(base_checkpoint) else base_checkpoint
         self.all_tasks = all_tasks
         self.adapters_load_from = f"{adapters_load_from}/model/adapters" if (type(
             adapters_load_from) == str and os.path.isdir(
             adapters_load_from)) else adapters_load_from
+        self.fusion_load_from = f"{fusion_load_from}/model"
 
     def get_encoder(self, variant: str):
         if variant == "default":
@@ -39,18 +40,18 @@ class EncoderFactory:
         elif variant == "fusion":
             # needs a base model and list of adapters/local adapter checkpoint paths to be fused
             return AdapterFusion(self.base_checkpoint, self.all_tasks, load_adapters_as=self.adapters_load_from,
-                                 inference=True)
+                                 fusion_dir=self.fusion_load_from, inference=True)
         else:
             raise ValueError("Unknown encoder type: {}".format(variant))
 
 
 class Model:
     def __init__(self, variant: str = "default", base_checkpoint: str = None,
-                 adapters_load_from: Union[str, Dict] = None,
+                 adapters_load_from: Union[str, Dict] = None, fusion_load_from: str = None,
                  use_ctrl_codes: bool = False, task_id: Union[str, Dict] = None,
                  all_tasks: list = None, hidden_dim: int = 768, max_len: int = 512):
         self.variant = variant
-        self.encoder = EncoderFactory(base_checkpoint, adapters_load_from, all_tasks).get_encoder(variant)
+        self.encoder = EncoderFactory(base_checkpoint, adapters_load_from, fusion_load_from, all_tasks).get_encoder(variant)
         if torch.cuda.is_available():
             self.encoder.to('cuda')
         self.encoder.eval()

@@ -61,7 +61,7 @@ class SciRepEval:
 
             kwargs["metrics"] = tuple(task["metrics"])
 
-            kwargs["batch_size"] = task["batch_size"]  if "batch_size" in task else self.batch_size
+            kwargs["batch_size"] = task["batch_size"] if "batch_size" in task else self.batch_size
 
             if "fields" in task:
                 kwargs["fields"] = task["fields"]
@@ -119,12 +119,14 @@ if __name__ == "__main__":
     parser.add_argument('--batch-size', type=int, default=32, help='batch size')
     parser.add_argument('--ctrl-tokens', action='store_true', default=False, help='use control codes for tasks')
     parser.add_argument('--adapters-dir', help='path to the adapter checkpoints', default=None)
+    parser.add_argument('--fusion-dir', help='path to the fusion checkpoints', default=None)
     parser.add_argument('--adapters-chkpt', help='hf adapter names keyed on tasks', default=None, type=json.loads)
     parser.add_argument('--output', help="path to the output file", default="scirepeval_results.json")
 
     args = parser.parse_args()
     adapters_load_from = args.adapters_dir if args.adapters_dir else args.adapters_chkpt
     model = Model(variant=args.mtype, base_checkpoint=args.model, adapters_load_from=adapters_load_from,
+                  fusion_load_from=args.fusion_dir,
                   use_ctrl_codes=args.ctrl_tokens,
                   task_id="", all_tasks=["[CLF]", "[QRY]", "[RGN]", "[PRX]"])
     evaluator = SciRepEval(tasks_config=args.tasks_config, batch_size=args.batch_size)

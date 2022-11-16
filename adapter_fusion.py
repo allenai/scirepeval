@@ -62,16 +62,19 @@ class AdapterEncoder(AbstractAdapter):
 
 
 class AdapterFusion(AbstractAdapter):
-    def __init__(self, checkpoint_name, task_ids: List[str], load_adapters_as: Union[str, dict], inference=False):
+    def __init__(self, checkpoint_name, task_ids: List[str], load_adapters_as: Union[str, dict], fusion_dir: str = None,
+                 inference=False):
         super(AdapterFusion, self).__init__(checkpoint_name)
         # Add a new adapter
         # load_adapters_as can str for a local path with adapters and fusion dirs or dict to be loaded from adapters hub,
         # the adapters hub version of single adapters should have the suffix _fusion
-        fusion_dir = load_adapters_as.replace("/adapters/", "") if inference and type(load_adapters_as) == str else None
+        if not fusion_dir:
+            fusion_dir = load_adapters_as.replace("/adapters/", "") if inference and type(
+                load_adapters_as) == str else None
         load_adapters_as = load_adapters_as.replace("fusion", "adapters") if type(
             load_adapters_as) == str else load_adapters_as
         for t_id in task_ids:
-            if type(load_adapters_as)==str and os.path.isdir(load_adapters_as):
+            if type(load_adapters_as) == str and os.path.isdir(load_adapters_as):
                 self.model.load_adapter(f"{load_adapters_as}/{t_id}/", load_as=t_id)
             else:
                 self.model.load_adapter(load_adapters_as[t_id], load_as=t_id)

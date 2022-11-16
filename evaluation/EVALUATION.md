@@ -97,9 +97,12 @@ model = Model(variant="default", base_checkpoint="allenai/scirepeval_ctrl", use_
 #PALs
 model = Model(variant="pals", base_checkpoint="allenai/scirepeval_pals", all_tasks=["[CLF]", "[QRY]", "[RGN]", "[PRX]"])
 
-#Adapters/Fusion
+#Adapters
 adapters_dict = {"[CLF]": "allenai/scirepeval_adapters_clf", "[QRY]": "allenai/scirepeval_adapters_qry", "[RGN]": "allenai/scirepeval_adapters_rgn", "[PRX]": "allenai/scirepeval_prx"}
-model = Model(variant=<"adapters"|"fusion">, base_checkpoint="malteos/scincl", adapters_load_from=adapters_dict, all_tasks=["[CLF]", "[QRY]", "[RGN]", "[PRX]"])
+model = Model(variant="adapters", base_checkpoint="malteos/scincl", adapters_load_from=adapters_dict, all_tasks=["[CLF]", "[QRY]", "[RGN]", "[PRX]"])
+
+#Fusion
+model = Model(variant="fusion", base_checkpoint="malteos/scincl", adapters_load_from=adapters_dict, fusion_load_from=<fusion chkpoint directory>, all_tasks=["[CLF]", "[QRY]", "[RGN]", "[PRX]"])
 
 #Choose the task names from scirepeval_tasks.jsonl
 evaluator = SciRepEval(tasks_config="scirepeval_tasks.jsonl", task_list:Optional=[...], task_format:Optional=[...])

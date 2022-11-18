@@ -1,6 +1,6 @@
 import argparse
 import json
-from typing import List
+from typing import List, Union
 
 from evaluation.encoders import Model
 from evaluation.evaluator import IREvaluator, SupervisedEvaluator, SupervisedTask
@@ -38,7 +38,7 @@ class SciRepEval:
                 self.tasks.update({k: tasks_dict[k] for k in task_by_formats[task_format]})
         self.batch_size = batch_size
 
-    def evaluate(self, model: Model, output: str):
+    def evaluate(self, model: Union[Model, List[Model]], output: str):
         final_results = dict()
         for task_name, task in self.tasks.items():
             model.task_id = TASK_IDS[task["type"]]

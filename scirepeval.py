@@ -40,8 +40,11 @@ class SciRepEval:
 
     def evaluate(self, model: Union[Model, List[Model]], output: str):
         final_results = dict()
+        if type(model) != list:
+            model = [model]
         for task_name, task in self.tasks.items():
-            model.task_id = TASK_IDS[task["type"]]
+            for m in model:
+                m.task_id = TASK_IDS[task["type"]]
             kwargs = dict()
             task_data = task["data"]
             if not task_data.get("meta"):

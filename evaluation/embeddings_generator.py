@@ -11,15 +11,15 @@ logger = logging.getLogger(__name__)
 
 
 class EmbeddingsGenerator:
-    def __init__(self, dataset, models: Union[Model, List[Model]]):
-        self.dataset = dataset
+    def __init__(self, datasets, models: Union[Model, List[Model]]):
+        self.datasets = datasets
         self.models = models
 
     def generate_embeddings(self, save_path: str = None) -> Dict[str, np.ndarray]:
         results = dict()
         try:
-            for model in self.models:
-                for batch, batch_ids in tqdm(self.dataset.batches(), total=len(self.dataset) // self.dataset.batch_size):
+            for dataset, model in zip(self.datasets, self.models):
+                for batch, batch_ids in tqdm(dataset.batches(), total=len(dataset) // dataset.batch_size):
                     emb = model(batch, batch_ids)
                     for paper_id, embedding in zip(batch_ids, emb.unbind()):
                         if type(paper_id) == tuple:

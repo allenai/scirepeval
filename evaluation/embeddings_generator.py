@@ -1,4 +1,4 @@
-from typing import Dict
+from typing import Dict, List, Union
 
 from evaluation.encoders import Model
 from tqdm import tqdm
@@ -11,21 +11,28 @@ logger = logging.getLogger(__name__)
 
 
 class EmbeddingsGenerator:
-    def __init__(self, dataset, model: Model):
-        self.dataset = dataset
-        self.model = model
+    def __init__(self, datasets, models: Union[Model, List[Model]]):
+        self.datasets = datasets
+        self.models = models
 
     def generate_embeddings(self, save_path: str = None) -> Dict[str, np.ndarray]:
         results = dict()
         try:
-            for batch, batch_ids in tqdm(self.dataset.batches(), total=len(self.dataset) // self.dataset.batch_size):
-                emb = self.model(batch, batch_ids)
-                for paper_id, embedding in zip(batch_ids, emb.unbind()):
-                    if type(paper_id) == tuple:
-                        paper_id = paper_id[0]
-                    results[paper_id] = embedding.detach().cpu().numpy().tolist()
-                del batch
-                del emb
+            for dataset, model in zip(self.datasets, self.models):
+                for batch, batch_ids in tqdm(dataset.batches(), total=len(dataset) // dataset.batch_size):
+                    emb = model(batch, batch_ids)
+                    for paper_id, embedding in zip(batch_ids, emb.unbind()):
+                        if type(paper_id) == tuple:
+                            paper_id = paper_id[0]
+                        if paper_id not in results:
+                            results[paper_id] = embedding.detach().cpu().numpy()
+                        else:
+                            results[paper_id] += embedding.detach().cpu().numpy()
+                    del batch
+                    del emb
+            for pid, emb in results.items():
+                results[pid] = emb / len(self.models)
+                results[pid] = results[pid].tolist()
         except Exception as e:
             print(e)
         finally:

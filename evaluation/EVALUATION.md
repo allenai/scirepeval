@@ -109,4 +109,23 @@ evaluator = SciRepEval(tasks_config="scirepeval_tasks.jsonl", task_list:Optional
 evaluator.evaluate(model, "scirepeval_results.json") 
 ```
 
+#### Mean Pool Ensemble
+
+To generate and evaluate the mean of multiple models, provide a list of models to the `evaluate method`.
+```python
+from scirepeval import SciRepEval
+from evaluation.encoders import Model
+
+#MTL CTRL
+model1 = Model(variant="default", base_checkpoint="malteos/scincl", use_ctrl_codes=True)
+
+#Adapters
+adapters_dict = {"[CLF]": "allenai/scirepeval_adapters_clf", "[QRY]": "allenai/scirepeval_adapters_qry", "[RGN]": "allenai/scirepeval_adapters_rgn", "[PRX]": "allenai/scirepeval_adapters_prx"}
+model2 = Model(variant="adapters", base_checkpoint="malteos/scincl", adapters_load_from=adapters_dict, all_tasks=["[CLF]", "[QRY]", "[RGN]", "[PRX]"])
+
+models = [model1, model2]
+evaluator = SciRepEval(tasks_config="scirepeval_tasks_adapters.jsonl", batch_size=16)
+evaluator.evaluate(models, "scirepeval_results.json") 
+
+```
 

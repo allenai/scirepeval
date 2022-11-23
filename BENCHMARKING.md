@@ -13,6 +13,7 @@ We provide our trained models on the HuggingFace models [hub](https://huggingfac
 |[SciNCL Adapters Fusion](https://us-east-1.console.aws.amazon.com/s3/buckets/ai2-s2-research-public?region=us-west-2&prefix=scirepeval/adapters/&showversions=false)|62.0|58.6|89.9|70.6|
 |SciNCL Adapters + MTL CTRL|**62.5**|58.9|**90.7**|**71.2**|
 
+The detailed, task-wise results for all our experiments can be found [here](https://docs.google.com/spreadsheets/d/1JMq-jR4M8KU119cvglUDmMwwzd60Z3vyvn3VqhPn9EY/edit?usp=sharing).
 
 We provide a test script - [scirepeval.py](https://github.com/allenai/scirepeval/blob/main/scirepeval.py) to evaluate one of the above models or a custom trained model on all the tasks in the benchmark.
 The tasks can be configured as required in [scirepeval_tasks.jsonl](https://github.com/allenai/scirepeval/blob/main/scirepeval_tasks.jsonl).

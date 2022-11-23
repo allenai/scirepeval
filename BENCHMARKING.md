@@ -3,15 +3,15 @@ We provide our trained models on the HuggingFace models [hub](https://huggingfac
 
 |Model|In-Train|Out-of-Train|SciDocs|Average|
 |--|--|--|--|--|
-|[SciBERT](https://huggingface.co/allenai/scibert_scivocab_uncased)|51.2|52.6|69.0|58.1|
-|[SPECTER](https://huggingface.co/allenai/specter)|54.3|57.4|89.1|67.9|
-|[SciNCL](https://huggingface.co/malteos/scincl)|55.3|57.8|**90.8**|69.0|
-|SciNCL + MTL CLS|59.8|56.7|89.6|69.2|
-|[SciNCL + MTL CTRL](https://huggingface.co/allenai/scirepeval_ctrl)|61.6|57.7|89.9|70.2|
-|[SciNCL PALs](https://huggingface.co/allenai/scirepeval_pals)|61.9|58.3|90.0|70.5|
-|SciNCL Adapters ([CLF](https://huggingface.co/allenai/scirepeval_adapters_clf), [QRY](https://huggingface.co/allenai/scirepeval_adapters_qry), [RGN](https://huggingface.co/allenai/scirepeval_adapters_rgn), [PRX](https://huggingface.co/allenai/scirepeval_adapters_prx))|61.4|58.8|90.3|70.7|
-|[SciNCL Adapters Fusion](https://us-east-1.console.aws.amazon.com/s3/buckets/ai2-s2-research-public?region=us-west-2&prefix=scirepeval/adapters/&showversions=false)|61.5|**58.8**|89.9|70.5|
-|SciNCL Adapters + MTL CTRL|62.2|**58.8**|**90.7**|**71.0**|
+|[SciBERT](https://huggingface.co/allenai/scibert_scivocab_uncased)|51.5|52.5|69.0|58.2|
+|[SPECTER](https://huggingface.co/allenai/specter)|54.7|57.4|89.1|68.0|
+|[SciNCL](https://huggingface.co/malteos/scincl)|55.6|57.8|**90.8**|69.0|
+|SciNCL + MTL CLS|60.1|56.6|89.6|69.3|
+|[SciNCL + MTL CTRL](https://huggingface.co/allenai/scirepeval_ctrl)|62.1|57.7|89.9|70.3|
+|[SciNCL PALs](https://huggingface.co/allenai/scirepeval_pals)|62.3|58.4|90.0|70.7|
+|SciNCL Adapters ([CLF](https://huggingface.co/allenai/scirepeval_adapters_clf), [QRY](https://huggingface.co/allenai/scirepeval_adapters_qry), [RGN](https://huggingface.co/allenai/scirepeval_adapters_rgn), [PRX](https://huggingface.co/allenai/scirepeval_adapters_prx))|61.9|**59.0**|90.3|70.9|
+|[SciNCL Adapters Fusion](https://us-east-1.console.aws.amazon.com/s3/buckets/ai2-s2-research-public?region=us-west-2&prefix=scirepeval/adapters/&showversions=false)|62.0|58.6|89.9|70.6|
+|SciNCL Adapters + MTL CTRL|**62.5**|58.9|**90.7**|**71.2**|
 
 
 We provide a test script - [scirepeval.py](https://github.com/allenai/scirepeval/blob/main/scirepeval.py) to evaluate one of the above models or a custom trained model on all the tasks in the benchmark.

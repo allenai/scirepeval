@@ -9,11 +9,10 @@ logger = logging.getLogger(__name__)
 
 class SimpleDataset:
 
-    def __init__(self, data_path: Union[str, tuple], sep_token: str, batch_size=32, ctrl_token: str = None,
+    def __init__(self, data_path: Union[str, tuple], sep_token: str, batch_size=32,
                  fields: List = None, key: str = None, processing_fn=None):
         self.batch_size = batch_size
         self.sep_token = sep_token
-        self.ctrl_token = ctrl_token
         if not fields:
             fields = ["title", "abstract"]
         self.fields = fields
@@ -33,9 +32,9 @@ class SimpleDataset:
         return len(self.data)
 
     def batches(self):
-        return self.process_batches(self.data, self.ctrl_token)
+        return self.process_batches(self.data)
 
-    def process_batches(self, data: Union[datasets.Dataset, List], ctrl_token: str):
+    def process_batches(self, data: Union[datasets.Dataset, List]):
         # create batches
         batch = []
         batch_ids = []
@@ -51,8 +50,6 @@ class SimpleDataset:
                     if d.get(field):
                         text.append(str(d[field]))
                 text = (f" {self.sep_token} ".join(text)).strip()
-                if ctrl_token:
-                    text = f"{ctrl_token} {text}"
                 if (i) % batch_size != 0 or i == 0:
                     batch_ids.append(bid)
                     batch.append(text)
@@ -66,8 +63,8 @@ class SimpleDataset:
 
 
 class IRDataset(SimpleDataset):
-    def __init__(self, data_path, sep_token, batch_size=32, ctrl_token=None, fields=None, key=None, processing_fn=None):
-        super().__init__(data_path, sep_token, batch_size, ctrl_token, fields, key, processing_fn)
+    def __init__(self, data_path, sep_token, batch_size=32, fields=None, key=None, processing_fn=None):
+        super().__init__(data_path, sep_token, batch_size, fields, key, processing_fn)
         self.queries, self.candidates = [], []
         for d in self.data:
             if type(d["query"]) == str:
@@ -80,10 +77,8 @@ class IRDataset(SimpleDataset):
         return len(self.queries) + len(self.candidates)
 
     def batches(self):
-        query_gen = self.process_batches(self.queries,
-                                         self.ctrl_token["query"] if type(self.ctrl_token) == dict else self.ctrl_token)
-        cand_gen = self.process_batches(self.candidates, self.ctrl_token["candidates"] if type(
-            self.ctrl_token) == dict else self.ctrl_token)
+        query_gen = self.process_batches(self.queries)
+        cand_gen = self.process_batches(self.candidates)
         for q, q_ids in query_gen:
             q_ids = [(v, "q") for v in q_ids]
             yield q, q_ids

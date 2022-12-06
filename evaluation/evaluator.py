@@ -30,8 +30,13 @@ class Evaluator:
         if model:
             if type(model) != list:
                 model = [model]
-            datasets = [dataset_class(meta_dataset, m.tokenizer.sep_token, batch_size,
-                                    m.task_id if m.reqd_token_idx else "", fields, key,
+            # for m in model:
+            #     if not m.tokenizer.pad_token:
+            #         m.tokenizer.add_special_tokens({'pad_token': '[PAD]'})
+            #         m.tokenizer.padding_side = "left"
+            #         m.tokenizer.sep_token = m.tokenizer.eos_token
+            #         m.encoder.resize_token_embeddings(len(m.tokenizer))
+            datasets = [dataset_class(meta_dataset, m.tokenizer.sep_token, batch_size, fields, key,
                                     process_fn) for m in model]
             self.embeddings_generator = EmbeddingsGenerator(datasets, model)
         self.name = name
@@ -82,7 +87,7 @@ class SupervisedEvaluator(Evaluator):
         self.task = task
 
     def evaluate(self, embeddings, **kwargs):
-        logger.info(f"Loading test dataset from {self.test_dataset}")
+        logger.info(f"Loading labelled data from {self.test_dataset}")
         if type(self.test_dataset) == str and os.path.isdir(self.test_dataset):
             split_dataset = datasets.load_dataset("csv", data_files={"train": f"{self.test_dataset}/train.csv",
                                                                      "test": f"{self.test_dataset}/test.csv"})
@@ -194,7 +199,7 @@ class IREvaluator(Evaluator):
         return metric_values
 
     def evaluate(self, embeddings, **kwargs):
-        logger.info(f"Loading test dataset from {self.test_dataset}")
+        logger.info(f"Loading labelled data from {self.test_dataset}")
         if type(self.test_dataset) == str and os.path.isdir(self.test_dataset):
             split_dataset = datasets.load_dataset("json", data_files={"test": f"{self.test_dataset}/test_qrel.jsonl"})
         else:

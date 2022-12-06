@@ -90,7 +90,7 @@ class Model:
             else:
                 batch = [f"{self.task_id} {text}" for text in batch]
             return batch
-
+        batch = [batch] if type(batch) == str else batch
         batch_ids = [] if not batch_ids else batch_ids
         if self.use_ctrl_codes:
             batch = append_ctrl_code(batch, batch_ids)

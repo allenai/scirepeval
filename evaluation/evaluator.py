@@ -36,8 +36,7 @@ class Evaluator:
             #         m.tokenizer.padding_side = "left"
             #         m.tokenizer.sep_token = m.tokenizer.eos_token
             #         m.encoder.resize_token_embeddings(len(m.tokenizer))
-            datasets = [dataset_class(meta_dataset, m.tokenizer.sep_token, batch_size,
-                                    m.task_id if m.reqd_token_idx else "", fields, key,
+            datasets = [dataset_class(meta_dataset, m.tokenizer.sep_token, batch_size, fields, key,
                                     process_fn) for m in model]
             self.embeddings_generator = EmbeddingsGenerator(datasets, model)
         self.name = name

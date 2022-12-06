@@ -12,7 +12,7 @@ logger = logging.getLogger(__name__)
 
 class EncoderFactory:
     def __init__(self, base_checkpoint: str = None, adapters_load_from: Union[str, Dict] = None,
-                 fusion_load_from: str=None, all_tasks: list = None):
+                 fusion_load_from: str = None, all_tasks: list = None):
         self.base_checkpoint = f"{base_checkpoint}/model" if os.path.isdir(base_checkpoint) else base_checkpoint
         self.all_tasks = all_tasks
         self.adapters_load_from = f"{adapters_load_from}/model/adapters" if (type(
@@ -51,12 +51,14 @@ class Model:
                  use_ctrl_codes: bool = False, task_id: Union[str, Dict] = None,
                  all_tasks: list = None, hidden_dim: int = 768, max_len: int = 512):
         self.variant = variant
-        self.encoder = EncoderFactory(base_checkpoint, adapters_load_from, fusion_load_from, all_tasks).get_encoder(variant)
+        self.encoder = EncoderFactory(base_checkpoint, adapters_load_from, fusion_load_from, all_tasks).get_encoder(
+            variant)
         if torch.cuda.is_available():
             self.encoder.to('cuda')
         self.encoder.eval()
         tokenizer_checkpoint = f"{base_checkpoint}/tokenizer" if os.path.isdir(base_checkpoint) else base_checkpoint
         self.tokenizer = AutoTokenizer.from_pretrained(tokenizer_checkpoint)
+        self.use_ctrl_codes = use_ctrl_codes
         self.reqd_token_idx = 0 if not use_ctrl_codes else 1
         self._task_id = task_id
         if self._task_id:
@@ -74,13 +76,24 @@ class Model:
 
     @task_id.setter
     def task_id(self, value):
-        if self.reqd_token_idx == 1:
+        if self.use_ctrl_codes:
             logger.info(f"Control code used: {value}")
         elif self.variant != "default":
             logger.info(f"Task id used: {value}")
         self._task_id = value
 
-    def __call__(self, batch, batch_ids):
+    def __call__(self, batch, batch_ids=None):
+        def append_ctrl_code(batch, batch_ids):
+            if type(self._task_id) == dict:
+                batch = [f"{self.task_id['query']} {text}" if bid[1] == "q" else f"{self.task_id['candidates']} {text}"
+                         for text, bid in zip(batch, batch_ids)]
+            else:
+                batch = [f"{self.task_id} {text}" for text in batch]
+            return batch
+
+        batch_ids = [] if not batch_ids else batch_ids
+        if self.use_ctrl_codes:
+            batch = append_ctrl_code(batch, batch_ids)
         input_ids = self.tokenizer(batch, padding=True, truncation=True,
                                    return_tensors="pt", return_token_type_ids=False, max_length=self.max_length)
         input_ids.to('cuda')

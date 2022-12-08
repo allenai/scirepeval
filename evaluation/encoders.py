@@ -85,43 +85,45 @@ class Model:
     def __call__(self, batch, batch_ids=None):
         def append_ctrl_code(batch, batch_ids):
             if type(self._task_id) == dict:
-                batch = [f"{self.task_id['query']} {text}" if bid[1] == "q" else f"{self.task_id['candidates']} {text}"
+                batch = [f"{text} {self.task_id['query']}" if bid[1] == "q" else f"{text} {self.task_id['candidates']}"
                          for text, bid in zip(batch, batch_ids)]
             else:
-                batch = [f"{self.task_id} {text}" for text in batch]
+                batch = [f"{text} {self.task_id}" for text in batch]
             return batch
         batch = [batch] if type(batch) == str else batch
         batch_ids = [] if not batch_ids else batch_ids
         if self.use_ctrl_codes:
             batch = append_ctrl_code(batch, batch_ids)
-        input_ids = self.tokenizer(batch, padding=True, truncation=True,
+        ip = self.tokenizer(batch, padding=True, truncation=True,
                                    return_tensors="pt", return_token_type_ids=False, max_length=self.max_length)
-        input_ids.to('cuda')
+        ip.to('cuda')
+        input_ids = ip["input_ids"]
+        seq_len = torch.ne(input_ids, self.tokenizer.pad_token_id).sum(-1) - 1
         if self.variant == "default":
-            output = self.encoder(**input_ids)
+            output = self.encoder(**ip)
         elif type(self._task_id) != dict:
-            output = self.encoder(task_id=self._task_id, **input_ids)
+            output = self.encoder(task_id=self._task_id, **ip)
         else:
-            x = input_ids["input_ids"]
+            x = ip["input_ids"]
             output = torch.zeros(x.shape[0], x.shape[1], self.hidden_dim).to("cuda")
             q_idx = torch.tensor([i for i, b in enumerate(batch_ids) if b[1] == "q"])
             c_idx = torch.tensor([i for i, b in enumerate(batch_ids) if b[1] == "c"])
 
             if not q_idx.shape[0]:
-                output = self.encoder(task_id=self._task_id["candidates"], **input_ids)
+                output = self.encoder(task_id=self._task_id["candidates"], **ip)
             elif not c_idx.shape[0]:
-                output = self.encoder(task_id=self._task_id["query"], **input_ids)
+                output = self.encoder(task_id=self._task_id["query"], **ip)
             else:
                 for i, v in enumerate(sorted(self._task_id.values())):
                     curr_input_idx = q_idx if v == "[QRY]" else c_idx
                     curr_input = x[curr_input_idx]
                     curr_output = self.encoder(task_id=v, input_ids=curr_input,
-                                               attention_mask=input_ids["attention_mask"][curr_input_idx])
+                                               attention_mask=ip["attention_mask"][curr_input_idx])
                     try:
                         output[curr_input_idx] = curr_output  # adapters
                     except:
                         output[curr_input_idx] = curr_output.last_hidden_state  # pals
         try:
-            return output.last_hidden_state[:, self.reqd_token_idx, :]  # cls token
+            return output.last_hidden_state[torch.arange(input_ids.shape[0]), seq_len, :]  # cls token
         except:
-            return output[:, self.reqd_token_idx, :]  # cls token
+            return output[torch.arange(input_ids.shape[0]), seq_len, :]  # cls token

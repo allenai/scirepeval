@@ -79,7 +79,7 @@ class AbstractMultiTaskDataset(ABC, IterableDataset):
             text = input_data
         if self.ctrl_token:
             ctrl_token = self.ctrl_token if not ctrl_token_key else self.ctrl_token[ctrl_token_key]
-            text = ctrl_token + " " + text
+            text = text + " " + ctrl_token
         input_ids = self.tokenizer(text, padding="max_length", truncation=True, return_tensors="pt",
                                    max_length=self.max_len)
         # if self.ctrl_token:

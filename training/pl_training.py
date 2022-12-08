@@ -73,7 +73,14 @@ class SciRepTrain(pl.LightningModule):
         spl_ctrl_tokens = sorted(list(spl_ctrl_tokens))
         task_ids = spl_ctrl_tokens
         self.tokenizer = AutoTokenizer.from_pretrained(tokenizer)
-
+        additional_spl_tokens = ["[START_REF]", "[END_REF]", "[IMAGE]", "<fragments>", "</fragments>", "<work>",
+                                 "</work>",
+                                 "[START_SUB]", "[END_SUB]", "[START_SUP]", "[END_SUP]", "[START_DNA]", "[END_DNA]",
+                                 "[START_AMINO]", "[END_AMINO]", "[START_SMILES]", "[END_SMILES]", "[START_I_SMILES]",
+                                 "[END_I_SMILES]"]
+        self.tokenizer.add_special_tokens(
+            {"bos_token": "<s>", "eos_token": "</s>", "sep_token": "</s>", "unk_token": "<unk>", "pad_token": "<pad>",
+             "additional_special_tokens": additional_spl_tokens})
         if self.adapters:
             adapters_dir = f'{log_dir}/model/adapters/' if not load_adapters_as else load_adapters_as
             try:
@@ -88,8 +95,9 @@ class SciRepTrain(pl.LightningModule):
                 self.encoder = BertPalsEncoder(f"bert_pals_config/{pals_cfg}", task_ids, self.encoder)
         if self.use_ctrl_tokens:
             print("Using Control Tokens", spl_ctrl_tokens)
-            special_tokens_dict = {'additional_special_tokens': spl_ctrl_tokens}
-            num_added_toks = self.tokenizer.add_special_tokens(special_tokens_dict)
+            # special_tokens_dict = {'additional_special_tokens': spl_ctrl_tokens}
+            self.tokenizer.add_special_tokens({"additional_special_tokens": self.tokenizer.special_tokens_map.get(
+                "additional_special_tokens", []) + spl_ctrl_tokens})
             self.encoder.resize_token_embeddings(len(self.tokenizer))
         self.batch_size = batch_size
         self.init_lr = init_lr
@@ -103,10 +111,11 @@ class SciRepTrain(pl.LightningModule):
                 input_ids,
                 attention_mask=attention_mask,
                 task_id=task_id)
-            return embedding.last_hidden_state[:, token_idx, :]
+            embedding = embedding.last_hidden_state
         else:
             embedding = self.encoder(input_ids, attention_mask=attention_mask, task_id=task_id)
-            return embedding[:, token_idx, :]
+        seq_len = torch.ne(input_ids, self.tokenizer.pad_token_id).sum(-1) - 1
+        return embedding[torch.arange(input_ids.shape[0]), seq_len, :]
 
     def configure_optimizers(self):
         """Prepare optimizer and schedule (linear warmup and decay)"""
@@ -149,7 +158,7 @@ class SciRepTrain(pl.LightningModule):
         scl = torch.tensor(0.0)
         for name, batch in train_batch.items():
             task = self.task_dict[name]
-            idx = 0 if not self.use_ctrl_tokens else 1
+            idx = -1#0 if not self.use_ctrl_tokens else 1
             task_id = task.ctrl_token
             if task.type not in set(["classification", "regression"]):
                 query, pos, neg = batch[0][0], batch[0][1], batch[0][2]

@@ -26,7 +26,7 @@ it cannot guess the padding tokens when :obj:`inputs_embeds` are passed instead 
 class OPTAdapterModel(ModelWithFlexibleHeadsAdaptersMixin, OPTPreTrainedModel):
     def __init__(self, config):
         super().__init__(config)
-        self.transformer = OPTModel(config)
+        self.model = OPTModel(config)
 
         self.init_weights()
         self._backward_compatibility_gradient_checkpointing()
@@ -59,7 +59,7 @@ class OPTAdapterModel(ModelWithFlexibleHeadsAdaptersMixin, OPTPreTrainedModel):
         use_cache = use_cache if use_cache is not None else self.config.use_cache
 
         # decoder outputs consists of (dec_features, past_key_value, dec_hidden, dec_attn)
-        outputs = self.transformer(
+        outputs = self.model(
             input_ids=input_ids,
             attention_mask=attention_mask,
             head_mask=head_mask,

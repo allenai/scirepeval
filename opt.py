@@ -1,8 +1,9 @@
 import logging
 import warnings
-from typing import Optional, List
+from typing import Optional, List, Iterable, Tuple
 
 import torch
+from torch import nn
 from transformers.adapters import ModelAdaptersMixin
 
 from transformers.file_utils import add_start_docstrings
@@ -24,6 +25,10 @@ it cannot guess the padding tokens when :obj:`inputs_embeds` are passed instead 
     OPT_START_DOCSTRING,
 )
 class OPTAdapterModel(ModelAdaptersMixin, OPTPreTrainedModel):
+    def iter_layers(self) -> Iterable[Tuple[int, nn.Module]]:
+        for i, layer in enumerate(self.model.decoder.layers):
+            yield i, layer
+
     def __init__(self, config):
         super().__init__(config)
         self.model = OPTModel(config)

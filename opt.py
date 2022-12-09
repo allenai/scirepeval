@@ -3,7 +3,7 @@ import warnings
 from typing import Optional, List
 
 import torch
-from transformers.adapters import ModelWithHeadsAdaptersMixin
+from transformers.adapters import ModelWithFlexibleHeadsAdaptersMixin
 
 from transformers.file_utils import add_start_docstrings
 from transformers.models.opt.modeling_opt import OPT_START_DOCSTRING, OPTModel, OPTPreTrainedModel
@@ -23,10 +23,10 @@ it cannot guess the padding tokens when :obj:`inputs_embeds` are passed instead 
 """,
     OPT_START_DOCSTRING,
 )
-class OPTAdapterModel(ModelWithHeadsAdaptersMixin, OPTPreTrainedModel):
+class OPTAdapterModel(ModelWithFlexibleHeadsAdaptersMixin, OPTPreTrainedModel):
     def __init__(self, config):
         super().__init__(config)
-        self.model = OPTModel(config)
+        self.transformer = OPTModel(config)
 
         self.init_weights()
         self._backward_compatibility_gradient_checkpointing()
@@ -59,7 +59,7 @@ class OPTAdapterModel(ModelWithHeadsAdaptersMixin, OPTPreTrainedModel):
         use_cache = use_cache if use_cache is not None else self.config.use_cache
 
         # decoder outputs consists of (dec_features, past_key_value, dec_hidden, dec_attn)
-        outputs = self.decoder(
+        outputs = self.transformer(
             input_ids=input_ids,
             attention_mask=attention_mask,
             head_mask=head_mask,

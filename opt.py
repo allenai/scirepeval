@@ -3,7 +3,7 @@ import warnings
 from typing import Optional, List
 
 import torch
-from transformers.adapters import ModelWithFlexibleHeadsAdaptersMixin
+from transformers.adapters import ModelWithHeadsAdaptersMixin
 
 from transformers.file_utils import add_start_docstrings
 from transformers.models.opt.modeling_opt import OPT_START_DOCSTRING, OPTModel, OPTPreTrainedModel
@@ -23,7 +23,7 @@ it cannot guess the padding tokens when :obj:`inputs_embeds` are passed instead 
 """,
     OPT_START_DOCSTRING,
 )
-class OPTAdapterModel(ModelWithFlexibleHeadsAdaptersMixin, OPTPreTrainedModel):
+class OPTAdapterModel(ModelWithHeadsAdaptersMixin, OPTPreTrainedModel):
     def __init__(self, config):
         super().__init__(config)
         self.model = OPTModel(config)
@@ -98,24 +98,3 @@ class OPTAdapterModel(ModelWithFlexibleHeadsAdaptersMixin, OPTPreTrainedModel):
         )
 
         return outputs
-
-    def add_adapter(self, adapter_name: str, config=None, overwrite_ok: bool = False, set_active: bool = False):
-        """
-        Adds a new adapter module of the specified type to the model.
-
-        Args:
-            adapter_name (str): The name of the adapter module to be added.
-            config (str or dict, optional): The adapter configuration, can be either:
-
-                - the string identifier of a pre-defined configuration dictionary
-                - a configuration dictionary specifying the full config
-                - if not given, the default configuration for this adapter type will be used
-            overwrite_ok (bool, optional):
-                Overwrite an adapter with the same name if it exists. By default (False), an exception is thrown.
-            set_active (bool, optional):
-                Set the adapter to be the active one. By default (False), the adapter is added but not activated.
-
-        If self.base_model is self, must inherit from a class that implements this method, to preclude infinite
-        recursion
-        """
-        super().add_adapter(adapter_name, config, overwrite_ok=overwrite_ok, set_active=set_active)

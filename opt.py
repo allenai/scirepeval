@@ -6,7 +6,7 @@ import torch
 from transformers.adapters import ModelWithFlexibleHeadsAdaptersMixin
 
 from transformers.file_utils import add_start_docstrings
-from transformers.models.opt.modeling_opt import OPT_START_DOCSTRING, OPTDecoder, OPTPreTrainedModel
+from transformers.models.opt.modeling_opt import OPT_START_DOCSTRING, OPTModel, OPTPreTrainedModel
 from transformers.adapters.composition import adjust_tensors_for_parallel
 
 logger = logging.getLogger(__name__)
@@ -26,8 +26,7 @@ it cannot guess the padding tokens when :obj:`inputs_embeds` are passed instead 
 class OPTAdapterModel(ModelWithFlexibleHeadsAdaptersMixin, OPTPreTrainedModel):
     def __init__(self, config):
         super().__init__(config)
-        self.base_model_prefix = "decoder"
-        self.decoder = OPTDecoder(config)
+        self.model = OPTModel(config)
 
         self.init_weights()
         self._backward_compatibility_gradient_checkpointing()

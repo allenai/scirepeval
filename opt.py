@@ -3,7 +3,7 @@ import warnings
 from typing import Optional, List
 
 import torch
-from transformers.adapters import ModelWithFlexibleHeadsAdaptersMixin
+from transformers.adapters import ModelWithHeadsAdaptersMixin
 
 from transformers.file_utils import add_start_docstrings
 from transformers.models.opt.modeling_opt import OPT_START_DOCSTRING, OPTModel, OPTPreTrainedModel
@@ -23,7 +23,7 @@ it cannot guess the padding tokens when :obj:`inputs_embeds` are passed instead 
 """,
     OPT_START_DOCSTRING,
 )
-class OPTAdapterModel(ModelWithFlexibleHeadsAdaptersMixin, OPTPreTrainedModel):
+class OPTAdapterModel(ModelWithHeadsAdaptersMixin, OPTPreTrainedModel):
     def __init__(self, config):
         super().__init__(config)
         self.model = OPTModel(config)

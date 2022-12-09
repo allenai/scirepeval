@@ -1,11 +1,12 @@
 import logging
 import warnings
+from typing import Optional, List
 
 import torch
 from transformers.adapters import ModelWithFlexibleHeadsAdaptersMixin
 
 from transformers.file_utils import add_start_docstrings
-from transformers.models.opt.modeling_opt import OPT_START_DOCSTRING, OPTModel, OPTPreTrainedModel
+from transformers.models.opt.modeling_opt import OPT_START_DOCSTRING, OPTDecoder, OPTPreTrainedModel
 from transformers.adapters.composition import adjust_tensors_for_parallel
 
 logger = logging.getLogger(__name__)
@@ -25,11 +26,11 @@ it cannot guess the padding tokens when :obj:`inputs_embeds` are passed instead 
 class OPTAdapterModel(ModelWithFlexibleHeadsAdaptersMixin, OPTPreTrainedModel):
     def __init__(self, config):
         super().__init__(config)
-        self.transformer = OPTModel(config)
-
-        self._init_head_modules()
+        self.decoder = OPTDecoder(config)
 
         self.init_weights()
+        self._backward_compatibility_gradient_checkpointing()
+        self._init_head_modules()
 
         # Model parallel
         self.model_parallel = False
@@ -39,10 +40,10 @@ class OPTAdapterModel(ModelWithFlexibleHeadsAdaptersMixin, OPTPreTrainedModel):
             self,
             input_ids=None,
             attention_mask=None,
-            token_type_ids=None,
-            position_ids=None,
             head_mask=None,
+            past_key_values: Optional[List[torch.FloatTensor]] = None,
             inputs_embeds=None,
+            use_cache: Optional[bool] = None,
             output_attentions=None,
             output_hidden_states=None,
             return_dict=None,
@@ -51,16 +52,22 @@ class OPTAdapterModel(ModelWithFlexibleHeadsAdaptersMixin, OPTPreTrainedModel):
     ):
         return_dict = return_dict if return_dict is not None else self.config.use_return_dict
 
-        outputs = self.transformer(
-            input_ids,
+        output_attentions = output_attentions if output_attentions is not None else self.config.output_attentions
+        output_hidden_states = (
+            output_hidden_states if output_hidden_states is not None else self.config.output_hidden_states
+        )
+        use_cache = use_cache if use_cache is not None else self.config.use_cache
+
+        # decoder outputs consists of (dec_features, past_key_value, dec_hidden, dec_attn)
+        outputs = self.decoder(
+            input_ids=input_ids,
             attention_mask=attention_mask,
-            token_type_ids=token_type_ids,
-            position_ids=position_ids,
             head_mask=head_mask,
+            past_key_values=past_key_values,
             inputs_embeds=inputs_embeds,
+            use_cache=use_cache,
             output_attentions=output_attentions,
-            output_hidden_states=output_hidden_states,
-            return_dict=return_dict,
+            output_hidden_states=output_hidden_states
         )
 
         batch_size = outputs[0].shape[0]

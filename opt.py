@@ -26,6 +26,7 @@ it cannot guess the padding tokens when :obj:`inputs_embeds` are passed instead 
 class OPTAdapterModel(ModelWithFlexibleHeadsAdaptersMixin, OPTPreTrainedModel):
     def __init__(self, config):
         super().__init__(config)
+        self.base_model_prefix = "decoder"
         self.decoder = OPTDecoder(config)
 
         self.init_weights()

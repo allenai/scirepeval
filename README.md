@@ -15,6 +15,8 @@ Please refer to the following for further usage:
 
 [Training](https://github.com/allenai/scirepeval/blob/main/training/TRAINING.md) - Train multi-task/multi-format transformer models or adapter modules
 
+[Inference](https://github.com/allenai/scirepeval/blob/main/evaluation/INFERENCE.md) - Using the trained SciRepEval models to generate embeddings.
+
 [Evaluation](https://github.com/allenai/scirepeval/blob/main/evaluation/EVALUATION.md) - Evaluate trained models on custom tasks OR customize existing evaluation config for SciRepEval benchmark tasks
 
 [Benchmarking](https://github.com/allenai/scirepeval/blob/main/BENCHMARKING.md) - Simply evaluate models(pretrained from HuggingFace/local checkpoints) on SciRepEval and generate a report

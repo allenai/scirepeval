@@ -1,6 +1,7 @@
 from typing import List, Optional, Union, Dict
 from transformers.adapters import PfeifferConfig
 from transformers.adapters import AutoAdapterModel
+from opt import OPTAdapterModel
 from transformers.adapters.composition import Fuse
 from abc import ABC, abstractmethod
 import torch
@@ -21,7 +22,7 @@ class AdapterFactory:
 class AbstractAdapter(torch.nn.Module, ABC):
     def __init__(self, checkpoint_name):
         super(AbstractAdapter, self).__init__()
-        self.model = AutoAdapterModel.from_pretrained(checkpoint_name)  # checkpoint
+        self.model = OPTAdapterModel.from_pretrained(checkpoint_name)  # checkpoint
 
     @abstractmethod
     def save_pretrained(self, save_path: str):

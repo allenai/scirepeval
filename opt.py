@@ -35,7 +35,6 @@ class OPTAdapterModel(ModelAdaptersMixin, OPTPreTrainedModel):
 
         self.init_weights()
         self._backward_compatibility_gradient_checkpointing()
-        self._init_head_modules()
 
         # Model parallel
         self.model_parallel = False

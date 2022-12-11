@@ -2,9 +2,9 @@
   {
     "name": "cite_pred",
     "type": "regression",
-    "dataset": {
-      "path": "allenai/scirepeval",
-      "name": "cite_count"
+    "data_files": {
+      "train": "../scirepeval_data/train/cite_count/train.jsonl",
+      "dev": "../scirepeval_data/train/cite_count/val.jsonl"
     },
     "labels_field": "log_citations",
     "ctrl_token": "[RGN]",
@@ -16,9 +16,9 @@
     {
     "name": "year_pred",
     "type": "regression",
-    "dataset": {
-      "path": "allenai/scirepeval",
-      "name": "pub_year"
+    "data_files": {
+      "train": "../scirepeval_data/train/pub_year/train.jsonl",
+      "dev": "../scirepeval_data/train/pub_year/val.jsonl"
     },
     "labels_field": "scaled_year",
     "ctrl_token": "[RGN]",
@@ -31,9 +31,9 @@
   {
     "name": "mesh",
     "type": "classification",
-     "dataset": {
-      "path": "allenai/scirepeval",
-      "name": "mesh_descriptors"
+    "data_files": {
+      "train": "../scirepeval_data/train/mesh_descriptors/train.jsonl",
+      "dev": "../scirepeval_data/train/mesh_descriptors/val.jsonl"
     },
     "labels": "sample_data/mesh_descriptors.txt",
     "labels_field": "descriptor",
@@ -47,9 +47,9 @@
     "name": "fos",
     "type": "classification",
     "multi_label": true,
-     "dataset": {
-      "path": "allenai/scirepeval",
-      "name": "fos"
+    "data_files": {
+      "train": "../scirepeval_data/train/fos/train.jsonl",
+      "dev": "../scirepeval_data/train/fos/val.jsonl"
     },
     "labels": "sample_data/fos_labels.txt",
     "labels_field": "labels_text",
@@ -62,9 +62,9 @@
   {
     "name": "search",
     "type": "ir",
-     "dataset": {
-      "path": "allenai/scirepeval",
-      "name": "search"
+    "data_files": {
+      "train": "../scirepeval_data/train/search/train.jsonl",
+      "dev": "../scirepeval_data/train/search/val.jsonl"
     },
     "input_fields": ["title", "abstract", "venue", "year"],
     "ctrl_token": {"query": "[QRY]", "candidates": "[PRX]"},
@@ -76,9 +76,9 @@
   {
     "name": "s2and",
     "type": "ir",
-     "dataset": {
-      "path": "allenai/scirepeval",
-      "name": "same_author"
+    "data_files": {
+      "train": "../scirepeval_data/train/same_author/train.jsonl",
+      "dev": "../scirepeval_data/train/same_author/val.jsonl"
     },
     "ctrl_token": "[PRX]",
     "sample_size": {
@@ -89,9 +89,9 @@
   {
     "name": "cite_context",
     "type": "ir",
-     "dataset": {
-      "path": "allenai/scirepeval",
-      "name": "high_influence_cite"
+    "data_files": {
+      "train": "../scirepeval_data/train/high_influence_cite/train.jsonl",
+      "dev": "../scirepeval_data/train/high_influence_cite/val.jsonl"
     },
     "ctrl_token": "[PRX]",
     "sample_size": {
@@ -102,9 +102,9 @@
     {
     "name": "specter",
     "type": "triplet",
-    "dataset": {
-      "path": "allenai/scirepeval",
-      "name": "cite_prediction"
+    "data_files": {
+      "train": "../scirepeval_data/train/cite_prediction/train.jsonl",
+      "dev": "../scirepeval_data/train/cite_prediction/val.jsonl"
     },
     "ctrl_token": "[PRX]",
       "sample_size": {

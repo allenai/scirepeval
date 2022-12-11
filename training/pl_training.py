@@ -91,6 +91,7 @@ class SciRepTrain(pl.LightningModule):
             special_tokens_dict = {'additional_special_tokens': spl_ctrl_tokens}
             num_added_toks = self.tokenizer.add_special_tokens(special_tokens_dict)
             self.encoder.resize_token_embeddings(len(self.tokenizer))
+        self.batch_norm = torch.nn.BatchNorm1d(self.encoder.config.hidden_size)
         self.batch_size = batch_size
         self.init_lr = init_lr
         self.peak_lr = peak_lr
@@ -161,6 +162,8 @@ class SciRepTrain(pl.LightningModule):
                     pos['input_ids'], pos['attention_mask'], idx, cand_ctrl), self(neg['input_ids'],
                                                                                    neg['attention_mask'], idx,
                                                                                    cand_ctrl)
+                query_emb, pos_emb, neg_emb = self.batch_norm(query_emb), self.batch_norm(pos_emb), self.batch_norm(
+                    neg_emb)
                 curr_loss = task.loss(query_emb, pos_emb, neg_emb)
             else:
                 x, y = batch[0], batch[1]
@@ -251,6 +254,7 @@ class SciRepTrain(pl.LightningModule):
             self.tokenizer.save_pretrained(f'{log_dir}/tokenizer/')
             self.tokenizer.save_vocabulary(f'{log_dir}/tokenizer/')
             self.encoder.save_pretrained(f'{log_dir}/model')
+            torch.save(self.batch_norm.state_dict(), f'{log_dir}/model/batch_norm.pt')
         except:
             print("Exception encountered while saving, try agin from checkpoint")
 

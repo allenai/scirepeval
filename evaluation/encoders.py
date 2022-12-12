@@ -55,7 +55,10 @@ class Model:
             variant)
         if torch.cuda.is_available():
             self.encoder.to('cuda')
+        self.batch_norm = torch.nn.BatchNorm1d(self.encoder.config.hidden_size)
+        self.batch_norm.load_state_dict(torch.load(f'{base_checkpoint}/model/batch_norm.pt'))
         self.encoder.eval()
+        self.batch_norm.eval()
         tokenizer_checkpoint = f"{base_checkpoint}/tokenizer" if os.path.isdir(base_checkpoint) else base_checkpoint
         self.tokenizer = AutoTokenizer.from_pretrained(tokenizer_checkpoint)
         self.use_ctrl_codes = use_ctrl_codes
@@ -122,6 +125,8 @@ class Model:
                     except:
                         output[curr_input_idx] = curr_output.last_hidden_state  # pals
         try:
-            return output.last_hidden_state[:, self.reqd_token_idx, :]  # cls token
+            embedding = output.last_hidden_state[:, self.reqd_token_idx, :]  # cls token
         except:
-            return output[:, self.reqd_token_idx, :]  # cls token
+            embedding = output[:, self.reqd_token_idx, :]  # cls token
+        embedding = self.batch_norm(embedding)
+        return embedding

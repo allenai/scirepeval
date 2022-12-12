@@ -129,13 +129,13 @@ class SciRepTrain(pl.LightningModule):
         )
 
         self.opt = optimizer
-        if self.pals or self.adapters:
-            scheduler = get_linear_schedule_with_warmup(optimizer, self.warmup_steps, 77500)
-        else:
-            scheduler_config = InverseSquareRootScheduleConfig(warmup_updates=self.warmup_steps,
-                                                               warmup_init_lr=self.init_lr,
-                                                               lr=self.peak_lr)
-            scheduler = InverseSquareRootSchedule(scheduler_config, optimizer)
+        # if self.pals or self.adapters:
+        scheduler = get_linear_schedule_with_warmup(optimizer, self.warmup_steps, 42750)
+        # else:
+        #     scheduler_config = InverseSquareRootScheduleConfig(warmup_updates=self.warmup_steps,
+        #                                                        warmup_init_lr=self.init_lr,
+        #                                                        lr=self.peak_lr)
+        #     scheduler = InverseSquareRootSchedule(scheduler_config, optimizer)
 
         return {
             "optimizer": optimizer,

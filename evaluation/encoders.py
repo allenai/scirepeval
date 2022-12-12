@@ -53,10 +53,11 @@ class Model:
         self.variant = variant
         self.encoder = EncoderFactory(base_checkpoint, adapters_load_from, fusion_load_from, all_tasks).get_encoder(
             variant)
-        if torch.cuda.is_available():
-            self.encoder.to('cuda')
         self.batch_norm = torch.nn.BatchNorm1d(self.encoder.config.hidden_size)
         self.batch_norm.load_state_dict(torch.load(f'{base_checkpoint}/model/batch_norm.pt'))
+        if torch.cuda.is_available():
+            self.encoder.to('cuda')
+            self.batch_norm.to('cuda')
         self.encoder.eval()
         self.batch_norm.eval()
         tokenizer_checkpoint = f"{base_checkpoint}/tokenizer" if os.path.isdir(base_checkpoint) else base_checkpoint

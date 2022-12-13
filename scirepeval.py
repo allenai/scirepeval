@@ -125,12 +125,13 @@ if __name__ == "__main__":
     parser.add_argument('--fusion-dir', help='path to the fusion checkpoints', default=None)
     parser.add_argument('--adapters-chkpt', help='hf adapter names keyed on tasks', default=None, type=json.loads)
     parser.add_argument('--output', help="path to the output file", default="scirepeval_results.json")
+    parser.add_argument('--fp16', action='store_true', default=False, help='use floating point 16 precision')
 
     args = parser.parse_args()
     adapters_load_from = args.adapters_dir if args.adapters_dir else args.adapters_chkpt
     model = Model(variant=args.mtype, base_checkpoint=args.model, adapters_load_from=adapters_load_from,
                   fusion_load_from=args.fusion_dir,
                   use_ctrl_codes=args.ctrl_tokens,
-                  task_id="", all_tasks=["[CLF]", "[QRY]", "[RGN]", "[PRX]"])
+                  task_id="", all_tasks=["[CLF]", "[QRY]", "[RGN]", "[PRX]"], use_fp16=args.fp16)
     evaluator = SciRepEval(tasks_config=args.tasks_config, batch_size=args.batch_size)
     evaluator.evaluate(model, args.output)

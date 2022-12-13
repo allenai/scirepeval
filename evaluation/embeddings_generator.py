@@ -30,9 +30,7 @@ class EmbeddingsGenerator:
                             results[paper_id] += embedding.detach().cpu().numpy()
                     del batch
                     del emb
-            for pid, emb in results.items():
-                results[pid] = emb / len(self.models)
-                results[pid] = results[pid].tolist()
+            results = {k: v/len(self.models) for k, v in results.items()}
         except Exception as e:
             print(e)
         finally:
@@ -40,7 +38,7 @@ class EmbeddingsGenerator:
                 pathlib.Path(save_path).parent.mkdir(parents=True, exist_ok=True)
                 with open(save_path, 'w') as fout:
                     for k, v in results.items():
-                        fout.write(json.dumps({"doc_id": k, "embedding": v}) + '\n')
+                        fout.write(json.dumps({"doc_id": k, "embedding": v.tolist()}) + '\n')
         logger.info(f"Generated {len(results)} embeddings")
         return results
 
@@ -50,6 +48,6 @@ class EmbeddingsGenerator:
         with open(embeddings_path, 'r') as f:
             for line in tqdm(f, desc=f'reading embeddings from {embeddings_path}'):
                 line_json = json.loads(line)
-                embeddings[line_json['doc_id']] = np.array(line_json['embedding'])
+                embeddings[line_json['doc_id']] = np.array(line_json['embedding'], dtype=np.float16)
         logger.info(f"Loaded {len(embeddings)} embeddings")
         return embeddings

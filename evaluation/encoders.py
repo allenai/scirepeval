@@ -49,7 +49,7 @@ class Model:
     def __init__(self, variant: str = "default", base_checkpoint: str = None,
                  adapters_load_from: Union[str, Dict] = None, fusion_load_from: str = None,
                  use_ctrl_codes: bool = False, task_id: Union[str, Dict] = None,
-                 all_tasks: list = None, hidden_dim: int = 768, max_len: int = 512):
+                 all_tasks: list = None, hidden_dim: int = 768, max_len: int = 512, use_fp16=False):
         self.variant = variant
         self.encoder = EncoderFactory(base_checkpoint, adapters_load_from, fusion_load_from, all_tasks).get_encoder(
             variant)
@@ -69,6 +69,7 @@ class Model:
 
         self.hidden_dim = hidden_dim
         self.max_length = max_len
+        self.use_fp16 = use_fp16
 
     @property
     def task_id(self):
@@ -90,6 +91,7 @@ class Model:
             else:
                 batch = [f"{self.task_id} {text}" for text in batch]
             return batch
+
         batch = [batch] if type(batch) == str else batch
         batch_ids = [] if not batch_ids else batch_ids
         if self.use_ctrl_codes:
@@ -122,6 +124,7 @@ class Model:
                     except:
                         output[curr_input_idx] = curr_output.last_hidden_state  # pals
         try:
-            return output.last_hidden_state[:, self.reqd_token_idx, :]  # cls token
+            embedding = output.last_hidden_state[:, self.reqd_token_idx, :]  # cls token
         except:
-            return output[:, self.reqd_token_idx, :]  # cls token
+            embedding = output[:, self.reqd_token_idx, :]  # cls token
+        return embedding.half() if self.use_fp16 else embedding

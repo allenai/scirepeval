@@ -17,7 +17,7 @@ from pytorch_lightning.utilities.distributed import sync_ddp_if_available
 from pytorch_lightning.utilities.types import TRAIN_DATALOADERS, EVAL_DATALOADERS, STEP_OUTPUT
 from torch.distributed import ReduceOp
 from torch.utils.data import DataLoader
-from transformers import AdamW, get_linear_schedule_with_warmup
+from transformers import AdamW, get_linear_schedule_with_warmup, get_cosine_schedule_with_warmup
 from transformers import AutoTokenizer, AutoModel, AutoConfig
 
 from adapter_fusion import AdapterFactory
@@ -128,13 +128,14 @@ class SciRepTrain(pl.LightningModule):
         )
 
         self.opt = optimizer
-        if self.pals or self.adapters:
-            scheduler = get_linear_schedule_with_warmup(optimizer, self.warmup_steps, 77500)
-        else:
-            scheduler_config = InverseSquareRootScheduleConfig(warmup_updates=self.warmup_steps,
-                                                               warmup_init_lr=self.init_lr,
-                                                               lr=self.peak_lr)
-            scheduler = InverseSquareRootSchedule(scheduler_config, optimizer)
+        scheduler = get_cosine_schedule_with_warmup(self.warmup_steps, 13672)
+        # if self.pals or self.adapters:
+        #     scheduler = get_linear_schedule_with_warmup(optimizer, self.warmup_steps, 77500)
+        # else:
+        #     scheduler_config = InverseSquareRootScheduleConfig(warmup_updates=self.warmup_steps,
+        #                                                        warmup_init_lr=self.init_lr,
+        #                                                        lr=self.peak_lr)
+        #     scheduler = InverseSquareRootSchedule(scheduler_config, optimizer)
 
         return {
             "optimizer": optimizer,
@@ -320,7 +321,8 @@ if __name__ == '__main__':
                          enable_checkpointing=True,
                          callbacks=[checkpoint_callback],
                          precision=16,
+                         auto_lr_find="init_lr",
                          **hparams)
     logger.log_hyperparams(hparams)
     logger.log_hyperparams({"tasks": {k: str(v) for k, v in tasks_dict.items()}})
-    trainer.fit(model)
+    trainer.tune(model)

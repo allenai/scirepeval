@@ -128,7 +128,7 @@ class SciRepTrain(pl.LightningModule):
         )
 
         self.opt = optimizer
-        scheduler = get_cosine_schedule_with_warmup(self.warmup_steps, 13672)
+        scheduler = get_cosine_schedule_with_warmup(optimizer, self.warmup_steps, 13672)
         # if self.pals or self.adapters:
         #     scheduler = get_linear_schedule_with_warmup(optimizer, self.warmup_steps, 77500)
         # else:
@@ -317,6 +317,7 @@ if __name__ == '__main__':
                "accumulate_grad_batches": args.grad_accum, "resume_from_checkpoint": args.checkpoint}
 
     trainer = pl.Trainer(logger=logger,
+                         strategy="ddp" if hparams["gpus"] else None,
                          enable_checkpointing=True,
                          callbacks=[checkpoint_callback],
                          precision=16,

@@ -200,14 +200,26 @@ class IRDataset(AbstractMultiTaskDataset):
 class TripletDataset(AbstractMultiTaskDataset):
     def __init__(self, task_name: str, data: datasets.Dataset, tokenizer: PreTrainedTokenizer,
                  fields: List[str],
-                 sample_size=-1, ctrl_token: str = None, max_len: int = 512):
+                 sample_size=-1, ctrl_token: str = None, max_len: int = 512, drop_rate: float = 0.15):
         super().__init__(task_name, data, tokenizer, fields, sample_size, ctrl_token, max_len)
+        self.drop_rate = drop_rate
 
     def preprocess(self, line: Dict[str, str]) -> Union[
         Tuple[str, BatchEncoding, torch.Tensor], List[Tuple[str, List[BatchEncoding]]]]:
         triplet = []
-        for key in ("query", "pos", "neg"):
-            triplet.append(self.tokenized_input(line[key]))
+        drop_field = np.random.uniform() < self.drop_rate
+        use_titles_only = drop_field and np.random.uniform() < 0.5
+        if drop_field and not use_titles_only:
+            triplet.append(self.tokenized_input(line["query"]["title"]))
+            triplet.append(self.tokenized_input(line["query"]["abstract"]))
+            triplet.append(self.tokenized_input(line["neg"]["abstract"]))
+        else:
+            for key in ("query", "pos", "neg"):
+                if use_titles_only:
+                    del line[key]["abstract"]
+                triplet.append(self.tokenized_input(line[key]))
+                if key == "neg" and "score" in line[key]:
+                    triplet[-1][key]["score"] = line[key]["score"]
         return self.task_name, triplet
 
 

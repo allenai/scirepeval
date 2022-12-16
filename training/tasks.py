@@ -87,15 +87,16 @@ class TripletLoss(nn.Module):
         self.distance = distance
         self.reduction = reduction
 
-    def forward(self, query, positive, negative):
+    def forward(self, query, positive, negative, cust_margin=None):
+        margin = self.margin if cust_margin is None else cust_margin
         if self.distance == 'l2-norm':
             distance_positive = F.pairwise_distance(query, positive)
             distance_negative = F.pairwise_distance(query, negative)
-            losses = F.relu(distance_positive - distance_negative + self.margin)
+            losses = F.relu(distance_positive - distance_negative + margin)
         elif self.distance == 'cosine':  # independent of length
             distance_positive = F.cosine_similarity(query, positive)
             distance_negative = F.cosine_similarity(query, negative)
-            losses = F.relu(-distance_positive + distance_negative + self.margin)
+            losses = F.relu(-distance_positive + distance_negative + margin)
         elif self.distance == 'dot':  # takes into account the length of vectors
             shapes = query.shape
             # batch dot product
@@ -107,7 +108,7 @@ class TripletLoss(nn.Module):
                 query.view(shapes[0], 1, shapes[1]),
                 negative.view(shapes[0], shapes[1], 1)
             ).reshape(shapes[0], )
-            losses = F.relu(-distance_positive + distance_negative + self.margin)
+            losses = F.relu(-distance_positive + distance_negative + margin)
         else:
             raise TypeError(f"Unrecognized option for `distance`:{self.distance}")
 

@@ -317,7 +317,7 @@ if __name__ == '__main__':
                "accumulate_grad_batches": args.grad_accum, "resume_from_checkpoint": args.checkpoint}
 
     trainer = pl.Trainer(logger=logger,
-                         strategy="ddp" if hparams["gpus"] else None,
+                         # strategy="ddp" if hparams["gpus"] else None,
                          enable_checkpointing=True,
                          callbacks=[checkpoint_callback],
                          precision=16,

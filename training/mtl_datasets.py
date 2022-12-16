@@ -219,7 +219,7 @@ class TripletDataset(AbstractMultiTaskDataset):
                     del line[key]["abstract"]
                 triplet.append(self.tokenized_input(line[key]))
                 if key == "neg" and "score" in line[key]:
-                    triplet[-1][key]["score"] = line[key]["score"]
+                    triplet[-1]["score"] = line[key]["score"]
         return self.task_name, triplet
 
 

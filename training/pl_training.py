@@ -162,7 +162,7 @@ class SciRepTrain(pl.LightningModule):
                     pos['input_ids'], pos['attention_mask'], idx, cand_ctrl), self(neg['input_ids'],
                                                                                    neg['attention_mask'], idx,
                                                                                    cand_ctrl)
-                margin = neg["margin"] if "margin" in neg else None
+                margin = neg.get("margin")
 
                 curr_loss = task.loss(query_emb, pos_emb, neg_emb, margin)
             else:
@@ -317,7 +317,7 @@ if __name__ == '__main__':
                "accumulate_grad_batches": args.grad_accum, "resume_from_checkpoint": args.checkpoint}
 
     trainer = pl.Trainer(logger=logger,
-                         # strategy="ddp" if hparams["gpus"] else None,
+                         strategy="ddp" if hparams["gpus"] else None,
                          enable_checkpointing=True,
                          callbacks=[checkpoint_callback],
                          precision=16,
@@ -325,4 +325,5 @@ if __name__ == '__main__':
                          **hparams)
     logger.log_hyperparams(hparams)
     logger.log_hyperparams({"tasks": {k: str(v) for k, v in tasks_dict.items()}})
-    trainer.tune(model, lr_find_kwargs={"min_lr":1e-5, "max_lr": 3e-4, "num_training": 500})
+    # trainer.tune(model, lr_find_kwargs={"min_lr":1e-5, "max_lr": 3e-4, "num_training": 500})
+    trainer.fit(model)

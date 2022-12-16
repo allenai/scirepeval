@@ -200,7 +200,7 @@ class IRDataset(AbstractMultiTaskDataset):
 class TripletDataset(AbstractMultiTaskDataset):
     def __init__(self, task_name: str, data: datasets.Dataset, tokenizer: PreTrainedTokenizer,
                  fields: List[str],
-                 sample_size=-1, ctrl_token: str = None, max_len: int = 512, drop_rate: float = 0.15):
+                 sample_size=-1, ctrl_token: str = None, max_len: int = 512, drop_rate: float = 0.1):
         super().__init__(task_name, data, tokenizer, fields, sample_size, ctrl_token, max_len)
         self.margin_map = {2: 1.0, 1: 1.5, 0: 2.0}
         self.drop_rate = drop_rate
@@ -219,8 +219,8 @@ class TripletDataset(AbstractMultiTaskDataset):
                 if use_titles_only:
                     del line[key]["abstract"]
                 triplet.append(self.tokenized_input(line[key]))
-        if "score" in line["neg"]:
-            triplet[-1]["margin"] = self.margin_map.get(line["neg"]["score"])
+        # if "score" in line["neg"]:
+        #     triplet[-1]["margin"] = self.margin_map.get(line["neg"]["score"])
         return self.task_name, triplet
 
 

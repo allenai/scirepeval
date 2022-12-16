@@ -325,4 +325,4 @@ if __name__ == '__main__':
                          **hparams)
     logger.log_hyperparams(hparams)
     logger.log_hyperparams({"tasks": {k: str(v) for k, v in tasks_dict.items()}})
-    trainer.tune(model)
+    trainer.tune(model, lr_find_kwargs={"min_lr":1e-5, "max_lr": 1e-4, "num_training": 500})

@@ -70,7 +70,7 @@ class AbstractMultiTaskDataset(ABC, IterableDataset):
         text = []
         if type(input_data) == dict:
             for field in self.fields:
-                if input_data[field]:
+                if input_data.get(field):
                     if type(input_data[field]) in set([decimal.Decimal, float]):
                         input_data[field] = str(int(input_data[field]))
                     text.append(input_data[field])

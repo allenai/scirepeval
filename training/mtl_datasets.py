@@ -208,17 +208,17 @@ class TripletDataset(AbstractMultiTaskDataset):
     def preprocess(self, line: Dict[str, str]) -> Union[
         Tuple[str, BatchEncoding, torch.Tensor], List[Tuple[str, List[BatchEncoding]]]]:
         triplet = []
-        drop_field = np.random.uniform() < self.drop_rate
-        use_titles_only = drop_field and np.random.uniform() < 0.5
-        if drop_field and not use_titles_only:
-            triplet.append(self.tokenized_input(line["query"]["title"]))
-            triplet.append(self.tokenized_input(line["query"]["abstract"]))
-            triplet.append(self.tokenized_input(line["neg"]["abstract"]))
-        else:
-            for key in ("query", "pos", "neg"):
-                if use_titles_only:
-                    del line[key]["abstract"]
-                triplet.append(self.tokenized_input(line[key]))
+        # drop_field = np.random.uniform() < self.drop_rate
+        # use_titles_only = drop_field and np.random.uniform() < 0.5
+        # if drop_field and not use_titles_only:
+        #     triplet.append(self.tokenized_input(line["query"]["title"]))
+        #     triplet.append(self.tokenized_input(line["query"]["abstract"]))
+        #     triplet.append(self.tokenized_input(line["neg"]["abstract"]))
+        # else:
+        for key in ("query", "pos", "neg"):
+            # if use_titles_only:
+            #     del line[key]["abstract"]
+            triplet.append(self.tokenized_input(line[key]))
         # if "score" in line["neg"]:
         #     triplet[-1]["margin"] = self.margin_map.get(line["neg"]["score"])
         return self.task_name, triplet

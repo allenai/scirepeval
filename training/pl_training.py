@@ -161,14 +161,7 @@ class SciRepTrain(pl.LightningModule):
                     pos['input_ids'], pos['attention_mask'], idx, cand_ctrl), self(neg['input_ids'],
                                                                                    neg['attention_mask'], idx,
                                                                                    cand_ctrl)
-                margin = None
-                if "score" in neg:
-                    if neg["score"] == 2:
-                        margin = 1.0
-                    elif neg["score"] == 1:
-                        margin = 1.5
-                    else:
-                        margin = 2.0
+                margin = neg["margin"] if "margin" in neg else None
 
                 curr_loss = task.loss(query_emb, pos_emb, neg_emb, margin)
             else:

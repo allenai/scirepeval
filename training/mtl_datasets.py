@@ -202,6 +202,7 @@ class TripletDataset(AbstractMultiTaskDataset):
                  fields: List[str],
                  sample_size=-1, ctrl_token: str = None, max_len: int = 512, drop_rate: float = 0.15):
         super().__init__(task_name, data, tokenizer, fields, sample_size, ctrl_token, max_len)
+        self.margin_map = {2: 1.0, 1: 1.5, 0: 2.0}
         self.drop_rate = drop_rate
 
     def preprocess(self, line: Dict[str, str]) -> Union[
@@ -219,7 +220,7 @@ class TripletDataset(AbstractMultiTaskDataset):
                     del line[key]["abstract"]
                 triplet.append(self.tokenized_input(line[key]))
                 if key == "neg" and "score" in line[key]:
-                    triplet[-1]["score"] = line[key]["score"]
+                    triplet[-1]["margin"] = self.margin_map.get(line[key]["score"])
         return self.task_name, triplet
 
 

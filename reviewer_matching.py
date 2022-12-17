@@ -61,5 +61,5 @@ class ReviewerMatchingEvaluator(IREvaluator):
                            cid in reviewer_papers}
             scores = {cid: cosine_similarity(cand_papers[cid], query).flatten() for cid in cand_papers}
             sorted_scores = {cid: sorted(scores[cid], reverse=True) for cid in scores}
-            run[qid] = {cid: np.mean(sorted_scores[cid][:3]) for cid in sorted_scores}
+            run[qid] = {cid: float(np.mean(sorted_scores[cid][:3])) for cid in sorted_scores}
         return run

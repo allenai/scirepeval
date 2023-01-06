@@ -222,7 +222,7 @@ class TripletDataset(AbstractMultiTaskDataset):
             triplet.append(self.tokenized_input(ip))
             # triplet.append(self.tokenized_input(line[key]))
         if "score" in line["neg"]:
-            triplet[-1]["type"] = self.margin_map.get(line["neg"]["score"])
+            triplet[-1]["type"] = line["neg"]["score"]
         return self.task_name, triplet
 
 

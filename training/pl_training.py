@@ -201,7 +201,8 @@ class SciRepTrain(pl.LightningModule):
                      prog_bar=False,
                      batch_size=self.batch_size, rank_zero_only=True)
         dist_loss_per_ntype = loss_per_ntype.clone().data
-        dist_loss_per_ntype = sync_ddp_if_available(dist_loss_per_ntype, reduce_op=ReduceOp.SUM)/self.trainer.world_size
+        dist_loss_per_ntype = sync_ddp_if_available(dist_loss_per_ntype,
+                                                    reduce_op=ReduceOp.SUM) / self.trainer.world_size
         for i, ntype in enumerate(["diff_fos", "same_fos", "hard"]):
             self.log(f"val_loss_{ntype}", dist_loss_per_ntype[i], on_step=True, on_epoch=True, prog_bar=False,
                      batch_size=self.batch_size, rank_zero_only=True)
@@ -325,7 +326,7 @@ if __name__ == '__main__':
                "accumulate_grad_batches": args.grad_accum, "resume_from_checkpoint": args.checkpoint}
 
     trainer = pl.Trainer(logger=logger,
-                         strategy="ddp" if hparams["gpus"] else None,
+                         strategy="ddp" if hparams["gpus"] and hparams["gpus"] > 1 else None,
                          enable_checkpointing=True,
                          callbacks=[checkpoint_callback],
                          precision=16,

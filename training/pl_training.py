@@ -163,10 +163,10 @@ class SciRepTrain(pl.LightningModule):
                                                                                    neg['attention_mask'], idx,
                                                                                    cand_ctrl)
                 margin = neg.get("margin")
-
+                ntype = neg.get("type")
                 curr_loss = task.loss(query_emb, pos_emb, neg_emb, margin)
-                for ntype in range(2):
-                    loss_per_ntype[ntype] = torch.mean(curr_loss[margin == ntype])
+                for ntype_idx in range(2):
+                    loss_per_ntype[ntype_idx] = torch.mean(curr_loss[ntype == ntype_idx])
 
             else:
                 x, y = batch[0], batch[1]

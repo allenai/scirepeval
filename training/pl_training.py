@@ -146,7 +146,7 @@ class SciRepTrain(pl.LightningModule):
         }
 
     def calc_loss(self, train_batch, batch_idx):
-        losses, loss_per_task = [], torch.zeros(len(self.task_dict)).cuda()
+        loss_per_ntype, loss_per_task = torch.zeros(3).cuda(), torch.zeros(len(self.task_dict)).cuda()
         scl = torch.tensor(0.0)
         for name, batch in train_batch.items():
             task = self.task_dict[name]
@@ -165,6 +165,9 @@ class SciRepTrain(pl.LightningModule):
                 margin = neg.get("margin")
 
                 curr_loss = task.loss(query_emb, pos_emb, neg_emb, margin)
+                for ntype in range(2):
+                    loss_per_ntype[ntype] = torch.mean(curr_loss[margin == ntype])
+
             else:
                 x, y = batch[0], batch[1]
                 encoding = self(x['input_ids'], x['attention_mask'], idx, task_id)
@@ -178,17 +181,17 @@ class SciRepTrain(pl.LightningModule):
                     scl = task.contrastive_loss(encoding, y, self.heads[name].num_labels)
                     curr_loss = 0.1 * curr_loss + 0.9 * scl
             loss_per_task[self.task_idx[name]] = torch.mean(curr_loss)
-        return loss_per_task
+        return loss_per_ntype, loss_per_task
 
     def training_step(self, train_batch, batch_idx):
-        loss_per_task = self.calc_loss(train_batch, batch_idx)
+        loss_per_ntype, loss_per_task = self.calc_loss(train_batch, batch_idx)
         loss = torch.sum(loss_per_task)
         self.log("train_loss", loss, prog_bar=True, on_step=True, on_epoch=True, batch_size=self.batch_size)
         self.log("lr", self.lr_schedulers().get_last_lr()[-1], on_step=True, on_epoch=False, prog_bar=True, logger=True)
         return {"loss": loss}
 
     def validation_step(self, train_batch, batch_idx) -> Optional[STEP_OUTPUT]:
-        loss_per_task = self.calc_loss(train_batch, batch_idx)
+        loss_per_ntype, loss_per_task = self.calc_loss(train_batch, batch_idx)
         # loss_per_task = torch.mul(self.loss_wt.cuda(), loss_per_task)
         loss = torch.sum(loss_per_task)
         dist_loss_per_task = loss_per_task.clone().data
@@ -196,6 +199,11 @@ class SciRepTrain(pl.LightningModule):
         for task in self.task_dict:
             self.log(f"val_loss_{task}", dist_loss_per_task[self.task_idx[task]], on_step=True, on_epoch=True,
                      prog_bar=False,
+                     batch_size=self.batch_size, rank_zero_only=True)
+        dist_loss_per_ntype = loss_per_ntype.clone().data
+        dist_loss_per_ntype = sync_ddp_if_available(dist_loss_per_ntype, reduce_op=ReduceOp.SUM)/self.trainer.world_size
+        for i, ntype in enumerate(["diff_fos", "same_fos", "hard"]):
+            self.log(f"val_loss_{ntype}", dist_loss_per_ntype[i], on_step=True, on_epoch=True, prog_bar=False,
                      batch_size=self.batch_size, rank_zero_only=True)
         self.log("val_loss", loss, on_step=True, on_epoch=False, prog_bar=True)
         self.log("avg_val_loss", loss, on_epoch=True, prog_bar=True, sync_dist=True, batch_size=self.batch_size)

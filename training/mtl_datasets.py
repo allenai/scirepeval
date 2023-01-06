@@ -221,8 +221,8 @@ class TripletDataset(AbstractMultiTaskDataset):
             ip = line[key] if np.random.uniform() >= self.drop_rate else line[key]["title"]
             triplet.append(self.tokenized_input(ip))
             # triplet.append(self.tokenized_input(line[key]))
-        # if "score" in line["neg"]:
-        #     triplet[-1]["margin"] = self.margin_map.get(line["neg"]["score"])
+        if "score" in line["neg"]:
+            triplet[-1]["type"] = self.margin_map.get(line["neg"]["score"])
         return self.task_name, triplet
 
 

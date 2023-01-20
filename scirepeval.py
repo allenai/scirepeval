@@ -5,7 +5,7 @@ from typing import List, Union
 from evaluation.encoders import Model
 from evaluation.evaluator import IREvaluator, SupervisedEvaluator, SupervisedTask
 from evaluation.few_shot_evaluator import FewShotEvaluator
-from gpt3_encoder import GPT3Model
+from evaluation.gpt3_encoder import GPT3Model
 from reviewer_matching import ReviewerMatchingEvaluator
 from evaluation.eval_datasets import SimpleDataset, IRDataset
 

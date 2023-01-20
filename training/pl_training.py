@@ -165,7 +165,7 @@ class SciRepTrain(pl.LightningModule):
                 margin = neg.get("margin")
                 ntype = neg.get("type")
                 curr_loss = task.loss(query_emb, pos_emb, neg_emb, margin)
-                for ntype_idx in range(2):
+                for ntype_idx in range(3):
                     loss_per_ntype[ntype_idx] = torch.mean(curr_loss[ntype == ntype_idx])
 
             else:

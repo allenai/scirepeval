@@ -13,10 +13,18 @@ class GPT3Model:
     def __call__(self, batch, batch_ids=None):
         batch_embed = []
         for iptext in batch:
-            response = openai.Embedding.create(
-                input=iptext,
-                model=self.embed_model
-            )
-            embeddings = response['data'][0]['embedding']
-            batch_embed.append(embeddings)
+            try:
+                response = openai.Embedding.create(
+                    input=iptext,
+                    model=self.embed_model
+                )
+                embeddings = response['data'][0]['embedding']
+                batch_embed.append(embeddings)
+            except:
+                response = openai.Embedding.create(
+                    input=" ".join(iptext.split(" ")[450]),
+                    model=self.embed_model
+                )
+                embeddings = response['data'][0]['embedding']
+                batch_embed.append(embeddings)
         return torch.tensor(batch_embed)

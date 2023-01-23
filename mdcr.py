@@ -48,3 +48,11 @@ class MDCREvaluator(IREvaluator):
                 results[f"{q}_{c}"] = cscores[c]
         json.dump(results, open("scirepeval_mdcr.json", "w"))
         return dict()
+
+import sys
+if __name__ == "__main__":
+    mname = sys.argv[1]
+    model = Model(variant="default", base_checkpoint=mname)
+    evaluator = MDCREvaluator("mcdr", "../mdcr/mdcr_test_data.jsonl", "../mdc/mdcr_test.json", model, batch_size=32)
+    embeddings = evaluator.generate_embeddings(save_path="embeddings.json")
+    evaluator.evaluate(embeddings)

@@ -35,7 +35,7 @@ class MDCREvaluator(IREvaluator):
     def evaluate(self, embeddings, **kwargs):
         logger.info(f"Loading test dataset from {self.test_dataset}")
         split_dataset = datasets.load_dataset("json",
-                                              data_files={"test": {self.test_dataset}})
+                                              data_files={"test": self.test_dataset})
         logger.info(f"Loaded {len(split_dataset['test'])} test query-candidate pairs")
         if type(embeddings) == str and os.path.isfile(embeddings):
             embeddings = EmbeddingsGenerator.load_embeddings_from_jsonl(embeddings)

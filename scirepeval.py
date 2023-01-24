@@ -5,6 +5,7 @@ from typing import List, Union
 from evaluation.encoders import Model
 from evaluation.evaluator import IREvaluator, SupervisedEvaluator, SupervisedTask
 from evaluation.few_shot_evaluator import FewShotEvaluator
+from evaluation.gpt3_encoder import GPT3Model
 from reviewer_matching import ReviewerMatchingEvaluator
 from evaluation.eval_datasets import SimpleDataset, IRDataset
 
@@ -118,6 +119,7 @@ if __name__ == "__main__":
     parser = argparse.ArgumentParser()
     parser.add_argument('--tasks-config', help='path to the task config file', default="scirepeval_tasks.jsonl")
     parser.add_argument('--mtype', help='Model variant to be used (default, pals, adapters, fusion)', default="default")
+    parser.add_argument('--gpt3-model', help='Name of embedding model in case of using openai api', default=None)
     parser.add_argument('--model', '-m', help='HuggingFace model to be used')
     parser.add_argument('--batch-size', type=int, default=32, help='batch size')
     parser.add_argument('--ctrl-tokens', action='store_true', default=False, help='use control codes for tasks')
@@ -129,9 +131,12 @@ if __name__ == "__main__":
 
     args = parser.parse_args()
     adapters_load_from = args.adapters_dir if args.adapters_dir else args.adapters_chkpt
-    model = Model(variant=args.mtype, base_checkpoint=args.model, adapters_load_from=adapters_load_from,
-                  fusion_load_from=args.fusion_dir,
-                  use_ctrl_codes=args.ctrl_tokens,
-                  task_id="", all_tasks=["[CLF]", "[QRY]", "[RGN]", "[PRX]"], use_fp16=args.fp16)
+    if args.gpt3_model:
+        model = GPT3Model(embed_model=args.gpt3_model)
+    else:
+        model = Model(variant=args.mtype, base_checkpoint=args.model, adapters_load_from=adapters_load_from,
+                      fusion_load_from=args.fusion_dir,
+                      use_ctrl_codes=args.ctrl_tokens,
+                      task_id="", all_tasks=["[CLF]", "[QRY]", "[RGN]", "[PRX]"], use_fp16=args.fp16)
     evaluator = SciRepEval(tasks_config=args.tasks_config, batch_size=args.batch_size)
     evaluator.evaluate(model, args.output)

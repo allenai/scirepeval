@@ -23,7 +23,7 @@ class MDCREvaluator(IREvaluator):
 
     def get_qc_pairs(self, dataset):
         qrpairs = dict()
-        for fos_dict in dataset["test"]:
+        for fos_dict in dataset:
             for fos in fos_dict:
                 for query in fos_dict[fos]:
                     qrpairs[query] = dict()
@@ -43,7 +43,7 @@ class MDCREvaluator(IREvaluator):
         qrels_hard = self.get_qc_pairs(split_dataset["test"])
         preds = self.retrieval(embeddings, qrels_hard)
         results = dict()
-        for q, cscores in tqdm(preds):
+        for q, cscores in tqdm(preds.items()):
             for c in cscores:
                 results[f"{q}_{c}"] = cscores[c]
         json.dump(results, open("scirepeval_mdcr.json", "w"))
@@ -53,6 +53,6 @@ import sys
 if __name__ == "__main__":
     mname = sys.argv[1]
     model = Model(variant="default", base_checkpoint=mname)
-    evaluator = MDCREvaluator("mcdr", "../mdcr/mdcr_test_data.jsonl", "../mdc/mdcr_test.json", model, batch_size=32)
-    embeddings = evaluator.generate_embeddings(save_path="embeddings.json")
+    evaluator = MDCREvaluator("mcdr", "../mdcr/mdcr_test_data.jsonl", "../mdcr/mdcr_test.json", model, batch_size=32)
+    embeddings = evaluator.generate_embeddings(save_path="mdcr_embeddings.json")
     evaluator.evaluate(embeddings)

@@ -22,7 +22,7 @@ class GPT3Model:
                 batch_embed.append(embeddings)
             except:
                 response = openai.Embedding.create(
-                    input=" ".join(iptext.split(" ")[450]),
+                    input=" ".join(iptext.split(" ")[:450]),
                     model=self.embed_model
                 )
                 embeddings = response['data'][0]['embedding']

@@ -58,6 +58,8 @@ class Model:
         self.encoder.eval()
         tokenizer_checkpoint = f"{base_checkpoint}/tokenizer" if os.path.isdir(base_checkpoint) else base_checkpoint
         self.tokenizer = AutoTokenizer.from_pretrained(tokenizer_checkpoint)
+        self.tokenizer.add_special_tokens(
+            {"bos_token": "<s>", "eos_token": "</s>", "sep_token": "</s>", "unk_token": "<unk>", "pad_token": "<pad>"})
         self.use_ctrl_codes = use_ctrl_codes
         self.reqd_token_idx = 0 if not use_ctrl_codes else 1
         self._task_id = task_id

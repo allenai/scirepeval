@@ -129,7 +129,7 @@ Setup S2AND as in [repo](https://github.com/allenai/S2AND) and change the config
 
 Run the following command:
 ```bash
-cd S2AND; python scripts/custom_block_transfer_experiment_seed_paper.py --custom_block_path <data>/blocks --experiment_name mini_customblock_phantasm_v1 --exclude_medline --emb_suffix _<suffix>.pkl
+python scripts/custom_block_transfer_experiment_seed_paper.py --custom_block_path <data>/blocks --experiment_name mini_customblock_phantasm_v1 --exclude_medline --emb_suffix _<suffix>.pkl
 ```
 ### Filtering Tasks
 #### By Name

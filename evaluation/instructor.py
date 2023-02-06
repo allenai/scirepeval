@@ -19,7 +19,7 @@ class InstructorModel:
         if type(self.task_id) != dict:
             batch = [[self.instruction_map[self.task_id], b] for b in batch]
         else:
-            instructions = [f"{self.instruction_map['SRCH'][b[1]]}{batch[i]}" for i, b in enumerate(batch_ids)]
+            instructions = [f"{self.instruction_map['[SRCH]'][b[1]]}{batch[i]}" for i, b in enumerate(batch_ids)]
             batch = [[ins, b] for ins, b in zip(instructions, batch)]
         batch_embed = self.encoder.encode(batch, convert_to_numpy=False, convert_to_tensor=True, device="cuda")
         return batch_embed

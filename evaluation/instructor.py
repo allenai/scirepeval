@@ -13,6 +13,7 @@ class InstructorModel:
                                 "[SRCH]": {"q": "Represent the Scientific query for retrieving relevant documents: ",
                                            "c": f"{instr_format} for retrieval: "}}
         self.tokenizer = AutoTokenizer.from_pretrained(embed_model)
+        self.tokenizer.sep_token = self.tokenizer.eos_token
 
     def __call__(self, batch, batch_ids=None):
         if type(self.task_id) != dict:

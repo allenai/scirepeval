@@ -129,6 +129,7 @@ if __name__ == "__main__":
     parser.add_argument('--adapters-chkpt', help='hf adapter names keyed on tasks', default=None, type=json.loads)
     parser.add_argument('--output', help="path to the output file", default="scirepeval_results.json")
     parser.add_argument('--fp16', action='store_true', default=False, help='use floating point 16 precision')
+    parser.add_argument('--instructor', action='store_true', default=False, help='use an instructor model for eval')
 
     args = parser.parse_args()
     adapters_load_from = args.adapters_dir if args.adapters_dir else args.adapters_chkpt

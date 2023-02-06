@@ -1,4 +1,5 @@
 from InstructorEmbedding import INSTRUCTOR
+from transformers import AutoTokenizer
 
 instr_format = "Represent the Scientific documents for "
 
@@ -11,6 +12,7 @@ class InstructorModel:
                                 "[PRX]": f"{instr_format} retrieving similar similar documents: ",
                                 "[SRCH]": {"q": "Represent the Scientific query for retrieving relevant documents: ",
                                            "c": f"{instr_format} for retrieval: "}}
+        self.tokenizer = AutoTokenizer.from_pretrained(embed_model)
 
     def __call__(self, batch, batch_ids=None):
         if type(self.task_id) != dict:

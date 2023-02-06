@@ -6,6 +6,7 @@ from evaluation.encoders import Model
 from evaluation.evaluator import IREvaluator, SupervisedEvaluator, SupervisedTask
 from evaluation.few_shot_evaluator import FewShotEvaluator
 from evaluation.gpt3_encoder import GPT3Model
+from evaluation.instructor import InstructorModel
 from reviewer_matching import ReviewerMatchingEvaluator
 from evaluation.eval_datasets import SimpleDataset, IRDataset
 
@@ -133,6 +134,8 @@ if __name__ == "__main__":
     adapters_load_from = args.adapters_dir if args.adapters_dir else args.adapters_chkpt
     if args.gpt3_model:
         model = GPT3Model(embed_model=args.gpt3_model)
+    elif args.instructor:
+        model = InstructorModel(args.model)
     else:
         model = Model(variant=args.mtype, base_checkpoint=args.model, adapters_load_from=adapters_load_from,
                       fusion_load_from=args.fusion_dir,

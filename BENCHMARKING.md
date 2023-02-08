@@ -53,6 +53,25 @@ python scirepeval.py --mtype fusion -m <huggingface base model name/local checkp
 
 ```
 
+**Open AI Embeddings**
+
+We provide additional option for evaluating [Open AI](https://platform.openai.com/docs/guides/embeddings/use-cases) embeddings on SciRepEval.
+If you have an Open AI license key, set it as an environment variable.
+```bash
+export OPENAI_API_KEY=<open ai api key>
+python scirepeval.py --gpt3-model text-embedding-ada-002
+```
+
+**Instructor**
+
+You can also evaluate the [Instructor](https://instructor-embedding.github.io/) models available on Hugging Face.
+The prompts for each task format are present in [instructor.py](https://github.com/allenai/scirepeval/blob/main/evaluation/instructor.py).
+
+```bash
+python scirepeval.py --instructor -m hkunlp/instructor-large
+```
+
+
 The script generates embeddings and evaluates on each task as per the metric mentioned in the paper. By default the result report is created in `<ROOT>/scirepeval_results.json`
 
 ### Sample Report

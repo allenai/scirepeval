@@ -95,3 +95,5 @@ wheel==0.37.1
 xxhash==3.0.0
 yarl==1.8.1
 zipp==3.8.1
+openai==0.26.1
+InstructorEmbedding==1.0.0

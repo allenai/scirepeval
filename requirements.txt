@@ -97,3 +97,4 @@ yarl==1.8.1
 zipp==3.8.1
 openai==0.26.1
 InstructorEmbedding==1.0.0
+sentence_transformers==2.2.2

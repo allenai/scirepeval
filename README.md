@@ -1,5 +1,5 @@
 # SciRepEval: A Multi-Format Benchmark for Scientific Document Representations
-This repo contains the code to train, evaluate and reproduce the representation learning models and results on the benchmark introduced in [SciRepEval](https://openreview.net/pdf?id=zfiYcbeQkH).
+This repo contains the code to train, evaluate and reproduce the representation learning models and results on the benchmark introduced in [SciRepEval](https://arxiv.org/abs/2211.13308).
 
 ## Quick Setup
 Clone the repo and setup the environment as follows:

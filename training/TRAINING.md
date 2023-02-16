@@ -1,5 +1,5 @@
 ## Training
-The code available as part of this sub-directory can be used to train a general purpose multi-task model or the multi-format based models introduced in [SciRepEval](https://openreview.net/pdf?id=zfiYcbeQkH).
+The code available as part of this sub-directory can be used to train a general purpose multi-task model or the multi-format based models introduced in [SciRepEval]([https://openreview.net/pdf?id=zfiYcbeQkH](https://arxiv.org/abs/2211.13308)).
 
 Post the quick setup step in ReadMe, you can choose to train the following base models:
 (Parenthesis denote how they are referred in the paper)

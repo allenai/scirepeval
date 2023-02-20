@@ -1,5 +1,5 @@
 # SciRepEval: A Multi-Format Benchmark for Scientific Document Representations
-This repo contains the code to train, evaluate and reproduce the representation learning models and results on the benchmark introduced in [SciRepEval](https://arxiv.org/abs/2211.13308).
+This repo contains the code to train, evaluate and reproduce the representation learning models and results on the benchmark introduced in [SciRepEval](https://api.semanticscholar.org/CorpusID:254018137).
 
 ## Quick Setup
 Clone the repo and setup the environment as follows:
@@ -81,4 +81,16 @@ Since we want to evaluate document representations, every dataset consists of tw
 ## License
 The aggregate benchmark is released under [ODC-BY](https://opendatacommons.org/licenses/by/1.0/) license. By downloading this data you acknowledge that you have read and agreed to all the terms in this license.
 For constituent datasets, also go through the individual licensing requirements, as applicable. 
+
+## Citation
+
+Please cite the SciRepEval work as:
+
+@article{Singh2022SciRepEvalAM,
+  title={SciRepEval: A Multi-Format Benchmark for Scientific Document Representations},
+  author={Amanpreet Singh and Mike D'Arcy and Arman Cohan and Doug Downey and Sergey Feldman},
+  journal={ArXiv},
+  year={2022},
+  volume={abs/2211.13308}
+}
 

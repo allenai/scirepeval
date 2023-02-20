@@ -86,6 +86,7 @@ For constituent datasets, also go through the individual licensing requirements,
 
 Please cite the SciRepEval work as:
 
+```bibtex
 @article{Singh2022SciRepEvalAM,
   title={SciRepEval: A Multi-Format Benchmark for Scientific Document Representations},
   author={Amanpreet Singh and Mike D'Arcy and Arman Cohan and Doug Downey and Sergey Feldman},
@@ -93,4 +94,5 @@ Please cite the SciRepEval work as:
   year={2022},
   volume={abs/2211.13308}
 }
+```
 

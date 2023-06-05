@@ -29,7 +29,8 @@ from strategies import BatchingStrategy
 from tasks import TaskFamily, load_tasks
 
 pl.seed_everything(42, workers=True)
-
+datasets.config.STREAMING_READ_MAX_RETRIES = 80
+datasets.config.STREAMING_READ_RETRY_INTERVAL = 20
 
 def init_weights(modules):
     for module in modules:

@@ -117,7 +117,7 @@ from scirepeval import SciRepEval
 from evaluation.encoders import Model
 
 #MTL CTRL
-model1 = Model(variant="default", base_checkpoint="malteos/scincl", use_ctrl_codes=True)
+model1 = Model(variant="default", base_checkpoint="allenai/scirepeval_ctrl", use_ctrl_codes=True)
 
 #Adapters
 adapters_dict = {"[CLF]": "allenai/scirepeval_adapters_clf", "[QRY]": "allenai/scirepeval_adapters_qry", "[RGN]": "allenai/scirepeval_adapters_rgn", "[PRX]": "allenai/scirepeval_adapters_prx"}

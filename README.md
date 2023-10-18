@@ -22,7 +22,7 @@ Please refer to the following for further usage:
 [Benchmarking](https://github.com/allenai/scirepeval/blob/main/BENCHMARKING.md) - Simply evaluate models(pretrained from HuggingFace/local checkpoints) on SciRepEval and generate a report
 
 ## Benchmark Details
-SciRepEval consists of 25 scientific document tasks to train and evaluate scientific document representation models. The tasks are divided across 4 task formats- classification **CLF**, regression **RGN**, proximity (nearest neighbors) retrieval **PRX** and ad-hoc search **SRCH**.  The table below gives a brief overview of the tasks with their HuggingFace datasets config names, if applicable. 
+SciRepEval consists of 24 scientific document tasks to train and evaluate scientific document representation models. The tasks are divided across 4 task formats- classification **CLF**, regression **RGN**, proximity (nearest neighbors) retrieval **PRX** and ad-hoc search **SRCH**.  The table below gives a brief overview of the tasks with their HuggingFace datasets config names, if applicable. 
 The benchmark dataset can be downloaded from AWS S3 or HuggingFace as follows:
 #### AWS S3 via CLI
 ```bash
@@ -64,14 +64,13 @@ Since we want to evaluate document representations, every dataset consists of tw
 |PRX|Citation Prediction|Y|-|[cite_prediction](https://huggingface.co/datasets/allenai/scirepeval/viewer/cite_prediction)|-|
 |PRX|S2AND*|N|B^3 F1|-|-|
 |PRX|Paper-Reviewer Matching**|N|Precision@5,10|[paper_reviewer_matching](https://huggingface.co/datasets/allenai/scirepeval/viewer/paper_reviewer_matching)|[paper_reviewer_matching](https://huggingface.co/datasets/allenai/scirepeval_test/viewer/paper_reviewer_matching), [reviewers](https://huggingface.co/datasets/allenai/scirepeval_test/viewer/reviewers)|
-|PRX|Feeds-1|N|MAP|[feeds_1](https://huggingface.co/datasets/allenai/scirepeval/viewer/feeds_1)|[feeds_1](https://huggingface.co/datasets/allenai/scirepeval_test/viewer/feeds_1)|
-|PRX|Feeds-M|N|MAP|[feeds_m](https://huggingface.co/datasets/allenai/scirepeval/viewer/feeds_m)|[feeds_m](https://huggingface.co/datasets/allenai/scirepeval_test/viewer/feeds_m)|
+|PRX|[RELISH](https://figshare.com/projects/RELISH-DB/60095)|N|NDCG|[relish](https://huggingface.co/datasets/allenai/scirepeval/viewer/relish)|[relish](https://huggingface.co/datasets/allenai/scirepeval_test/viewer/relish)|
 |PRX|[SciDocs-Cite](https://github.com/allenai/scidocs)|N|MAP, NDCG|[scidocs_view_cite_read](https://huggingface.co/datasets/allenai/scirepeval/viewer/scidocs_view_cite_read)|[scidocs_cite](https://huggingface.co/datasets/allenai/scirepeval_test/viewer/scidocs_cite)|
 |PRX|[SciDocs-CoCite](https://github.com/allenai/scidocs)|N|MAP, NDCG|[scidocs_view_cite_read](https://huggingface.co/datasets/allenai/scirepeval/viewer/scidocs_view_cite_read)|[scidocs_cocite](https://huggingface.co/datasets/allenai/scirepeval_test/viewer/scidocs_cocite)|
 |PRX|[SciDocs-CoView](https://github.com/allenai/scidocs)|N|MAP, NDCG|[scidocs_view_cite_read](https://huggingface.co/datasets/allenai/scirepeval/viewer/scidocs_view_cite_read)|[scidocs_view](https://huggingface.co/datasets/allenai/scirepeval_test/viewer/scidocs_view)|
 |PRX|[SciDocs-CoRead](https://github.com/allenai/scidocs)|N|MAP, NDCG|[scidocs_view_cite_read](https://huggingface.co/datasets/allenai/scirepeval/viewer/scidocs_view_cite_read)|[scidocs_read](https://huggingface.co/datasets/allenai/scirepeval_test/viewer/scidocs_read)|
 |SRCH|Search|Y|NDCG|[search](https://huggingface.co/datasets/allenai/scirepeval/viewer/search)|[search](https://huggingface.co/datasets/allenai/scirepeval_test/viewer/search)|
-|SRCH|Feeds-Title|N|MAP|[feeds_title](https://huggingface.co/datasets/allenai/scirepeval/viewer/feeds_title)|[feeds_title](https://huggingface.co/datasets/allenai/scirepeval_test/viewer/feeds_title)|
+|SRCH|[NFCorpus](https://www.cl.uni-heidelberg.de/statnlpgroup/nfcorpus/)|N|NDCG|[nfcorpus](https://huggingface.co/datasets/allenai/scirepeval/viewer/nfcorpus)|[nfcorpus](https://huggingface.co/datasets/allenai/scirepeval_test/viewer/nfcorpus)|
 |SRCH|[TREC-CoVID](https://ir.nist.gov/trec-covid/data.html)|N|NDCG|[trec_covid](https://huggingface.co/datasets/allenai/scirepeval/viewer/trec_covid)|[trec_covid](https://huggingface.co/datasets/allenai/scirepeval_test/viewer/trec_covid)|
 
 *S2AND requires the evaluation dataset in a specific format so to evaluate your model on the task please follow [these](https://github.com/allenai/scirepeval/blob/main/BENCHMARKING.md#s2and) instructions.

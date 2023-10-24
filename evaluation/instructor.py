@@ -1,16 +1,16 @@
 from InstructorEmbedding import INSTRUCTOR
 from transformers import AutoTokenizer
 
-instr_format = "Represent the Scientific documents for "
+instr_format = "Represent the Science document"
 
 
 class InstructorModel:
     def __init__(self, embed_model: str):
         self.encoder = INSTRUCTOR(embed_model)
         self.task_id = None
-        self.instruction_map = {"[CLF]": f"{instr_format} classification: ", "[RGN]": f"{instr_format} regression: ",
-                                "[PRX]": f"{instr_format} retrieving similar similar documents: ",
-                                "[SRCH]": {"q": "Represent the Scientific query for retrieving relevant documents: ",
+        self.instruction_map = {"[CLF]": f"{instr_format} for classification: ", "[RGN]": f"{instr_format} for regression: ",
+                                "[PRX]": f"{instr_format} for retrieval: ",
+                                "[SRCH]": {"q": "Represent the Science query for retrieving supporting documents: ",
                                            "c": f"{instr_format} for retrieval: "}}
         self.tokenizer = AutoTokenizer.from_pretrained(embed_model)
         self.tokenizer.sep_token = self.tokenizer.eos_token

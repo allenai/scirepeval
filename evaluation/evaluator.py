@@ -30,12 +30,12 @@ class Evaluator:
         if model:
             if type(model) != list:
                 model = [model]
-            # for m in model:
-            #     if not m.tokenizer.pad_token:
-            #         m.tokenizer.add_special_tokens({'pad_token': '[PAD]'})
-            #         m.tokenizer.padding_side = "left"
-            #         m.tokenizer.sep_token = m.tokenizer.eos_token
-            #         m.encoder.resize_token_embeddings(len(m.tokenizer))
+            for m in model:
+                if not m.tokenizer.pad_token:
+                    m.tokenizer.add_special_tokens({'pad_token': '[PAD]'})
+                    m.tokenizer.padding_side = "left"
+                    m.tokenizer.sep_token = m.tokenizer.eos_token
+                    # m.encoder.resize_token_embeddings(len(m.tokenizer))
             datasets = [dataset_class(meta_dataset, m.tokenizer.sep_token, batch_size, fields, key,
                                     process_fn) for m in model]
             self.embeddings_generator = EmbeddingsGenerator(datasets, model)
@@ -182,7 +182,8 @@ class IREvaluator(Evaluator):
         for row in dataset:
             if row["query_id"] not in pairs:
                 pairs[row["query_id"]] = dict()
-            pairs[row["query_id"]][row["cand_id"]] = row["score"]
+            if row["cand_id"] not in pairs[row["query_id"]]:
+                pairs[row["query_id"]][row["cand_id"]] = row["score"]
         return pairs
 
     def calc_metrics(self, qrels, run):

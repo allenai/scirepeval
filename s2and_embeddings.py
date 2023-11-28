@@ -7,6 +7,7 @@ from evaluation.eval_datasets import SimpleDataset
 from evaluation.evaluator import Evaluator
 import argparse
 from tqdm import tqdm
+from evaluation.instructor import InstructorModel
 
 import json
 
@@ -46,11 +47,16 @@ if __name__ == "__main__":
     parser.add_argument('--fusion-dir', help='path to the fusion checkpoints', default=None)
     parser.add_argument("--data-dir", help="path to the data directory")
     parser.add_argument("--suffix", help="suffix for output embedding files")
+    parser.add_argument('--instructor', action='store_true', default=False, help='use an instructor model for eval')
 
     args = parser.parse_args()
     adapters_load_from = args.adapters_dir if args.adapters_dir else args.adapters_chkpt
-    model = Model(variant=args.mtype, base_checkpoint=args.model, adapters_load_from=adapters_load_from,
-                  fusion_load_from=args.fusion_dir, use_ctrl_codes=args.ctrl_tokens,
-                  task_id="[PRX]", all_tasks=["[CLF]", "[PRX]", "[RGN]", "[QRY]"])
+    if args.instructor:
+        model = InstructorModel(args.model)
+        model.task_id = "[PRX]"
+    else:
+        model = Model(variant=args.mtype, base_checkpoint=args.model, adapters_load_from=adapters_load_from,
+                      fusion_load_from=args.fusion_dir, use_ctrl_codes=args.ctrl_tokens,
+                      task_id="[PRX]", all_tasks=["[CLF]", "[PRX]", "[RGN]", "[QRY]"])
     evaluator = S2ANDEvaluator(args.data_dir, model)
     evaluator.generate_embeddings(args.suffix)

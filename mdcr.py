@@ -6,11 +6,14 @@ import os
 import datasets
 import numpy as np
 from tqdm import tqdm
+import argparse
+from evaluation.gpt3_encoder import GPT3Model
 
 from evaluation.embeddings_generator import EmbeddingsGenerator
 from evaluation.encoders import Model
 from evaluation.eval_datasets import SimpleDataset
 from evaluation.evaluator import IREvaluator
+from evaluation.instructor import InstructorModel
 
 logger = logging.getLogger(__name__)
 
@@ -51,8 +54,27 @@ class MDCREvaluator(IREvaluator):
 
 import sys
 if __name__ == "__main__":
-    mname = sys.argv[1]
-    model = Model(variant="default", base_checkpoint=mname)
-    evaluator = MDCREvaluator("mcdr", "../mdcr/mdcr_test_data.jsonl", "../mdcr/mdcr_test.json", model, batch_size=32)
+    parser = argparse.ArgumentParser()
+    parser.add_argument('--mtype', help='Model variant to be used (default, pals, adapters, fusion)', default="default")
+    parser.add_argument('--model', '-m', help='HuggingFace model to be used')
+    parser.add_argument('--ctrl-tokens', action='store_true', default=False, help='use control codes for tasks')
+    parser.add_argument('--adapters-dir', help='path to the adapter checkpoints', default=None)
+    parser.add_argument('--adapters-chkpt', help='hf adapter names keyed on tasks', default=None, type=json.loads)
+    parser.add_argument('--fusion-dir', help='path to the fusion checkpoints', default=None)
+    parser.add_argument('--instructor', action='store_true', default=False, help='use an instructor model for eval')
+    parser.add_argument('--gpt3-model', help='Name of embedding model in case of using openai api', default=None)
+
+    args = parser.parse_args()
+    adapters_load_from = args.adapters_dir if args.adapters_dir else args.adapters_chkpt
+    if args.gpt3_model:
+        model = GPT3Model(embed_model=args.gpt3_model)
+    elif args.instructor:
+        model = InstructorModel(args.model)
+        model.task_id = "[PRX]"
+    else:
+        model = Model(variant=args.mtype, base_checkpoint=args.model, adapters_load_from=adapters_load_from,
+                      fusion_load_from=args.fusion_dir, use_ctrl_codes=args.ctrl_tokens,
+                      task_id="[PRX]", all_tasks=["[CLF]", "[PRX]", "[RGN]", "[QRY]"])
+    evaluator = MDCREvaluator("mdcr", "../mdcr/mdcr_test_data.jsonl", "../mdcr/mdcr_test.json", model, batch_size=32)
     embeddings = evaluator.generate_embeddings(save_path="mdcr_embeddings.json")
     evaluator.evaluate(embeddings)

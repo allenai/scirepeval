@@ -112,8 +112,8 @@ class SciRepEval:
             for few_shot in few_shot_evaluators:
                 final_results[task_name]["few_shot"].append(
                     {"sample_size": few_shot.sample_size, "results": few_shot.evaluate(embeddings)})
-        with open(output, "w") as f:
-            json.dump(final_results, f, indent=4)
+            with open(output, "w") as f:
+                json.dump(final_results, f, indent=4)
 
 
 if __name__ == "__main__":

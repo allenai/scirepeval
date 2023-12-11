@@ -7,14 +7,8 @@ sys.path.append('../')
 import argparse
 from typing import Dict, Optional, Any
 import datasets
-import pytorch_lightning as pl
 import torch
 import torch.nn
-from pytorch_lightning.callbacks import ModelCheckpoint
-from pytorch_lightning.loggers import TensorBoardLogger
-from pytorch_lightning.utilities.distributed import rank_zero_only
-from pytorch_lightning.utilities.distributed import sync_ddp_if_available
-from pytorch_lightning.utilities.types import TRAIN_DATALOADERS, EVAL_DATALOADERS, STEP_OUTPUT
 from torch.distributed import ReduceOp
 from torch.utils.data import DataLoader
 from transformers import AdamW, get_linear_schedule_with_warmup
@@ -27,6 +21,13 @@ from mtl_datasets import ClassificationDataset, multi_collate, MultiLabelClassif
 from schedulers import InverseSquareRootSchedule, InverseSquareRootScheduleConfig
 from strategies import BatchingStrategy
 from tasks import TaskFamily, load_tasks
+
+import pytorch_lightning as pl
+from pytorch_lightning.callbacks import ModelCheckpoint
+from pytorch_lightning.loggers import TensorBoardLogger
+from pytorch_lightning.utilities.distributed import rank_zero_only
+from pytorch_lightning.utilities.distributed import sync_ddp_if_available
+from pytorch_lightning.utilities.types import TRAIN_DATALOADERS, EVAL_DATALOADERS, STEP_OUTPUT
 
 pl.seed_everything(42, workers=True)
 
@@ -299,7 +300,7 @@ if __name__ == '__main__':
         monitor='avg_val_loss',  # monitors metrics logged by self.log.
         mode='min'
     )
-
+    
     model = SciRepTrain(batch_size=args.batch_size, init_lr=args.lr,
                         peak_lr=args.peak_lr,
                         tokenizer=args.tokenizer if args.tokenizer else args.model,

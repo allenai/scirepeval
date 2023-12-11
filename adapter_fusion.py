@@ -1,7 +1,6 @@
 from typing import List, Optional, Union, Dict
-from transformers.adapters import PfeifferConfig
-from transformers.adapters import AutoAdapterModel
-from transformers.adapters.composition import Fuse
+from adapters import SeqBnConfig, AutoAdapterModel
+from adapters.composition import Fuse
 from abc import ABC, abstractmethod
 import torch
 import os
@@ -37,13 +36,13 @@ class AdapterEncoder(AbstractAdapter):
         # Add a new adapter
         for t_id in task_ids:
             if not load_as:
-                self.model.add_adapter(t_id, config="pfeiffer")
+                self.model.add_adapter(t_id, config="seq_bn")
             else:
                 # load_as can str for a local path or dict to be loaded from adapters hub
                 if type(load_as) == str:
                     self.model.load_adapter(f"{load_as}/{t_id}/", load_as=t_id)
                 else:
-                    self.model.load_adapter(load_as[t_id], load_as=t_id)
+                    self.model.load_adapter(load_as[t_id], load_as=t_id, source="hf")
         self.model.train_adapter(adapter_setup=task_ids, train_embeddings=False)
 
     def forward(self, input_ids, attention_mask, task_id):
@@ -77,7 +76,7 @@ class AdapterFusion(AbstractAdapter):
             if type(load_adapters_as) == str and os.path.isdir(load_adapters_as):
                 self.model.load_adapter(f"{load_adapters_as}/{t_id}/", load_as=t_id)
             else:
-                self.model.load_adapter(load_adapters_as[t_id], load_as=t_id)
+                self.model.load_adapter(load_adapters_as[t_id], load_as=t_id, source="hf")
         self.fusion_mods_dict = dict()
         for i, t_id in enumerate(task_ids):
             task_fuse = Fuse(*([t_id] + task_ids[:i] + task_ids[i + 1:]))

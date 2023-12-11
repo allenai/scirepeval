@@ -9,6 +9,8 @@ from evaluation.gpt3_encoder import GPT3Model
 from evaluation.instructor import InstructorModel
 from reviewer_matching import ReviewerMatchingEvaluator
 from evaluation.eval_datasets import SimpleDataset, IRDataset
+import os
+os.environ["TOKENIZERS_PARALLELISM"] = "false"
 
 TASK_IDS = {"classification": "[CLF]", "regression": "[RGN]", "proximity": "[PRX]",
             "adhoc_search": {"query": "[QRY]", "candidates": "[PRX]"}}

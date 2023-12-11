@@ -49,7 +49,8 @@ class Model:
     def __init__(self, variant: str = "default", base_checkpoint: str = None,
                  adapters_load_from: Union[str, Dict] = None, fusion_load_from: str = None,
                  use_ctrl_codes: bool = False, task_id: Union[str, Dict] = None,
-                 all_tasks: list = None, hidden_dim: int = 768, max_len: int = 512, use_fp16=False):
+                 all_tasks: list = None, pooling_mode: str = "cls", hidden_dim: int = 768,
+                 max_len: int = 512, use_fp16=False):
         self.variant = variant
         self.encoder = EncoderFactory(base_checkpoint, adapters_load_from, fusion_load_from, all_tasks).get_encoder(
             variant)
@@ -67,6 +68,7 @@ class Model:
             elif variant != "default":
                 logger.info(f"Task id used: {self._task_id}")
 
+        self.pooling_mode = pooling_mode
         self.hidden_dim = hidden_dim
         self.max_length = max_len
         self.use_fp16 = use_fp16
@@ -123,8 +125,15 @@ class Model:
                         output[curr_input_idx] = curr_output  # adapters
                     except:
                         output[curr_input_idx] = curr_output.last_hidden_state  # pals
-        try:
-            embedding = output.last_hidden_state[:, self.reqd_token_idx, :]  # cls token
-        except:
-            embedding = output[:, self.reqd_token_idx, :]  # cls token
+        if self.pooling_mode == "cls":
+            try:
+                embedding = output.last_hidden_state[:, self.reqd_token_idx, :]  # cls token
+            except:
+                embedding = output[:, self.reqd_token_idx, :]  # cls token
+        elif self.pooling_mode == "mean":
+            embedding = torch.sum(
+                 output.last_hidden_state * input_ids["attention_mask"].unsqueeze(-1), dim=1
+            ) / torch.clamp(torch.sum(input_ids["attention_mask"], dim=1, keepdims=True), min=1e-9)
+        else:
+            raise ValueError(f"pooling_mode must be one of 'cls' or 'mean'. Got: {self.pooling_mode}")
         return embedding.half() if self.use_fp16 else embedding

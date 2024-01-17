@@ -237,12 +237,12 @@ class SciRepTrain(pl.LightningModule):
         self.load_data("train")
 
     def train_dataloader(self) -> TRAIN_DATALOADERS:
-        return DataLoader(self.multi_train, batch_size=self.batch_size, collate_fn=multi_collate, num_workers=4,
+        return DataLoader(self.multi_train, batch_size=self.batch_size, collate_fn=multi_collate, num_workers=1,
                           pin_memory=True)
 
     def val_dataloader(self) -> EVAL_DATALOADERS:
         self.load_data("dev")
-        return DataLoader(self.multi_val, batch_size=self.batch_size, collate_fn=multi_collate, num_workers=2)
+        return DataLoader(self.multi_val, batch_size=self.batch_size, collate_fn=multi_collate, num_workers=1)
 
     @rank_zero_only
     def on_save_checkpoint(self, checkpoint: Dict[str, Any]) -> None:

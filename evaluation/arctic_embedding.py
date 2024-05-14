@@ -18,6 +18,6 @@ class ArcticModel:
             batch = [f"{instr_format if [b[1]] == 'q' else ''}{batch[i]}" for i, b in enumerate(batch_ids)]
         self.tokenizer(batch, padding=True, truncation=True, return_tensors='pt', max_length=512)
         with torch.no_grad():
-            batch_embed = self.encoder.encode(batch, convert_to_numpy=False, convert_to_tensor=True, device="cuda")
+            batch_embed = self.encoder(**batch)[0][:, 0]
             batch_embed = torch.functional.normalize(batch_embed, p=2, dim=1)
         return batch_embed

@@ -8,6 +8,7 @@ from evaluation.few_shot_evaluator import FewShotEvaluator
 from evaluation.gpt3_encoder import GPT3Model
 from evaluation.instructor import InstructorModel
 from evaluation.arctic_embedding import ArcticModel
+from evaluation.st_embedding import Sentence_Transformer_Model
 from reviewer_matching import ReviewerMatchingEvaluator
 from evaluation.eval_datasets import SimpleDataset, IRDataset
 import os
@@ -134,6 +135,7 @@ if __name__ == "__main__":
     parser.add_argument('--fp16', action='store_true', default=False, help='use floating point 16 precision')
     parser.add_argument('--instructor', action='store_true', default=False, help='use an instructor model for eval')
     parser.add_argument('--arctic', action='store_true', default=False, help='use an arctic model for eval')
+    parser.add_argument('--sentence_transformer', action='store_true', default=False, help='use a sentence_transformer model for eval')
 
     args = parser.parse_args()
     adapters_load_from = args.adapters_dir if args.adapters_dir else args.adapters_chkpt
@@ -143,6 +145,8 @@ if __name__ == "__main__":
         model = InstructorModel(args.model)
     elif args.arctic:
         model = ArcticModel(args.model)
+    elif args.sentence_transformer:
+        model = Sentence_Transformer_Model(args.model)
     else:
         model = Model(variant=args.mtype, base_checkpoint=args.model, adapters_load_from=adapters_load_from,
                       fusion_load_from=args.fusion_dir,

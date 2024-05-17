@@ -6,6 +6,7 @@ import numpy as np
 import json
 import pathlib
 import logging
+import torch
 
 logger = logging.getLogger(__name__)
 
@@ -21,6 +22,8 @@ class EmbeddingsGenerator:
             for dataset, model in zip(self.datasets, self.models):
                 for batch, batch_ids in tqdm(dataset.batches(), total=len(dataset) // dataset.batch_size):
                     emb = model(batch, batch_ids)
+                    if isinstance(emb,np.ndarray):
+                        emb = torch.tensor(emb) #handle the fact that some models return ndarrays; TODO change tensors to ndarray rather than other way around
                     for paper_id, embedding in zip(batch_ids, emb.unbind()):
                         if type(paper_id) == tuple:
                             paper_id = paper_id[0]

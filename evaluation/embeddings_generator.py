@@ -6,6 +6,7 @@ import numpy as np
 import json
 import pathlib
 import logging
+import torch
 
 logger = logging.getLogger(__name__)
 
@@ -20,7 +21,8 @@ class EmbeddingsGenerator:
         try:
             for dataset, model in zip(self.datasets, self.models):
                 for batch, batch_ids in tqdm(dataset.batches(), total=len(dataset) // dataset.batch_size):
-                    emb = model(batch, batch_ids)
+                    with torch.no_grad():
+                        emb = model(batch, batch_ids)
                     for paper_id, embedding in zip(batch_ids, emb.unbind()):
                         if type(paper_id) == tuple:
                             paper_id = paper_id[0]
@@ -30,6 +32,7 @@ class EmbeddingsGenerator:
                             results[paper_id] += embedding.detach().cpu().numpy()
                     del batch
                     del emb
+                    torch.cuda.empty_cache()
             results = {k: v/len(self.models) for k, v in results.items()}
         except Exception as e:
             print(e)

@@ -157,8 +157,6 @@ if __name__ == "__main__":
     parser.add_argument('--output', help="path to the output file", default="scirepeval_results.json")
     parser.add_argument('--fp16', action='store_true', default=False, help='use floating point 16 precision')
     parser.add_argument('--instructor', action='store_true', default=False, help='use an instructor model for eval')
-    parser.add_argument('--model-type', default='instructor', choices=['instructor', 'gemma', 'qwen3'],
-                        help='Type of instruction-following model to use (requires --instructor flag)')
 
     args = parser.parse_args()
     adapters_load_from = args.adapters_dir if args.adapters_dir else args.adapters_chkpt
@@ -166,16 +164,16 @@ if __name__ == "__main__":
         model = GPT3Model(embed_model=args.gpt3_model)
     elif args.instructor:
         # Use model-type flag to determine which model class to use
-        if args.model_type == 'instructor':
+        if 'instructor' in args.model:
             model = InstructorModel(args.model)
-        elif args.model_type == 'gemma':
+        elif 'gemma' in args.model:
             if not NEW_MODELS_AVAILABLE:
                 raise ValueError(
                     f"Gemma models require transformers >= 4.56, but you have {_transformers_version}. "
                     "Please upgrade: pip install 'transformers>=4.57.1' 'sentence-transformers>=2.7.0'"
                 )
             model = GemmaModel(args.model)
-        elif args.model_type == 'qwen3':
+        elif 'qwen' in args.model:
             if not NEW_MODELS_AVAILABLE:
                 raise ValueError(
                     f"Qwen3 models require transformers >= 4.51, but you have {_transformers_version}. "

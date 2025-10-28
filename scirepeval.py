@@ -1,12 +1,36 @@
 import argparse
 import json
 from typing import List, Union
+import importlib.metadata
 
 from evaluation.encoders import Model
 from evaluation.evaluator import IREvaluator, SupervisedEvaluator, SupervisedTask
 from evaluation.few_shot_evaluator import FewShotEvaluator
 from evaluation.gpt3_encoder import GPT3Model
-from evaluation.instructor import InstructorModel
+
+# Import appropriate instructor model based on transformers version
+def _get_transformers_version():
+    """Get installed transformers version."""
+    try:
+        version = importlib.metadata.version("transformers")
+        return tuple(int(x) for x in version.split('.')[:2])  # Major.minor only
+    except (importlib.metadata.PackageNotFoundError, ValueError):
+        return (0, 0)
+
+# Dynamically import the appropriate model class
+_transformers_version = _get_transformers_version()
+if _transformers_version >= (4, 51):
+    # Newer transformers: can use new models
+    from evaluation.instructor_new import GemmaModel, Qwen3Model
+    InstructorModel = None
+    NEW_MODELS_AVAILABLE = True
+else:
+    # Older transformers: only legacy INSTRUCTOR
+    from evaluation.instructor import InstructorModel
+    NEW_MODELS_AVAILABLE = False
+    GemmaModel = None
+    Qwen3Model = None
+
 from reviewer_matching import ReviewerMatchingEvaluator
 from evaluation.eval_datasets import SimpleDataset, IRDataset
 import os
@@ -133,13 +157,33 @@ if __name__ == "__main__":
     parser.add_argument('--output', help="path to the output file", default="scirepeval_results.json")
     parser.add_argument('--fp16', action='store_true', default=False, help='use floating point 16 precision')
     parser.add_argument('--instructor', action='store_true', default=False, help='use an instructor model for eval')
+    parser.add_argument('--model-type', default='instructor', choices=['instructor', 'gemma', 'qwen3'],
+                        help='Type of instruction-following model to use (requires --instructor flag)')
 
     args = parser.parse_args()
     adapters_load_from = args.adapters_dir if args.adapters_dir else args.adapters_chkpt
     if args.gpt3_model:
         model = GPT3Model(embed_model=args.gpt3_model)
     elif args.instructor:
-        model = InstructorModel(args.model)
+        # Use model-type flag to determine which model class to use
+        if args.model_type == 'instructor':
+            model = InstructorModel(args.model)
+        elif args.model_type == 'gemma':
+            if not NEW_MODELS_AVAILABLE:
+                raise ValueError(
+                    f"Gemma models require transformers >= 4.56, but you have {_transformers_version}. "
+                    "Please upgrade: pip install 'transformers>=4.57.1' 'sentence-transformers>=2.7.0'"
+                )
+            model = GemmaModel(args.model)
+        elif args.model_type == 'qwen3':
+            if not NEW_MODELS_AVAILABLE:
+                raise ValueError(
+                    f"Qwen3 models require transformers >= 4.51, but you have {_transformers_version}. "
+                    "Please upgrade: pip install 'transformers>=4.51.0'"
+                )
+            model = Qwen3Model(args.model)
+        else:
+            raise ValueError(f"Unknown model type: {args.model_type}")
     else:
         model = Model(
             variant=args.mtype,

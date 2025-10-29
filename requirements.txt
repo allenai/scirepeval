@@ -23,7 +23,7 @@ huggingface-hub>=0.23.0  # Updated for latest model support
 InstructorEmbedding==1.0.0
 
 # Datasets and data handling - UPDATED
-datasets>=2.19.0  # Updated for compatibility
+datasets==2.14.6  # Version 2.14.6 still supports dataset loading scripts
 pandas>=2.0.0  # Latest pandas with numpy 2.x support prep
 pyarrow>=14.0.0  # Updated for pandas 2.x
 dill>=0.3.7

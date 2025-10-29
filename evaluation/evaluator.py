@@ -92,7 +92,7 @@ class SupervisedEvaluator(Evaluator):
             split_dataset = datasets.load_dataset("csv", data_files={"train": f"{self.test_dataset}/train.csv",
                                                                      "test": f"{self.test_dataset}/test.csv"})
         else:
-            split_dataset = datasets.load_dataset(self.test_dataset[0], self.test_dataset[1])
+            split_dataset = datasets.load_dataset(self.test_dataset[0], self.test_dataset[1], trust_remote_code=False)
         logger.info(f"Loaded {len(split_dataset['train'])} training and {len(split_dataset['test'])} test documents")
         if type(embeddings) == str and os.path.isfile(embeddings):
             embeddings = EmbeddingsGenerator.load_embeddings_from_jsonl(embeddings)
@@ -204,7 +204,7 @@ class IREvaluator(Evaluator):
         if type(self.test_dataset) == str and os.path.isdir(self.test_dataset):
             split_dataset = datasets.load_dataset("json", data_files={"test": f"{self.test_dataset}/test_qrel.jsonl"})
         else:
-            split_dataset = datasets.load_dataset(self.test_dataset[0], self.test_dataset[1])
+            split_dataset = datasets.load_dataset(self.test_dataset[0], self.test_dataset[1], trust_remote_code=False)
         logger.info(f"Loaded {len(split_dataset['test'])} test query-candidate pairs")
         if type(embeddings) == str and os.path.isfile(embeddings):
             embeddings = EmbeddingsGenerator.load_embeddings_from_jsonl(embeddings)

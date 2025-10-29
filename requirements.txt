@@ -23,9 +23,9 @@ huggingface-hub>=0.23.0  # Updated for latest model support
 InstructorEmbedding==1.0.0
 
 # Datasets and data handling - UPDATED
-datasets==2.14.6  # Version 2.14.6 still supports dataset loading scripts
-pandas>=2.0.0  # Latest pandas with numpy 2.x support prep
-pyarrow>=14.0.0  # Updated for pandas 2.x
+datasets==2.19.0  # Latest version - dataset now uses Parquet format (no scripts)
+pandas==2.0.3  # Compatible with datasets 2.19.0 and transformers 4.57.1
+pyarrow==12.0.1  # Compatible with datasets 2.19.0 and pandas 2.0.3
 dill>=0.3.7
 multiprocess>=0.70.13
 

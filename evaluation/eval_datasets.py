@@ -21,7 +21,7 @@ class SimpleDataset:
             if type(data_path) == str and os.path.isfile(data_path):
                 self.data = datasets.load_dataset("json", data_files={"test": data_path})["test"]
             else:
-                self.data = datasets.load_dataset(data_path[0], data_path[1], split="evaluation")
+                self.data = datasets.load_dataset(data_path[0], data_path[1], split="evaluation", trust_remote_code=False)
         else:
             self.data = processing_fn(data_path)
         logger.info(f"Loaded {len(self.data)} documents")

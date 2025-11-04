@@ -38,6 +38,8 @@ os.environ["TOKENIZERS_PARALLELISM"] = "false"
 
 TASK_IDS = {"classification": "[CLF]", "regression": "[RGN]", "proximity": "[PRX]",
             "adhoc_search": {"query": "[QRY]", "candidates": "[PRX]"}}
+model_class_map = {"gemma": GemmaModel, "qwen3": Qwen3Model}
+
 import pytorch_lightning as pl
 
 pl.seed_everything(42, workers=True)
@@ -157,31 +159,23 @@ if __name__ == "__main__":
     parser.add_argument('--output', help="path to the output file", default="scirepeval_results.json")
     parser.add_argument('--fp16', action='store_true', default=False, help='use floating point 16 precision')
     parser.add_argument('--instructor', action='store_true', default=False, help='use an instructor model for eval')
+    parser.add_argument('--model-type', help='Instructor model type to use. Only valid if instructor is True')
+    parser.add_argument('--prompt-file', type=str, help='JSON-formatted file containing multiple instruction prompts')
+    parser.add_argument('--prompt-name', type=str, help='Name of prompt within prompt file to use.', default="blank")
 
     args = parser.parse_args()
     adapters_load_from = args.adapters_dir if args.adapters_dir else args.adapters_chkpt
     if args.gpt3_model:
         model = GPT3Model(embed_model=args.gpt3_model)
     elif args.instructor:
-        # Use model-type flag to determine which model class to use
-        if 'instructor' in args.model:
+        if args.model_type == "instr":
             model = InstructorModel(args.model)
-        elif 'gemma' in args.model:
-            if not NEW_MODELS_AVAILABLE:
-                raise ValueError(
-                    f"Gemma models require transformers >= 4.56, but you have {_transformers_version}. "
-                    "Please upgrade: pip install 'transformers>=4.57.1' 'sentence-transformers>=2.7.0'"
-                )
-            model = GemmaModel(args.model)
-        elif 'qwen' in args.model:
-            if not NEW_MODELS_AVAILABLE:
-                raise ValueError(
-                    f"Qwen3 models require transformers >= 4.51, but you have {_transformers_version}. "
-                    "Please upgrade: pip install 'transformers>=4.51.0'"
-                )
-            model = Qwen3Model(args.model)
         else:
-            raise ValueError(f"Unknown model type: {args.model_type}")
+            if not args.prompt_file or not os.path.exists(args.prompt_file):
+                raise ValueError("Instructor model requires JSON file with prompts to use.")
+            with open(args.prompt_file) as f:
+                task_prompts = json.load(f)[args.prompt_name]
+            model = model_class_map[args.model_type](args.model, task_prompts)
     else:
         model = Model(
             variant=args.mtype,

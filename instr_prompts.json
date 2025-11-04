@@ -1,0 +1,50 @@
+{
+    "blank": {
+        "[SRCH]": {
+            "q": "{content}",
+            "c": "{content}"
+        },
+        "[CLF]": "{content}",
+        "[RGN]": "{content}",
+        "[PRX]": "{content}"
+    },
+    "gemma_developer_rec": {
+        "[SRCH]": {
+            "q": "task: search result | query: {content}",
+            "c": "title: None | text: {content}"
+        },
+        "[CLF]": "task: classification | query: {content}",
+        "[RGN]": "task: clustering | query: {content}",
+        "[PRX]": "task: sentence similarity | query: {content}",
+        "parameters": {"separate_title": false, "regression_prompt": "clustering"}
+    },
+    "gemma_developer_rec_title_separated": {
+        "[SRCH]": {
+            "q": "task: search result | query: {content}",
+            "c": "title: {title} | text: {content}"
+        },
+        "[CLF]": "task: classification | query: {content}",
+        "[RGN]": "task: clustering | query: {content}",
+        "[PRX]": "task: sentence similarity | query: {content}",
+        "parameters": {"separate_title": true, "regression_prompt": "clustering"}
+    },
+    "gemma_developer_rec_title_separated_2": {
+        "[SRCH]": {
+            "q": "task: search result | query: {content}",
+            "c": "title: {title} | text: {content}"
+        },
+        "[CLF]": "task: classification | query: {content}",
+        "[RGN]": "task: fact checking | query: {content}",
+        "[PRX]": "task: sentence similarity | query: {content}",
+        "parameters": {"separate_title": true, "regression_prompt": "fact checking"}
+    },
+    "qwen3_embedding_generic": {
+        "[SRCH]": {
+            "q": "Instruct: Given a scientific query, identify relevant scientific documents. query: {content}",
+            "c": "{content}"
+        },
+        "[CLF]": "Instruct: Classify a given scientific document. Document: {content}",
+        "[RGN]": "Instruct: Given a scientific document, predict a metric. Document: {content}",
+        "[PRX]": "Instruct: Given a scientific document find similar scientific documents. Document: {content}"
+    }
+}

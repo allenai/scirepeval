@@ -1,0 +1,1 @@
+{"name":"NFCorpus","type":"adhoc_search","data":{"meta":{"name":"allenai/scirepeval","config":"nfcorpus"},"test":{"name":"allenai/scirepeval_test","config":"nfcorpus"}},"metrics":["ndcg"]}

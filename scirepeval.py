@@ -7,6 +7,8 @@ from evaluation.encoders import Model
 from evaluation.evaluator import IREvaluator, SupervisedEvaluator, SupervisedTask
 from evaluation.few_shot_evaluator import FewShotEvaluator
 from evaluation.gpt3_encoder import GPT3Model
+import gc
+import torch
 
 # Import appropriate instructor model based on transformers version
 def _get_transformers_version():
@@ -142,7 +144,10 @@ class SciRepEval:
                     {"sample_size": few_shot.sample_size, "results": few_shot.evaluate(embeddings)})
             with open(output, "w") as f:
                 json.dump(final_results, f, indent=4)
-
+            del embeddings, results
+            gc.collect()
+            torch.cuda.empty_cache()
+            
 
 if __name__ == "__main__":
     parser = argparse.ArgumentParser()

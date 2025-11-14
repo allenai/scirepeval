@@ -144,9 +144,6 @@ class SciRepEval:
                     {"sample_size": few_shot.sample_size, "results": few_shot.evaluate(embeddings)})
             with open(output, "w") as f:
                 json.dump(final_results, f, indent=4)
-            del embeddings, results
-            gc.collect()
-            torch.cuda.empty_cache()
             
 
 if __name__ == "__main__":

@@ -50,7 +50,7 @@ pl.seed_everything(42, workers=True)
 class SciRepEval:
 
     def __init__(self, tasks_config: str = "scirepeval_tasks.jsonl", task_list: List[str] = None,
-                 task_formats: List[str] = None, batch_size: int = 32, embedding_save_path = None):
+                 task_formats: List[str] = None, batch_size: int = 32, embedding_save_path = None, excluded_tasks: List[str] = None):
         tasks_dict = dict()
         task_by_formats = dict()
         with open(tasks_config, encoding="utf-8") as f:
@@ -68,6 +68,9 @@ class SciRepEval:
             self.tasks = dict()
             for task_format in task_formats:
                 self.tasks.update({k: tasks_dict[k] for k in task_by_formats[task_format]})
+        if excluded_tasks:
+            for task in excluded_tasks:
+                self.tasks.pop(task, None)  # None as default prevents KeyError
         self.batch_size = batch_size
         self.embedding_save_path = embedding_save_path
 
@@ -154,6 +157,8 @@ class SciRepEval:
 if __name__ == "__main__":
     parser = argparse.ArgumentParser()
     parser.add_argument('--tasks-config', help='path to the task config file', default="scirepeval_tasks.jsonl")
+    parser.add_argument('--excluded-tasks', help='List of tasks to exclude.', default=None, nargs="+", type=str)
+    parser.add_argument('--task-formats', help='Types of tasks to run', nargs='+', type=str, default=None)
     parser.add_argument('--mtype', help='Model variant to be used (default, pals, adapters, fusion)', default="default")
     parser.add_argument('--gpt3-model', help='Name of embedding model in case of using openai api', default=None)
     parser.add_argument('--model', '-m', help='HuggingFace model to be used')
@@ -196,5 +201,5 @@ if __name__ == "__main__":
             pooling_mode=args.pooling_mode,
             use_fp16=args.fp16
         )
-    evaluator = SciRepEval(tasks_config=args.tasks_config, batch_size=args.batch_size, embedding_save_path=args.embeddings_save_path)
+    evaluator = SciRepEval(tasks_config=args.tasks_config, batch_size=args.batch_size, embedding_save_path=args.embeddings_save_path, excluded_tasks=args.excluded_tasks, task_formats=args.task_formats)
     evaluator.evaluate(model, args.output)

@@ -50,7 +50,7 @@ pl.seed_everything(42, workers=True)
 class SciRepEval:
 
     def __init__(self, tasks_config: str = "scirepeval_tasks.jsonl", task_list: List[str] = None,
-                 task_formats: List[str] = None, batch_size: int = 32):
+                 task_formats: List[str] = None, batch_size: int = 32, embedding_save_path = None):
         tasks_dict = dict()
         task_by_formats = dict()
         with open(tasks_config, encoding="utf-8") as f:
@@ -69,6 +69,7 @@ class SciRepEval:
             for task_format in task_formats:
                 self.tasks.update({k: tasks_dict[k] for k in task_by_formats[task_format]})
         self.batch_size = batch_size
+        self.embedding_save_path = embedding_save_path
 
     def evaluate(self, model: Union[Model, List[Model]], output: str):
         final_results = dict()
@@ -104,6 +105,10 @@ class SciRepEval:
             if "embeddings" in task:
                 save_path = task["embeddings"].get("save")
                 load_path = task["embeddings"].get("load")
+                if self.embedding_save_path and save_path:
+                    save_path = os.path.join(self.embedding_save_path, save_path)
+                if self.embedding_save_path and load_path:
+                    load_path = os.path.join(self.embedding_save_path, load_path)
             few_shot_evaluators = []
             if task["type"] in {"classification", "regression"}:
                 subtype = SupervisedTask.CLASSIFICATION if task[
@@ -164,6 +169,7 @@ if __name__ == "__main__":
     parser.add_argument('--model-type', help='Instructor model type to use. Only valid if instructor is True')
     parser.add_argument('--prompt-file', type=str, help='JSON-formatted file containing multiple instruction prompts')
     parser.add_argument('--prompt-name', type=str, help='Name of prompt within prompt file to use.', default="blank")
+    parser.add_argument('--embeddings-save-path', type=str, default=None, help='Path to parent directory where embeddings will be saved. If specified, config paths are treated as relative to this path.')
 
     args = parser.parse_args()
     adapters_load_from = args.adapters_dir if args.adapters_dir else args.adapters_chkpt
@@ -190,5 +196,5 @@ if __name__ == "__main__":
             pooling_mode=args.pooling_mode,
             use_fp16=args.fp16
         )
-    evaluator = SciRepEval(tasks_config=args.tasks_config, batch_size=args.batch_size)
+    evaluator = SciRepEval(tasks_config=args.tasks_config, batch_size=args.batch_size, embedding_save_path=args.embeddings_save_path)
     evaluator.evaluate(model, args.output)

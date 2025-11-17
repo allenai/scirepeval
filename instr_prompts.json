@@ -38,6 +38,36 @@
         "[PRX]": "task: sentence similarity | query: {content}",
         "parameters": {"separate_title": true, "regression_prompt": "fact checking"}
     },
+        "gemma_developer_rec_title_separated_3": {
+        "[SRCH]": {
+            "q": "task: search result | query: {content}",
+            "c": "title: {title} | text: {content}"
+        },
+        "[CLF]": "task: classification | query: {content}",
+        "[RGN]": "task: classification | query: {content}",
+        "[PRX]": "task: sentence similarity | query: {content}",
+        "parameters": {"separate_title": true, "regression_prompt": "classification"}
+    },
+        "gemma_developer_rec_title_separated_4": {
+        "[SRCH]": {
+            "q": "task: search result | query: {content}",
+            "c": "title: {title} | text: {content}"
+        },
+        "[CLF]": "task: classification | query: {content}",
+        "[RGN]": "task: sentence similarity | query: {content}",
+        "[PRX]": "task: sentence similarity | query: {content}",
+        "parameters": {"separate_title": true, "regression_prompt": "sentence similarity"}
+    },
+        "gemma_developer_rec_title_separated_5": {
+        "[SRCH]": {
+            "q": "task: search result | query: {content}",
+            "c": "title: {title} | text: {content}"
+        },
+        "[CLF]": "task: classification | query: {content}",
+        "[RGN]": "task: question answering | query: {content}",
+        "[PRX]": "task: sentence similarity | query: {content}",
+        "parameters": {"separate_title": true, "regression_prompt": "fact checking"}
+    },
     "qwen3_embedding_generic": {
         "[SRCH]": {
             "q": "Instruct: Given a scientific query, identify relevant scientific documents. query: {content}",

@@ -157,7 +157,7 @@ class SciRepEval:
 if __name__ == "__main__":
     parser = argparse.ArgumentParser()
     parser.add_argument('--tasks-config', help='path to the task config file', default="scirepeval_tasks.jsonl")
-    parser.add_argument('--task-list', help='List of tasks to run. Task formats is not used if this is specified.')
+    parser.add_argument('--task-list', help='List of tasks to run. Task formats is not used if this is specified.', default=None, nargs="+", type=str)
     parser.add_argument('--excluded-tasks', help='List of tasks to exclude.', default=None, nargs="+", type=str)
     parser.add_argument('--task-formats', help='Types of tasks to run', nargs='+', type=str, default=None)
     parser.add_argument('--mtype', help='Model variant to be used (default, pals, adapters, fusion)', default="default")

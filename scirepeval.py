@@ -23,7 +23,7 @@ def _get_transformers_version():
 _transformers_version = _get_transformers_version()
 if _transformers_version >= (4, 51):
     # Newer transformers: can use new models
-    from evaluation.instructor_new import GemmaModel, Qwen3Model
+    from evaluation.instructor_new import GemmaModel, Qwen3Model, GritLMModel
     InstructorModel = None
     NEW_MODELS_AVAILABLE = True
 else:
@@ -32,6 +32,7 @@ else:
     NEW_MODELS_AVAILABLE = False
     GemmaModel = None
     Qwen3Model = None
+    GritLMModel = None
 
 from reviewer_matching import ReviewerMatchingEvaluator
 from evaluation.eval_datasets import SimpleDataset, IRDataset
@@ -40,7 +41,7 @@ os.environ["TOKENIZERS_PARALLELISM"] = "false"
 
 TASK_IDS = {"classification": "[CLF]", "regression": "[RGN]", "proximity": "[PRX]",
             "adhoc_search": {"query": "[QRY]", "candidates": "[PRX]"}}
-model_class_map = {"gemma": GemmaModel, "qwen3": Qwen3Model}
+model_class_map = {"gemma": GemmaModel, "qwen3": Qwen3Model, "gritlm": GritLMModel}
 
 import pytorch_lightning as pl
 

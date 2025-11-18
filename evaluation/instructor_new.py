@@ -13,9 +13,16 @@ try:
 except ImportError:
     SENTENCE_TRANSFORMERS_AVAILABLE = False
 
+try:
+    from gritlm import GritLM
+    GRITLM_AVAILABLE = True
+except ImportError:
+    GRITLM_AVAILABLE = False
+
 # Version requirements
 MIN_TRANSFORMERS_VERSION_QWEN3 = "4.51.0"
 MIN_TRANSFORMERS_VERSION_GEMMA = "4.56.0"
+MIN_TRANSFORMERS_VERSION_GRITLM = "4.51.0"
 MIN_SENTENCE_TRANSFORMERS_VERSION = "2.7.0"
 
 
@@ -226,3 +233,126 @@ class Qwen3Model(InstructorEmbeddingModel):
                 formatted_batch.append(prompt.format(**{'content':batch[i]}))
 
         return self._encode_batch(formatted_batch)
+
+
+class GritLMModel(InstructorEmbeddingModel):
+    """
+    GritLM embedding model using the gritlm package.
+
+    GritLM is a unified model for both embedding and generation tasks.
+    It uses special instruction formatting with <|user|> and <|embed|> tokens.
+
+    Requirements:
+        - gritlm package
+        - transformers >= 4.51.0
+    """
+
+    def __init__(self, embed_model: str, task_prompts: Dict[str, str]):
+        """
+        Initialize GritLM embedding model.
+
+        Args:
+            embed_model: HuggingFace model identifier (e.g., "GritLM/GritLM-7B")
+            task_prompts: Dictionary mapping task IDs to instruction prompts
+        """
+        super().__init__(embed_model, "gritlm", task_prompts)
+
+        if not GRITLM_AVAILABLE:
+            raise ImportError(
+                "GritLM requires the gritlm package. "
+                "Please install: pip install gritlm"
+            )
+
+        # Initialize GritLM model with automatic dtype
+        self.encoder = GritLM(self.embed_model, torch_dtype="auto")
+
+        # GritLM model has a tokenizer attribute that we need to expose
+        self.tokenizer = self.encoder.tokenizer
+
+        if hasattr(self.tokenizer, 'eos_token'):
+            self.tokenizer.sep_token = self.tokenizer.eos_token
+
+    @staticmethod
+    def _gritlm_instruction(instruction: str) -> str:
+        """
+        Format instruction according to GritLM's expected format.
+
+        Args:
+            instruction: Task instruction (empty for documents)
+
+        Returns:
+            Formatted instruction string
+        """
+        if instruction:
+            return f"<|user|>\n{instruction}\n<|embed|>\n"
+        else:
+            return "<|embed|>\n"
+
+    def _encode_batch(self, formatted_batch: List[str]) -> torch.Tensor:
+        """
+        Encode batch using GritLM model.
+
+        Args:
+            formatted_batch: List of texts with instructions already formatted
+
+        Returns:
+            Tensor of embeddings
+        """
+        # GritLM's encode method already handles the instruction formatting
+        # and returns normalized embeddings by default
+        embeddings = self.encoder.encode(formatted_batch, convert_to_tensor=True)
+        return embeddings
+
+    def __call__(self, batch: List[str], batch_ids: Optional[List] = None):
+        """
+        Encode batch of texts into embeddings with GritLM-specific formatting.
+
+        Args:
+            batch: List of texts to encode
+            batch_ids: Optional list of (id, type) tuples for search tasks
+
+        Returns:
+            Tensor of embeddings
+        """
+        if type(self.task_id) != dict:
+            # Non-search tasks - encode all texts with the task instruction
+            instruction = self.task_prompts.get(self.task_id, "")
+            return self.encoder.encode(batch, instruction=self._gritlm_instruction(instruction), convert_to_tensor=True)
+        else:
+            # Search task - separate queries and candidates
+            query_texts = []
+            candidate_texts = []
+            query_indices = []
+            candidate_indices = []
+
+            for i, (_, batch_type) in enumerate(batch_ids):
+                if batch_type == 'q':
+                    query_texts.append(batch[i])
+                    query_indices.append(i)
+                else:  # batch_type == 'c'
+                    candidate_texts.append(batch[i])
+                    candidate_indices.append(i)
+
+            # Encode queries with instruction, candidates without
+            query_instruction = self.task_prompts['[SRCH]'].get('q', '')
+            query_embeddings = self.encoder.encode(
+                query_texts,
+                instruction=self._gritlm_instruction(query_instruction),
+                convert_to_tensor=True
+            ) if query_texts else torch.tensor([])
+
+            candidate_embeddings = self.encoder.encode(
+                candidate_texts,
+                instruction=self._gritlm_instruction(""),
+                convert_to_tensor=True
+            ) if candidate_texts else torch.tensor([])
+
+            # Reconstruct embeddings in original order
+            embeddings = torch.zeros(len(batch), query_embeddings.shape[-1] if len(query_embeddings) > 0 else candidate_embeddings.shape[-1], device=query_embeddings.device if len(query_embeddings) > 0 else candidate_embeddings.device)
+
+            for idx, orig_idx in enumerate(query_indices):
+                embeddings[orig_idx] = query_embeddings[idx]
+            for idx, orig_idx in enumerate(candidate_indices):
+                embeddings[orig_idx] = candidate_embeddings[idx]
+
+            return embeddings

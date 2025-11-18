@@ -21,6 +21,7 @@ huggingface-hub>=0.23.0  # Updated for latest model support
 
 # InstructorEmbedding (still compatible)
 InstructorEmbedding==1.0.0
+gritlm==1.0.2
 
 # Datasets and data handling - UPDATED
 datasets==2.19.0  # Latest version - dataset now uses Parquet format (no scripts)

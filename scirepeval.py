@@ -79,79 +79,90 @@ class SciRepEval:
         if type(model) != list:
             model = [model]
         for task_name, task in self.tasks.items():
-            for m in model:
-                m.task_id = TASK_IDS[task["type"]]
-            kwargs = dict()
-            task_data = task["data"]
-            if not task_data.get("meta"):
-                raise ValueError(f"Task {task_name} has no test metadata")
-            if task_data.get("meta"):
-                metadata = task_data["meta"]
-                kwargs["meta_dataset"] = metadata if type(metadata) != dict else (metadata["name"], metadata["config"])
+            try:
+                for m in model:
+                    m.task_id = TASK_IDS[task["type"]]
+                kwargs = dict()
+                task_data = task["data"]
+                if not task_data.get("meta"):
+                    raise ValueError(f"Task {task_name} has no test metadata")
+                if task_data.get("meta"):
+                    metadata = task_data["meta"]
+                    kwargs["meta_dataset"] = metadata if type(metadata) != dict else (metadata["name"], metadata["config"])
 
-            if not task_data.get("test"):
-                if type(metadata) == dict:
-                    kwargs["test_dataset"] = (metadata["name"], metadata["config"])
+                if not task_data.get("test"):
+                    if type(metadata) == dict:
+                        kwargs["test_dataset"] = (metadata["name"], metadata["config"])
+                    else:
+                        raise ValueError(f"Task {task_name} has no test data")
+                if task_data.get("test"):
+                    testdata = task_data["test"]
+                    kwargs["test_dataset"] = testdata if type(testdata) != dict else (testdata["name"], testdata["config"])
+
+                kwargs["metrics"] = tuple(task["metrics"])
+
+                kwargs["batch_size"] = task["batch_size"] if "batch_size" in task else self.batch_size
+
+                if "fields" in task:
+                    kwargs["fields"] = task["fields"]
+                save_path, load_path = None, None
+                if "embeddings" in task:
+                    save_path = task["embeddings"].get("save")
+                    load_path = task["embeddings"].get("load")
+                    if self.embedding_save_path and save_path:
+                        save_path = os.path.join(self.embedding_save_path, save_path)
+                    if self.embedding_save_path and load_path:
+                        load_path = os.path.join(self.embedding_save_path, load_path)
+                few_shot_evaluators = []
+                if task["type"] in {"classification", "regression"}:
+                    subtype = SupervisedTask.CLASSIFICATION if task[
+                                                                   "type"] == "classification" else SupervisedTask.REGRESSION
+                    if task.get("multi_label"):
+                        subtype = SupervisedTask.MULTILABEL_CLASSIFICATION
+                    evaluator = SupervisedEvaluator(task_name, subtype, model=model,
+                                                    **kwargs)
+                    if task.get("few_shot"):
+                        for run in task["few_shot"]:
+                            few_shot_evaluators.append(
+                                FewShotEvaluator(f"{task_name} {run['sample_size']} shot", subtype, model=model,
+                                                 sample_size=run["sample_size"], num_iterations=run["iterations"],
+                                                 **kwargs))
                 else:
-                    raise ValueError(f"Task {task_name} has no test data")
-            if task_data.get("test"):
-                testdata = task_data["test"]
-                kwargs["test_dataset"] = testdata if type(testdata) != dict else (testdata["name"], testdata["config"])
-
-            kwargs["metrics"] = tuple(task["metrics"])
-
-            kwargs["batch_size"] = task["batch_size"] if "batch_size" in task else self.batch_size
-
-            if "fields" in task:
-                kwargs["fields"] = task["fields"]
-            save_path, load_path = None, None
-            if "embeddings" in task:
-                save_path = task["embeddings"].get("save")
-                load_path = task["embeddings"].get("load")
-                if self.embedding_save_path and save_path:
-                    save_path = os.path.join(self.embedding_save_path, save_path)
-                if self.embedding_save_path and load_path:
-                    load_path = os.path.join(self.embedding_save_path, load_path)
-            few_shot_evaluators = []
-            if task["type"] in {"classification", "regression"}:
-                subtype = SupervisedTask.CLASSIFICATION if task[
-                                                               "type"] == "classification" else SupervisedTask.REGRESSION
-                if task.get("multi_label"):
-                    subtype = SupervisedTask.MULTILABEL_CLASSIFICATION
-                evaluator = SupervisedEvaluator(task_name, subtype, model=model,
-                                                **kwargs)
-                if task.get("few_shot"):
-                    for run in task["few_shot"]:
-                        few_shot_evaluators.append(
-                            FewShotEvaluator(f"{task_name} {run['sample_size']} shot", subtype, model=model,
-                                             sample_size=run["sample_size"], num_iterations=run["iterations"],
-                                             **kwargs))
-            else:
-                if task_name == "Paper-Reviewer Matching":
-                    if not task_data.get("reviewers") and not task_data.get("hf_reviewers"):
-                        raise ValueError(f"Task {task_name} has no reviewer metadata locally or hf_metadata")
-                    if task_data.get("reviewers"):
-                        reviewers = task_data["reviewers"]
-                        kwargs["reviewer_metadata"] = reviewers if type(reviewers) != dict else (
-                            reviewers["name"], reviewers["config"])
-                    evaluator = ReviewerMatchingEvaluator(task_name, model=model, **kwargs)
+                    if task_name == "Paper-Reviewer Matching":
+                        if not task_data.get("reviewers") and not task_data.get("hf_reviewers"):
+                            raise ValueError(f"Task {task_name} has no reviewer metadata locally or hf_metadata")
+                        if task_data.get("reviewers"):
+                            reviewers = task_data["reviewers"]
+                            kwargs["reviewer_metadata"] = reviewers if type(reviewers) != dict else (
+                                reviewers["name"], reviewers["config"])
+                        evaluator = ReviewerMatchingEvaluator(task_name, model=model, **kwargs)
+                    else:
+                        data_class = SimpleDataset if task_data.get("simple_format") else IRDataset
+                        evaluator = IREvaluator(task_name, model=model, dataset_class=data_class, **kwargs)
+                embeddings = evaluator.generate_embeddings(save_path) if not load_path else load_path
+                results = evaluator.evaluate(embeddings)
+                if not few_shot_evaluators:
+                    final_results[task_name] = results
                 else:
-                    data_class = SimpleDataset if task_data.get("simple_format") else IRDataset
-                    evaluator = IREvaluator(task_name, model=model, dataset_class=data_class, **kwargs)
-            embeddings = evaluator.generate_embeddings(save_path) if not load_path else load_path
-            results = evaluator.evaluate(embeddings)
-            if not few_shot_evaluators:
-                final_results[task_name] = results
-            else:
-                final_results[task_name] = dict()
-                final_results[task_name]["complete"] = results
-                final_results[task_name]["few_shot"] = []
+                    final_results[task_name] = dict()
+                    final_results[task_name]["complete"] = results
+                    final_results[task_name]["few_shot"] = []
 
-            for few_shot in few_shot_evaluators:
-                final_results[task_name]["few_shot"].append(
-                    {"sample_size": few_shot.sample_size, "results": few_shot.evaluate(embeddings)})
-            with open(output, "w") as f:
-                json.dump(final_results, f, indent=4)
+                for few_shot in few_shot_evaluators:
+                    final_results[task_name]["few_shot"].append(
+                        {"sample_size": few_shot.sample_size, "results": few_shot.evaluate(embeddings)})
+                with open(output, "w") as f:
+                    json.dump(final_results, f, indent=4)
+            except Exception as e:
+                print(f"Error evaluating task {task_name}: {str(e)}")
+                final_results[task_name] = {"error": str(e)}
+                with open(output, "w") as f:
+                    json.dump(final_results, f, indent=4)
+            finally:
+                # Clear CUDA cache between tasks
+                if torch.cuda.is_available():
+                    torch.cuda.empty_cache()
+                gc.collect()
             
 
 if __name__ == "__main__":

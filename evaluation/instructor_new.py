@@ -168,7 +168,17 @@ class GemmaModel(InstructorEmbeddingModel):
         if type(self.task_id) != dict:
             # Non-search tasks
             prompt = self.task_prompts[self.task_id]
-            formatted_batch = [prompt.format(**{'content':text}) for text in batch]
+            field_names = [field_name for _, field_name, _, _ in Formatter().parse(prompt) if field_name]
+            if 'title' in field_names:
+                formatted_batch = []
+                for text in batch:
+                    title, text = text.split(self.tokenizer.sep_token)
+                    if text:
+                        formatted_batch.append(prompt.format(**{'title': title.strip(), 'content': text.strip()}))
+                    else: # If split didn't result in two parts, it's possible there's no title present
+                        formatted_batch.append(prompt.format(**{'title': '', 'content': title.strip()}))
+            else:
+                formatted_batch = [prompt.format(**{'content':text}) for text in batch]
         else:
             # Search task
             for i, (_, batch_type) in enumerate(batch_ids):
@@ -264,7 +274,8 @@ class GritLMModel(InstructorEmbeddingModel):
             )
 
         # Initialize GritLM model with automatic dtype
-        self.encoder = GritLM(self.embed_model, torch_dtype="auto")
+        # Use mode="embedding" to avoid past_key_values issues with certain transformers versions
+        self.encoder = GritLM(self.embed_model, torch_dtype="auto", mode="embedding")
 
         # GritLM model has a tokenizer attribute that we need to expose
         self.tokenizer = self.encoder.tokenizer

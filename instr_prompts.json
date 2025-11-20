@@ -76,5 +76,8 @@
         "[CLF]": "Instruct: Classify a given scientific document. Document: {content}",
         "[RGN]": "Instruct: Given a scientific document, predict a metric. Document: {content}",
         "[PRX]": "Instruct: Given a scientific document find similar scientific documents. Document: {content}"
+    },
+    "gemma_prx_title_separated": {
+        "[PRX]": "task: sentence similarity | title: {title} | text: {content}"
     }
 }

@@ -81,6 +81,6 @@
         "[PRX]": "task: sentence similarity | title: {title} | text: {content}"
     },
     "qwen_prx_based_from_code_repo": {
-        "SciDocs Cite": "Given a scientific paper title, retrieve paper abstracts that are cited by the given paper. {content}"
+        "SciDocs Cite": "Given a scientific paper title and abstract, retrieve paper abstracts that are cited by the given paper. {content}"
     }
 }

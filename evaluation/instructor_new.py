@@ -155,6 +155,7 @@ class GemmaModel(InstructorEmbeddingModel):
 
         self.encoder = SentenceTransformer(self.embed_model)
         self.tokenizer = self.encoder.tokenizer
+        self.task_name = None
 
         if hasattr(self.tokenizer, 'eos_token'):
             self.tokenizer.sep_token = self.tokenizer.eos_token
@@ -167,26 +168,35 @@ class GemmaModel(InstructorEmbeddingModel):
 
         if type(self.task_id) != dict:
             # Non-search tasks
-            prompt = self.task_prompts[self.task_id]
+            if self.task_name:
+                prompt = self.task_prompts[self.task_name]
+            else:
+                prompt = self.task_prompts[self.task_id] 
             field_names = [field_name for _, field_name, _, _ in Formatter().parse(prompt) if field_name]
             if 'title' in field_names:
                 formatted_batch = []
                 for text in batch:
-                    title, text = text.split(self.tokenizer.sep_token)
-                    if text:
-                        formatted_batch.append(prompt.format(**{'title': title.strip(), 'content': text.strip()}))
-                    else: # If split didn't result in two parts, it's possible there's no title present
-                        formatted_batch.append(prompt.format(**{'title': '', 'content': title.strip()}))
+                    parts = text.split(self.tokenizer.sep_token)
+                    if len(parts) >= 2:
+                        formatted_batch.append(prompt.format(**{'title': parts[0].strip(), 'content': parts[1].strip()}))
+                    else:
+                        formatted_batch.append(prompt.format(**{'title': parts[0].strip(), 'content': ""}))
             else:
                 formatted_batch = [prompt.format(**{'content':text}) for text in batch]
         else:
             # Search task
             for i, (_, batch_type) in enumerate(batch_ids):
                 if batch_type == 'q':
-                    prompt = self.task_prompts['[SRCH]']['q']
+                    if self.task_name:
+                        prompt - self.task_prompts[self.task_name]['q']
+                    else:
+                        prompt = self.task_prompts['[SRCH]']['q']
                     formatted_batch.append(prompt.format(**{'content':batch[i]}))
                 else:  # batch_type == 'c'
-                    prompt = self.task_prompts['[SRCH]']['c']
+                    if self.task_name:
+                        prompt - self.task_prompts[self.task_name]['c']
+                    else:
+                        prompt = self.task_prompts['[SRCH]']['c']
                     field_names = [field_name for _, field_name, _, _ in Formatter().parse(prompt) if field_name]
                     if 'title' in field_names:
                         title, text = batch[i].split(self.tokenizer.sep_token)
@@ -234,12 +244,18 @@ class Qwen3Model(InstructorEmbeddingModel):
 
         if type(self.task_id) != dict:
             # Non-search tasks
-            prompt = self.task_prompts[self.task_id]
+            if self.task_name:
+                prompt = self.task_prompts[self.task_name]
+            else:
+                prompt = self.task_prompts[self.task_id] 
             formatted_batch = [prompt.format(**{'content':text}) for text in batch]
         else:
             # Search task
             for i, (_, batch_type) in enumerate(batch_ids):
-                prompt = self.task_prompts['[SRCH]'][batch_type]
+                if self.task_name:
+                    prompt = self.task_prompts[self.task_name][batch_type]
+                else:
+                    prompt = self.task_prompts['[SRCH]'][batch_type]
                 formatted_batch.append(prompt.format(**{'content':batch[i]}))
 
         return self._encode_batch(formatted_batch)

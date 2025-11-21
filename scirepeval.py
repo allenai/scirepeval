@@ -51,7 +51,7 @@ pl.seed_everything(42, workers=True)
 class SciRepEval:
 
     def __init__(self, tasks_config: str = "scirepeval_tasks.jsonl", task_list: List[str] = None,
-                 task_formats: List[str] = None, batch_size: int = 32, embedding_save_path = None, excluded_tasks: List[str] = None):
+                 task_formats: List[str] = None, batch_size: int = 32, embedding_save_path = None, excluded_tasks: List[str] = None, task_specific_prompts: bool = False):
         tasks_dict = dict()
         task_by_formats = dict()
         with open(tasks_config, encoding="utf-8") as f:
@@ -74,6 +74,7 @@ class SciRepEval:
                 self.tasks.pop(task, None)  # None as default prevents KeyError
         self.batch_size = batch_size
         self.embedding_save_path = embedding_save_path
+        self.task_specifc_prompts = task_specific_prompts
 
     def evaluate(self, model: Union[Model, List[Model]], output: str):
         final_results = dict()
@@ -83,6 +84,8 @@ class SciRepEval:
             try:
                 for m in model:
                     m.task_id = TASK_IDS[task["type"]]
+                    if self.task_specifc_prompts:
+                        m.task_name = task_name
                 kwargs = dict()
                 task_data = task["data"]
                 if not task_data.get("meta"):
@@ -188,6 +191,7 @@ if __name__ == "__main__":
     parser.add_argument('--prompt-file', type=str, help='JSON-formatted file containing multiple instruction prompts')
     parser.add_argument('--prompt-name', type=str, help='Name of prompt within prompt file to use.', default="blank")
     parser.add_argument('--embeddings-save-path', type=str, default=None, help='Path to parent directory where embeddings will be saved. If specified, config paths are treated as relative to this path.')
+    parser.add_argument('--task-specific-prompts', action='store_true')
 
     args = parser.parse_args()
     adapters_load_from = args.adapters_dir if args.adapters_dir else args.adapters_chkpt
@@ -214,5 +218,5 @@ if __name__ == "__main__":
             pooling_mode=args.pooling_mode,
             use_fp16=args.fp16
         )
-    evaluator = SciRepEval(tasks_config=args.tasks_config, batch_size=args.batch_size, embedding_save_path=args.embeddings_save_path, excluded_tasks=args.excluded_tasks, task_formats=args.task_formats, task_list=args.task_list)
+    evaluator = SciRepEval(tasks_config=args.tasks_config, batch_size=args.batch_size, embedding_save_path=args.embeddings_save_path, excluded_tasks=args.excluded_tasks, task_formats=args.task_formats, task_list=args.task_list, task_specific_prompts=args.task_specific_prompts)
     evaluator.evaluate(model, args.output)

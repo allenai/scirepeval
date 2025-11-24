@@ -199,7 +199,11 @@ class GemmaModel(InstructorEmbeddingModel):
                         prompt = self.task_prompts['[SRCH]']['c']
                     field_names = [field_name for _, field_name, _, _ in Formatter().parse(prompt) if field_name]
                     if 'title' in field_names:
-                        title, text = batch[i].split(self.tokenizer.sep_token)
+                        parts = batch[i].split(self.tokenizer.sep_token)
+                        if len(parts) >= 2:
+                            title, text = parts[0], parts[1]
+                        else:
+                            title, text = parts[0], ""
                         formatted_batch.append(prompt.format(**{'title': title.strip(), 'content': text.strip()}))
                     else:
                         formatted_batch.append(prompt.format(**{"content": batch[i]}))

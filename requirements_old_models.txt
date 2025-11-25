@@ -1,0 +1,37 @@
+# Requirements for OLD/LEGACY models (Adapters, Fusion, PALs, INSTRUCTOR)
+# Use this environment for: Adapter models, Fusion models, PALs, legacy INSTRUCTOR
+# Python >= 3.9
+
+# Include base requirements
+-r requirements_base.txt
+
+# PyTorch - older stable version
+--extra-index-url https://download.pytorch.org/whl/cu118
+torch>=1.13.0,<2.0.0
+torchvision>=0.14.0,<0.15.0
+torchaudio>=0.13.0,<0.14.0
+
+# Core ML libraries - OLD VERSIONS
+transformers>=4.35.0,<4.40.0  # Must be <4.40 for adapters compatibility
+tokenizers>=0.13.0,<0.15.0
+huggingface-hub>=0.16.0,<0.20.0
+
+# Datasets - OLD VERSION (supports loading scripts)
+datasets>=2.16.0,<2.19.0  # Must be <2.19 for dataset scripts support
+pyarrow>=9.0.0,<13.0.0
+
+# Sentence transformers - older version
+sentence-transformers>=2.2.0,<3.0.0
+
+# CRITICAL: Adapters - only compatible with transformers<4.40
+adapters==1.2.0
+
+# InstructorEmbedding (legacy version)
+InstructorEmbedding==1.0.0
+
+# PyTorch Lightning - older version
+pytorch-lightning>=1.7.0,<2.0.0
+torchmetrics>=0.9.0,<1.0.0
+
+# NumPy - compatible version
+numpy>=1.23.0,<1.25.0

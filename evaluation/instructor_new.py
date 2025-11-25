@@ -25,6 +25,18 @@ MIN_TRANSFORMERS_VERSION_GEMMA = "4.56.0"
 MIN_TRANSFORMERS_VERSION_GRITLM = "4.51.0"
 MIN_SENTENCE_TRANSFORMERS_VERSION = "2.7.0"
 
+# Task type constants
+SEARCH_TASK_ID = '[SRCH]'
+QUERY_TYPE = 'q'
+CANDIDATE_TYPE = 'c'
+
+# Field name constants
+TITLE_FIELD = 'title'
+CONTENT_FIELD = 'content'
+
+# Special token constants
+SEP_TOKEN_PLACEHOLDER = '[SEP]'
+
 
 def _parse_version(version_str: str) -> tuple:
     """Parse version string into tuple of integers for comparison."""
@@ -92,15 +104,64 @@ def _check_version_compatibility(model_type: str) -> tuple:
     return True, ""
 
 
+class PromptFormatter:
+
+    def __init__(self, task_prompts: Dict[str, str], tokenizer=None):
+        self.task_prompts = task_prompts
+        self.tokenizer = tokenizer
+
+    def _parse_title_content(self, text: str, sep_token: str) -> tuple:
+        parts = text.split(sep_token)
+        if len(parts) >= 2:
+            return parts[0].strip(), parts[1].strip()
+        return parts[0].strip(), ""
+
+    def _get_template_fields(self, prompt: str) -> List[str]:
+        return [field_name for _, field_name, _, _ in Formatter().parse(prompt) if field_name]
+
+    def _format_with_fields(self, prompt: str, text: str, sep_token: str = None) -> str:
+        field_names = self._get_template_fields(prompt)
+
+        if TITLE_FIELD in field_names and sep_token:
+            title, content = self._parse_title_content(text, sep_token)
+            return prompt.format(**{TITLE_FIELD: title, CONTENT_FIELD: content})
+        else:
+            return prompt.format(**{CONTENT_FIELD: text})
+
+    def format_batch(self, batch: List[str], task_id, task_name: str = None,
+                     batch_ids: Optional[List] = None, sep_token: str = None,
+                     use_field_formatting: bool = True) -> List[str]:
+        formatted_batch = []
+        is_search_task = isinstance(task_id, dict)
+
+        if not is_search_task:
+            prompt = self.task_prompts[task_name] if task_name else self.task_prompts[task_id]
+
+            if use_field_formatting:
+                formatted_batch = [self._format_with_fields(prompt, text, sep_token) for text in batch]
+            else:
+                formatted_batch = [f"{prompt}{text}" for text in batch]
+        else:
+            for i, (_, batch_type) in enumerate(batch_ids):
+                if task_name:
+                    prompt = self.task_prompts[task_name][batch_type]
+                else:
+                    prompt = self.task_prompts[SEARCH_TASK_ID][batch_type]
+
+                if batch_type == QUERY_TYPE:
+                    if use_field_formatting:
+                        formatted_batch.append(self._format_with_fields(prompt, batch[i], sep_token))
+                    else:
+                        formatted_batch.append(prompt.format(**{CONTENT_FIELD: batch[i]}))
+                else:
+                    formatted_batch.append(f"{prompt}{batch[i]}")
+
+        return formatted_batch
+
+
 class InstructorEmbeddingModel(ABC):
-    """
-    Base class for embedding models that support task-specific prompts.
-    """
 
     def __init__(self, embed_model: str, model_type: str, task_prompts: Dict[str, str], eos_token: str = None):
-        """
-        Initialize the embedding model with task-specific prompts.
-        """
         is_compatible, error_msg = _check_version_compatibility(model_type)
         if not is_compatible:
             raise ValueError(error_msg)
@@ -108,186 +169,90 @@ class InstructorEmbeddingModel(ABC):
         self.embed_model = embed_model
         self.task_prompts = task_prompts
         self.task_id = None
+        self.task_name = None
+        self.formatter = None
+
+    def _setup_tokenizer_sep_token(self, tokenizer):
+        if hasattr(tokenizer, 'eos_token'):
+            tokenizer.sep_token = tokenizer.eos_token
+
+    def _replace_sep_placeholder(self, batch: List[str]) -> List[str]:
+        if not hasattr(self, 'tokenizer') or not hasattr(self.tokenizer, 'sep_token'):
+            return batch
+
+        sep_token = self.tokenizer.sep_token
+        if sep_token == SEP_TOKEN_PLACEHOLDER:
+            return batch
+
+        return [text.replace(SEP_TOKEN_PLACEHOLDER, sep_token)
+                if SEP_TOKEN_PLACEHOLDER in text else text
+                for text in batch]
 
     @abstractmethod
     def _encode_batch(self, formatted_batch: List[str]) -> torch.Tensor:
-        """
-        Model-specific encoding implementation.
-        """
         pass
 
-    def __call__(self, batch: List[str], batch_ids: Optional[List] = None):
-        """
-        Encode batch of texts into embeddings.
-        """
-        formatted_batch = []
-
-        if type(self.task_id) != dict:
-            # Non-search tasks
-            prompt = self.task_prompts[self.task_id]
-            formatted_batch = [f"{prompt}{text}" for text in batch]
-        else:
-            # Search task
-            for i, (_, batch_type) in enumerate(batch_ids):
-                if batch_type == 'q':
-                    prompt = self.task_prompts['[SRCH]']['q']
-                else:  # batch_type == 'c'
-                    prompt = self.task_prompts['[SRCH]']['c']
-                formatted_batch.append(f"{prompt}{batch[i]}")
-
-        return self._encode_batch(formatted_batch)
+    def _get_sep_token(self) -> str:
+        if hasattr(self, 'tokenizer') and hasattr(self.tokenizer, 'sep_token'):
+            return self.tokenizer.sep_token
+        return None
 
 
 class GemmaModel(InstructorEmbeddingModel):
-    """
-    Gemma embedding model using SentenceTransformer.
-
-    Requirements:
-        - transformers >= 4.56.0
-        - sentence-transformers >= 2.7.0
-    """
 
     def __init__(self, embed_model: str, task_prompts: Dict[str, str]):
-        """
-        Initialize Gemma embedding model.
-        """
         super().__init__(embed_model, "gemma", task_prompts)
 
         self.encoder = SentenceTransformer(self.embed_model)
         self.tokenizer = self.encoder.tokenizer
-        self.task_name = None
-
-        if hasattr(self.tokenizer, 'eos_token'):
-            self.tokenizer.sep_token = self.tokenizer.eos_token
+        self._setup_tokenizer_sep_token(self.tokenizer)
+        self.formatter = PromptFormatter(task_prompts, self.tokenizer)
 
     def _encode_batch(self, formatted_batch: List[str]) -> torch.Tensor:
         return self.encoder.encode(formatted_batch, convert_to_tensor=True, device="cuda")
 
     def __call__(self, batch: List[str], batch_ids: Optional[List] = None):
-        formatted_batch = []
-
-        if type(self.task_id) != dict:
-            # Non-search tasks
-            if self.task_name:
-                prompt = self.task_prompts[self.task_name]
-            else:
-                prompt = self.task_prompts[self.task_id] 
-            field_names = [field_name for _, field_name, _, _ in Formatter().parse(prompt) if field_name]
-            if 'title' in field_names:
-                formatted_batch = []
-                for text in batch:
-                    parts = text.split(self.tokenizer.sep_token)
-                    if len(parts) >= 2:
-                        formatted_batch.append(prompt.format(**{'title': parts[0].strip(), 'content': parts[1].strip()}))
-                    else:
-                        formatted_batch.append(prompt.format(**{'title': parts[0].strip(), 'content': ""}))
-            else:
-                formatted_batch = [prompt.format(**{'content':text}) for text in batch]
-        else:
-            # Search task
-            for i, (_, batch_type) in enumerate(batch_ids):
-                if batch_type == 'q':
-                    if self.task_name:
-                        prompt - self.task_prompts[self.task_name]['q']
-                    else:
-                        prompt = self.task_prompts['[SRCH]']['q']
-                    formatted_batch.append(prompt.format(**{'content':batch[i]}))
-                else:  # batch_type == 'c'
-                    if self.task_name:
-                        prompt - self.task_prompts[self.task_name]['c']
-                    else:
-                        prompt = self.task_prompts['[SRCH]']['c']
-                    field_names = [field_name for _, field_name, _, _ in Formatter().parse(prompt) if field_name]
-                    if 'title' in field_names:
-                        parts = batch[i].split(self.tokenizer.sep_token)
-                        if len(parts) >= 2:
-                            title, text = parts[0], parts[1]
-                        else:
-                            title, text = parts[0], ""
-                        formatted_batch.append(prompt.format(**{'title': title.strip(), 'content': text.strip()}))
-                    else:
-                        formatted_batch.append(prompt.format(**{"content": batch[i]}))
-
+        formatted_batch = self.formatter.format_batch(
+            batch=batch,
+            task_id=self.task_id,
+            task_name=self.task_name,
+            batch_ids=batch_ids,
+            sep_token=self._get_sep_token(),
+            use_field_formatting=True
+        )
         return self._encode_batch(formatted_batch)
 
 
 class Qwen3Model(InstructorEmbeddingModel):
-    """
-    Qwen3 embedding model with last-token pooling.
-
-    Requirements:
-        - transformers >= 4.51.0
-    """
 
     def __init__(self, embed_model: str, task_prompts: Dict[str, str]):
-        """
-        Initialize Qwen3 embedding model.
-        """
         super().__init__(embed_model, "qwen3", task_prompts)
 
         self.encoder = SentenceTransformer(embed_model)
-        self.tokenizer = AutoTokenizer.from_pretrained(self.embed_model, trust_remote_code=True)
-
-        if hasattr(self.tokenizer, 'eos_token'):
-            self.tokenizer.sep_token = self.tokenizer.eos_token
+        self.tokenizer = AutoTokenizer.from_pretrained(self.embed_model)
+        self._setup_tokenizer_sep_token(self.tokenizer)
+        self.formatter = PromptFormatter(task_prompts, self.tokenizer)
 
     def _encode_batch(self, formatted_batch: List[str]) -> torch.Tensor:
-        """
-        Encode batch using Qwen3 model with last-token pooling.
-
-        Args:
-            formatted_batch: Pre-formatted text strings
-
-        Returns:
-            Tensor of embeddings
-        """
         return self.encoder.encode(sentences=formatted_batch, convert_to_tensor=True, device="cuda")
-    
+
     def __call__(self, batch: List[str], batch_ids: Optional[List] = None):
-        formatted_batch = []
-        for i, b in enumerate(batch):
-            if '[SEP]' in b:
-                batch[i] = b.replace("[SEP]", self.tokenizer.sep_token)
+        batch = self._replace_sep_placeholder(batch)
 
-        if type(self.task_id) != dict:
-            # Non-search tasks
-            if self.task_name:
-                prompt = self.task_prompts[self.task_name]
-            else:
-                prompt = self.task_prompts[self.task_id] 
-            formatted_batch = [prompt.format(**{'content':text}) for text in batch]
-        else:
-            # Search task
-            for i, (_, batch_type) in enumerate(batch_ids):
-                if self.task_name:
-                    prompt = self.task_prompts[self.task_name][batch_type]
-                else:
-                    prompt = self.task_prompts['[SRCH]'][batch_type]
-                formatted_batch.append(prompt.format(**{'content':batch[i]}))
-
+        formatted_batch = self.formatter.format_batch(
+            batch=batch,
+            task_id=self.task_id,
+            task_name=self.task_name,
+            batch_ids=batch_ids,
+            sep_token=self._get_sep_token(),
+            use_field_formatting=False
+        )
         return self._encode_batch(formatted_batch)
 
 
 class GritLMModel(InstructorEmbeddingModel):
-    """
-    GritLM embedding model using the gritlm package.
-
-    GritLM is a unified model for both embedding and generation tasks.
-    It uses special instruction formatting with <|user|> and <|embed|> tokens.
-
-    Requirements:
-        - gritlm package
-        - transformers >= 4.51.0
-    """
 
     def __init__(self, embed_model: str, task_prompts: Dict[str, str]):
-        """
-        Initialize GritLM embedding model.
-
-        Args:
-            embed_model: HuggingFace model identifier (e.g., "GritLM/GritLM-7B")
-            task_prompts: Dictionary mapping task IDs to instruction prompts
-        """
         super().__init__(embed_model, "gritlm", task_prompts)
 
         if not GRITLM_AVAILABLE:
@@ -296,97 +261,34 @@ class GritLMModel(InstructorEmbeddingModel):
                 "Please install: pip install gritlm"
             )
 
-        # Initialize GritLM model with automatic dtype
-        # Use mode="embedding" to avoid past_key_values issues with certain transformers versions
         self.encoder = GritLM(self.embed_model, torch_dtype="auto", mode="embedding")
-
-        # GritLM model has a tokenizer attribute that we need to expose
         self.tokenizer = self.encoder.tokenizer
-
-        if hasattr(self.tokenizer, 'eos_token'):
-            self.tokenizer.sep_token = self.tokenizer.eos_token
+        self._setup_tokenizer_sep_token(self.tokenizer)
 
     @staticmethod
     def _gritlm_instruction(instruction: str) -> str:
-        """
-        Format instruction according to GritLM's expected format.
-
-        Args:
-            instruction: Task instruction (empty for documents)
-
-        Returns:
-            Formatted instruction string
-        """
         if instruction:
             return f"<|user|>\n{instruction}\n<|embed|>\n"
         else:
             return "<|embed|>\n"
 
     def _encode_batch(self, formatted_batch: List[str]) -> torch.Tensor:
-        """
-        Encode batch using GritLM model.
-
-        Args:
-            formatted_batch: List of texts with instructions already formatted
-
-        Returns:
-            Tensor of embeddings
-        """
-        # GritLM's encode method already handles the instruction formatting
-        # and returns normalized embeddings by default
         embeddings = self.encoder.encode(formatted_batch, convert_to_tensor=True)
         return embeddings
 
     def __call__(self, batch: List[str], batch_ids: Optional[List] = None):
-        """
-        Encode batch of texts into embeddings with GritLM-specific formatting.
+        is_search_task = isinstance(self.task_id, dict)
 
-        Args:
-            batch: List of texts to encode
-            batch_ids: Optional list of (id, type) tuples for search tasks
-
-        Returns:
-            Tensor of embeddings
-        """
-        if type(self.task_id) != dict:
-            # Non-search tasks - encode all texts with the task instruction
+        if not is_search_task:
             instruction = self.task_prompts.get(self.task_id, "")
             return self.encoder.encode(batch, instruction=self._gritlm_instruction(instruction), convert_to_tensor=True)
         else:
-            # Search task - separate queries and candidates
-            query_texts = []
-            candidate_texts = []
-            query_indices = []
-            candidate_indices = []
+            query_instruction = self._gritlm_instruction(self.task_prompts[SEARCH_TASK_ID].get(QUERY_TYPE, ''))
+            candidate_instruction = self._gritlm_instruction("")
 
-            for i, (_, batch_type) in enumerate(batch_ids):
-                if batch_type == 'q':
-                    query_texts.append(batch[i])
-                    query_indices.append(i)
-                else:  # batch_type == 'c'
-                    candidate_texts.append(batch[i])
-                    candidate_indices.append(i)
+            instructions = [
+                query_instruction if batch_type == QUERY_TYPE else candidate_instruction
+                for _, batch_type in batch_ids
+            ]
 
-            # Encode queries with instruction, candidates without
-            query_instruction = self.task_prompts['[SRCH]'].get('q', '')
-            query_embeddings = self.encoder.encode(
-                query_texts,
-                instruction=self._gritlm_instruction(query_instruction),
-                convert_to_tensor=True
-            ) if query_texts else torch.tensor([])
-
-            candidate_embeddings = self.encoder.encode(
-                candidate_texts,
-                instruction=self._gritlm_instruction(""),
-                convert_to_tensor=True
-            ) if candidate_texts else torch.tensor([])
-
-            # Reconstruct embeddings in original order
-            embeddings = torch.zeros(len(batch), query_embeddings.shape[-1] if len(query_embeddings) > 0 else candidate_embeddings.shape[-1], device=query_embeddings.device if len(query_embeddings) > 0 else candidate_embeddings.device)
-
-            for idx, orig_idx in enumerate(query_indices):
-                embeddings[orig_idx] = query_embeddings[idx]
-            for idx, orig_idx in enumerate(candidate_indices):
-                embeddings[orig_idx] = candidate_embeddings[idx]
-
-            return embeddings
+            return self.encoder.encode(batch, instruction=instructions, convert_to_tensor=True)

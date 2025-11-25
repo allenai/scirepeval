@@ -1,0 +1,37 @@
+# Requirements for NEW models (Gemma, Qwen3, GritLM)
+# Use this environment for: Gemma, Qwen3, GritLM models
+# Python >= 3.9
+
+# Include base requirements
+-r requirements_base.txt
+
+# PyTorch - latest stable version
+torch>=2.1.0
+torchvision>=0.16.0
+torchaudio>=2.1.0
+
+# Core ML libraries - UPDATED VERSIONS for new models
+transformers>=4.51.1  # Required for Gemma/Qwen3 support
+tokenizers>=0.19.0
+huggingface-hub>=0.23.0
+
+# Datasets - NEW VERSION (no script support, uses Parquet)
+datasets==2.19.0  # Dataset scripts deprecated
+pyarrow==12.0.1
+
+# Sentence transformers - SPECIFIC VERSION for Gemma compatibility
+sentence-transformers==5.1.0  # Required for Gemma
+
+# GritLM support
+gritlm==1.0.2
+
+# PyTorch Lightning - updated version
+pytorch-lightning>=2.0.0
+torchmetrics>=1.0.0
+
+# NumPy - updated compatible version
+numpy>=1.24.0,<2.0.0
+
+# NOTE: adapters package is NOT included in this environment
+# It is incompatible with transformers>=4.51
+# If you need adapter models, use requirements_old_models.txt instead

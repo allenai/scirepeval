@@ -82,8 +82,8 @@
     },
     "qwen_prx_based_from_code_repo": {
         "SciDocs Cite": "Given a scientific paper title and abstract, retrieve paper abstracts that are cited by the given paper. {content}",
-        "NFCorpus": "Given a question, retrieve relevant documents that best answer the question",
-        "TREC-CoVID": "Given a query on COVID-19, retrieve documents that answer the query",
+        "NFCorpus": {"q": "Given a question, retrieve relevant documents that best answer the question. {content}", "c": "{content}"},
+        "TREC-CoVID": {"q": "Given a query on COVID-19, retrieve documents that answer the query. {content}", "c": "{content}"},
         "RELISH": "Retrieve semantically similar text"
     }
 }

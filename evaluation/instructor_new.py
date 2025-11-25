@@ -35,7 +35,7 @@ TITLE_FIELD = 'title'
 CONTENT_FIELD = 'content'
 
 # Special token constants
-SEP_TOKEN_PLACEHOLDER = '[SEP]'
+BERT_STYLE_SEP_TOKEN = '[SEP]'
 
 
 def _parse_version(version_str: str) -> tuple:
@@ -148,13 +148,10 @@ class PromptFormatter:
                 else:
                     prompt = self.task_prompts[SEARCH_TASK_ID][batch_type]
 
-                if batch_type == QUERY_TYPE:
-                    if use_field_formatting:
-                        formatted_batch.append(self._format_with_fields(prompt, batch[i], sep_token))
-                    else:
-                        formatted_batch.append(prompt.format(**{CONTENT_FIELD: batch[i]}))
+                if use_field_formatting:
+                    formatted_batch.append(self._format_with_fields(prompt, batch[i], sep_token))
                 else:
-                    formatted_batch.append(f"{prompt}{batch[i]}")
+                    formatted_batch.append(prompt.format(**{CONTENT_FIELD: batch[i]}))
 
         return formatted_batch
 
@@ -181,11 +178,11 @@ class InstructorEmbeddingModel(ABC):
             return batch
 
         sep_token = self.tokenizer.sep_token
-        if sep_token == SEP_TOKEN_PLACEHOLDER:
+        if sep_token == BERT_STYLE_SEP_TOKEN:
             return batch
 
-        return [text.replace(SEP_TOKEN_PLACEHOLDER, sep_token)
-                if SEP_TOKEN_PLACEHOLDER in text else text
+        return [text.replace(BERT_STYLE_SEP_TOKEN, sep_token)
+                if BERT_STYLE_SEP_TOKEN in text else text
                 for text in batch]
 
     @abstractmethod
@@ -245,7 +242,7 @@ class Qwen3Model(InstructorEmbeddingModel):
             task_name=self.task_name,
             batch_ids=batch_ids,
             sep_token=self._get_sep_token(),
-            use_field_formatting=False
+            use_field_formatting=True
         )
         return self._encode_batch(formatted_batch)
 

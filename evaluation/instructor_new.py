@@ -245,6 +245,9 @@ class Qwen3Model(InstructorEmbeddingModel):
     
     def __call__(self, batch: List[str], batch_ids: Optional[List] = None):
         formatted_batch = []
+        for i, b in enumerate(batch):
+            if '[SEP]' in b:
+                batch[i] = b.replace("[SEP]", self.tokenizer.sep_token)
 
         if type(self.task_id) != dict:
             # Non-search tasks

@@ -1,8 +1,21 @@
 from typing import Union, Dict, Tuple
 
 import numpy as np
-from lightning.classification import LinearSVC
-from lightning.regression import LinearSVR
+
+# Conditional import for lightning - fallback to sklearn if not available
+try:
+    from lightning.classification import LinearSVC
+    from lightning.regression import LinearSVR
+    LIGHTNING_AVAILABLE = True
+except ImportError:
+    from sklearn.svm import LinearSVC, LinearSVR
+    LIGHTNING_AVAILABLE = False
+    import logging
+    logging.getLogger(__name__).warning(
+        "sklearn-contrib-lightning not available. Using sklearn.svm.LinearSVC/LinearSVR instead. "
+        "For faster training with large datasets, install sklearn-contrib-lightning in old models environment."
+    )
+
 from sklearn.metrics import f1_score, accuracy_score, precision_score, recall_score, mean_squared_error, r2_score
 from scipy.stats import kendalltau, pearsonr
 from sklearn.model_selection import GridSearchCV
@@ -120,7 +133,7 @@ class SupervisedEvaluator(Evaluator):
 
         Cs = np.logspace(-2, 2, 5)
         if self.task == SupervisedTask.MULTILABEL_CLASSIFICATION:
-            estimator = LinearSVC(max_iter=10000)
+            estimator = LinearSVC(max_iter=10000, loss="squared_hinge")
             svm = GridSearchCV(estimator=estimator, cv=cv, param_grid={'C': Cs}, n_jobs=10)
             svm = OneVsRestClassifier(svm, n_jobs=1)
         else:

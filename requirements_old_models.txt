@@ -2,6 +2,9 @@
 # Use this environment for: Adapter models, Fusion models, PALs, legacy INSTRUCTOR
 # Python >= 3.9
 
+# NumPy MUST be installed first (required for building some dependencies)
+numpy>=1.23.0,<1.25.0
+
 # Include base requirements
 -r requirements_base.txt
 
@@ -33,5 +36,5 @@ InstructorEmbedding==1.0.0
 pytorch-lightning>=1.7.0,<2.0.0
 torchmetrics>=0.9.0,<1.0.0
 
-# NumPy - compatible version
-numpy>=1.23.0,<1.25.0
+# sklearn-contrib-lightning - ONLY for old models (incompatible with numpy>=1.24)
+sklearn-contrib-lightning==0.6.2.post0

@@ -84,6 +84,8 @@
         "SciDocs Cite": "Given a scientific paper title and abstract, retrieve paper abstracts that are cited by the given paper. {content}",
         "NFCorpus": {"q": "Given a question, retrieve relevant documents that best answer the question. {content}", "c": "{content}"},
         "TREC-CoVID": {"q": "Given a query on COVID-19, retrieve documents that answer the query. {content}", "c": "{content}"},
-        "RELISH": "Retrieve semantically similar text"
+        "Same Author Detection": "Given a scientific paper title and abstract, retrieve papers that have the same author as the given paper. {content}",
+        "Highly Influential Citations": "Given a scientific paper title and abstract, retrieve papers that are highly influential citations in the given paper. {content}",
+        "RELISH": "Given a scientific paper title and abstract, retrieve papers that are relevant to the given paper. {content}"
     }
 }

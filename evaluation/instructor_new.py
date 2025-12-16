@@ -1,10 +1,12 @@
 from transformers import AutoTokenizer, AutoModel
 import torch
-from typing import List, Optional, Dict
+from typing import List, Optional, Dict, Union
 from abc import ABC, abstractmethod
 import importlib.metadata
 import warnings
 from string import Formatter
+import json
+from copy import deepcopy
 
 # Lazy import for optional dependencies
 try:
@@ -20,10 +22,9 @@ except ImportError:
     GRITLM_AVAILABLE = False
 
 # Version requirements
-MIN_TRANSFORMERS_VERSION_QWEN3 = "4.51.0"
-MIN_TRANSFORMERS_VERSION_GEMMA = "4.56.0"
-MIN_TRANSFORMERS_VERSION_GRITLM = "4.51.0"
-MIN_SENTENCE_TRANSFORMERS_VERSION = "2.7.0"
+MIN_TRANSFORMERS_VERSION_QWEN3 = (4, 51, 0)
+MIN_TRANSFORMERS_VERSION_GEMMA = (4, 56, 0)
+MIN_SENTENCE_TRANSFORMERS_VERSION = (2, 7, 0)
 
 # Task type constants
 SEARCH_TASK_ID = '[SRCH]'
@@ -66,8 +67,7 @@ def _check_version_compatibility(model_type: str) -> tuple:
     current_version = _parse_version(transformers_version)
 
     if model_type == "qwen3":
-        required_version = _parse_version(MIN_TRANSFORMERS_VERSION_QWEN3)
-        if current_version < required_version:
+        if current_version < MIN_TRANSFORMERS_VERSION_QWEN3:
             return False, (
                 f"Qwen3 requires transformers >= {MIN_TRANSFORMERS_VERSION_QWEN3}, "
                 f"but you have {transformers_version}. "
@@ -81,8 +81,7 @@ def _check_version_compatibility(model_type: str) -> tuple:
                 f"Please install: pip install 'sentence-transformers>={MIN_SENTENCE_TRANSFORMERS_VERSION}'"
             )
 
-        required_version = _parse_version(MIN_TRANSFORMERS_VERSION_GEMMA)
-        if current_version < required_version:
+        if current_version < MIN_TRANSFORMERS_VERSION_GEMMA:
             warnings.warn(
                 f"Gemma works best with transformers >= {MIN_TRANSFORMERS_VERSION_GEMMA}, "
                 f"but you have {transformers_version}. Some features may not work correctly.",
@@ -91,9 +90,8 @@ def _check_version_compatibility(model_type: str) -> tuple:
 
         st_version = _get_package_version("sentence-transformers")
         st_current = _parse_version(st_version)
-        st_required = _parse_version(MIN_SENTENCE_TRANSFORMERS_VERSION)
 
-        if st_current < st_required:
+        if st_current < MIN_SENTENCE_TRANSFORMERS_VERSION:
             warnings.warn(
                 f"sentence-transformers >= {MIN_SENTENCE_TRANSFORMERS_VERSION} is recommended, "
                 f"but you have {st_version}. Consider upgrading: "
@@ -104,11 +102,94 @@ def _check_version_compatibility(model_type: str) -> tuple:
     return True, ""
 
 
+def _merge_prompts(base: Dict, override: Dict) -> Dict:
+    """
+    Recursively merge two prompt dictionaries.
+    Override values take precedence over base values.
+    """
+    result = deepcopy(base)
+
+    for key, value in override.items():
+        if key == "base_prompt":
+            # Skip the base_prompt reference in the merged result
+            continue
+        elif key == "parameters":
+            # Merge parameters separately
+            if "parameters" in result:
+                result["parameters"].update(value)
+            else:
+                result["parameters"] = deepcopy(value)
+        elif isinstance(value, dict) and key in result and isinstance(result[key], dict):
+            # Recursively merge nested dictionaries (like [SRCH])
+            result[key] = _merge_prompts(result[key], value)
+        else:
+            # Override the value
+            result[key] = deepcopy(value)
+
+    return result
+
+
+def load_prompts(prompts_data: Dict, prompt_name: str, _visited: Optional[set] = None) -> Dict:
+    """
+    Load and resolve prompts from the prompts configuration.
+
+    Args:
+        prompts_data: The full prompts dictionary loaded from JSON
+        prompt_name: The name of the prompt configuration to load
+        _visited: Internal parameter to track visited prompts and prevent cycles
+
+    Returns:
+        A fully resolved prompt dictionary with all base_prompt references resolved
+
+    Raises:
+        ValueError: If prompt_name doesn't exist or if circular reference is detected
+    """
+    if prompt_name not in prompts_data:
+        raise ValueError(f"Prompt configuration '{prompt_name}' not found in prompts data")
+
+    # Track visited prompts to detect circular references
+    if _visited is None:
+        _visited = set()
+
+    if prompt_name in _visited:
+        raise ValueError(f"Circular reference detected: {prompt_name} has already been visited")
+
+    _visited.add(prompt_name)
+
+    prompt_config = prompts_data[prompt_name]
+
+    # If this config has a base_prompt, recursively resolve it first
+    if "base_prompt" in prompt_config:
+        base_prompt_name = prompt_config["base_prompt"]
+        base_config = load_prompts(prompts_data, base_prompt_name, _visited.copy())
+        # Merge the base config with the current config
+        return _merge_prompts(base_config, prompt_config)
+    else:
+        # No base prompt, return a deep copy of the config
+        return deepcopy(prompt_config)
+
+
+def load_prompts_from_file(file_path: str, prompt_name: str) -> Dict:
+    """
+    Load and resolve prompts from a JSON file.
+
+    Args:
+        file_path: Path to the JSON file containing prompt configurations
+        prompt_name: The name of the prompt configuration to load
+
+    Returns:
+        A fully resolved prompt dictionary
+    """
+    with open(file_path, 'r') as f:
+        prompts_data = json.load(f)
+
+    return load_prompts(prompts_data, prompt_name)
+
+
 class PromptFormatter:
 
-    def __init__(self, task_prompts: Dict[str, str], tokenizer=None):
+    def __init__(self, task_prompts: Dict[str, str]):
         self.task_prompts = task_prompts
-        self.tokenizer = tokenizer
 
     def _parse_title_content(self, text: str, sep_token: str) -> tuple:
         parts = text.split(sep_token)
@@ -128,7 +209,7 @@ class PromptFormatter:
         else:
             return prompt.format(**{CONTENT_FIELD: text})
 
-    def format_batch(self, batch: List[str], task_id, task_name: str = None,
+    def format_batch(self, batch: List[str], task_id: Union[str, dict], task_name: str = None,
                      batch_ids: Optional[List] = None, sep_token: str = None,
                      use_field_formatting: bool = True) -> List[str]:
         formatted_batch = []
@@ -203,10 +284,10 @@ class GemmaModel(InstructorEmbeddingModel):
         self.encoder = SentenceTransformer(self.embed_model)
         self.tokenizer = self.encoder.tokenizer
         self._setup_tokenizer_sep_token(self.tokenizer)
-        self.formatter = PromptFormatter(task_prompts, self.tokenizer)
+        self.formatter = PromptFormatter(task_prompts)
 
     def _encode_batch(self, formatted_batch: List[str]) -> torch.Tensor:
-        return self.encoder.encode(formatted_batch, convert_to_tensor=True, device="cuda")
+        return self.encoder.encode(formatted_batch, convert_to_tensor=True,device="cuda")
 
     def __call__(self, batch: List[str], batch_ids: Optional[List] = None):
         formatted_batch = self.formatter.format_batch(
@@ -228,7 +309,7 @@ class Qwen3Model(InstructorEmbeddingModel):
         self.encoder = SentenceTransformer(embed_model)
         self.tokenizer = AutoTokenizer.from_pretrained(self.embed_model)
         self._setup_tokenizer_sep_token(self.tokenizer)
-        self.formatter = PromptFormatter(task_prompts, self.tokenizer)
+        self.formatter = PromptFormatter(task_prompts)
 
     def _encode_batch(self, formatted_batch: List[str]) -> torch.Tensor:
         return self.encoder.encode(sentences=formatted_batch, convert_to_tensor=True, device="cuda")

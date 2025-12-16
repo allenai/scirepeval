@@ -23,7 +23,7 @@ def _get_transformers_version():
 _transformers_version = _get_transformers_version()
 if _transformers_version >= (4, 51):
     # Newer transformers: can use new models
-    from evaluation.instructor_new import GemmaModel, Qwen3Model, GritLMModel
+    from evaluation.instructor_new import GemmaModel, Qwen3Model, GritLMModel, load_prompts_from_file
     InstructorModel = None
     NEW_MODELS_AVAILABLE = True
 else:
@@ -68,10 +68,8 @@ class SciRepEval:
         elif task_formats:
             self.tasks = dict()
             for task_format in task_formats:
-                self.tasks.update({k: tasks_dict[k] for k in task_by_formats[task_format]})
-        if excluded_tasks:
-            for task in excluded_tasks:
-                self.tasks.pop(task, None)  # None as default prevents KeyError
+                if task_format not in excluded_tasks:
+                    self.tasks.update({k: tasks_dict[k] for k in task_by_formats[task_format]})
         self.batch_size = batch_size
         self.embedding_save_path = embedding_save_path
         self.task_specifc_prompts = task_specific_prompts
@@ -203,8 +201,7 @@ if __name__ == "__main__":
         else:
             if not args.prompt_file or not os.path.exists(args.prompt_file):
                 raise ValueError("Instructor model requires JSON file with prompts to use.")
-            with open(args.prompt_file) as f:
-                task_prompts = json.load(f)[args.prompt_name]
+            task_prompts = load_prompts_from_file(args.prompt_file, args.prompt_name)
             model = model_class_map[args.model_type](args.model, task_prompts)
     else:
         model = Model(

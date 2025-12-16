@@ -7,6 +7,12 @@ import logging
 
 logger = logging.getLogger(__name__)
 
+ADAPTERS_NOT_AVAILABLE_MSG = "{variant} variant requires adapters package    with transformers<4.40.\n"
+"Current environment does not support adapters.\n"
+"Please create a separate environment:\n"
+"  conda env create -f environment_old_models.yml\n"
+"  or: pip install transformers<4.40 adapters==1.2.0 datasets<2.19"
+
 # Conditional imports for optional dependencies
 try:
     from bert_pals import BertPalsEncoder, BertPalConfig, BertModel
@@ -56,11 +62,7 @@ class EncoderFactory:
         elif variant == "adapters":
             if not ADAPTERS_AVAILABLE:
                 raise ImportError(
-                    "Adapters variant requires adapters package with transformers<4.40.\n"
-                    "Current environment does not support adapters.\n"
-                    "Please create a separate environment:\n"
-                    "  conda env create -f environment_old_models.yml\n"
-                    "  or: pip install transformers<4.40 adapters==1.2.0 datasets<2.19"
+                    ADAPTERS_NOT_AVAILABLE_MSG.format(variant=variant)
                 )
             # needs a base model checkpoint and the adapters to be loaded from local path or dict of (task_id,
             # adapter) from adapters hub
@@ -69,11 +71,7 @@ class EncoderFactory:
         elif variant == "fusion":
             if not ADAPTERS_AVAILABLE:
                 raise ImportError(
-                    "Fusion variant requires adapters package with transformers<4.40.\n"
-                    "Current environment does not support adapters.\n"
-                    "Please create a separate environment:\n"
-                    "  conda env create -f environment_old_models.yml\n"
-                    "  or: pip install transformers<4.40 adapters==1.2.0 datasets<2.19"
+                    ADAPTERS_NOT_AVAILABLE_MSG.format(variant=variant)
                 )
             # needs a base model and list of adapters/local adapter checkpoint paths to be fused
             return AdapterFusion(self.base_checkpoint, self.all_tasks, load_adapters_as=self.adapters_load_from,

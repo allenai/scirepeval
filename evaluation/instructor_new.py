@@ -328,6 +328,62 @@ class Qwen3Model(InstructorEmbeddingModel):
         return self._encode_batch(formatted_batch)
 
 
+class F2LLMModel(InstructorEmbeddingModel):
+
+    def __init__(self, embed_model: str, task_prompts: Dict[str, str]):
+        super().__init__(embed_model, "f2llm", task_prompts)
+
+        # Load model and tokenizer using transformers
+        self.model = AutoModel.from_pretrained(embed_model).cuda()
+        self.tokenizer = AutoTokenizer.from_pretrained(embed_model)
+        self._setup_tokenizer_sep_token(self.tokenizer)
+        self.formatter = PromptFormatter(task_prompts)
+
+    def _encode_batch(self, formatted_batch: List[str]) -> torch.Tensor:
+        """
+        Encode a batch of sentences using F2LLM's custom encoding strategy.
+        """
+        # Append EOS token to each sentence
+        sentences_with_eos = [s + self.tokenizer.eos_token for s in formatted_batch]
+
+        # Tokenize
+        tokenized_inputs = self.tokenizer(
+            sentences_with_eos,
+            padding=True,
+            return_tensors='pt',
+            add_special_tokens=False
+        ).to("cuda")
+
+        # Get last hidden state
+        with torch.no_grad():
+            last_hidden_state = self.model(**tokenized_inputs).last_hidden_state
+
+        # Extract embeddings from the final token position (EOS position)
+        eos_positions = tokenized_inputs.attention_mask.sum(dim=1) - 1
+        embeddings = last_hidden_state[
+            torch.arange(len(sentences_with_eos), device="cuda"),
+            eos_positions
+        ]
+
+        # L2 normalization
+        embeddings = torch.nn.functional.normalize(embeddings, p=2, dim=1)
+
+        return embeddings
+
+    def __call__(self, batch: List[str], batch_ids: Optional[List] = None):
+        batch = self._replace_sep_placeholder(batch)
+
+        formatted_batch = self.formatter.format_batch(
+            batch=batch,
+            task_id=self.task_id,
+            task_name=self.task_name,
+            batch_ids=batch_ids,
+            sep_token=self._get_sep_token(),
+            use_field_formatting=True
+        )
+        return self._encode_batch(formatted_batch)
+
+
 class GritLMModel(InstructorEmbeddingModel):
 
     def __init__(self, embed_model: str, task_prompts: Dict[str, str]):

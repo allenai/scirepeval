@@ -121,6 +121,7 @@ class Model:
             logger.info(f"Task id used: {value}")
         self._task_id = value
 
+    @torch.no_grad()
     def __call__(self, batch, batch_ids=None):
         def append_ctrl_code(batch, batch_ids):
             if type(self._task_id) == dict:

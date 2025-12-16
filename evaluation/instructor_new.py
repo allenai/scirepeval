@@ -312,7 +312,7 @@ class Qwen3Model(InstructorEmbeddingModel):
         self.formatter = PromptFormatter(task_prompts)
 
     def _encode_batch(self, formatted_batch: List[str]) -> torch.Tensor:
-        return self.encoder.encode(sentences=formatted_batch, convert_to_tensor=True, device="cuda")
+        return self.encoder.encode(sentences=formatted_batch, convert_to_tensor=True)#, device="cuda")
 
     def __call__(self, batch: List[str], batch_ids: Optional[List] = None):
         batch = self._replace_sep_placeholder(batch)

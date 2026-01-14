@@ -1,8 +1,17 @@
 from evaluation.embeddings_generator import EmbeddingsGenerator
-from evaluation.eval_datasets import SimpleDataset, IRDataset
+from evaluation.eval_datasets import IRDataset
+import os
+from tqdm import tqdm
+import torch
+from evaluation.instructor_new import Qwen3Model, load_prompts_from_file
+import logging
 
-tasks = {"TREC-CoVID": {"name":"TREC-CoVID","type":"adhoc_search","data":{"meta":{"name":"allenai/scirepeval","config":"trec_covid"},"test":{"name":"allenai/scirepeval_test","config":"trec_covid"}},"metrics":["ndcg"]}}
-model = "Qwen/Qwen3-4B"
+logging.basicConfig(level=logging.INFO)
+logger = logging.getLogger(__name__)
+
+task_prompts = load_prompts_from_file("instr_prompts.json", "qwen3_embedding_base_prompt")
+model_name = "Qwen/Qwen3-4B"
+model = Qwen3Model(model_name, task_prompts)
 dataset = IRDataset(('allenai/scirepeval', 'trec_covid'), 1)
 save_path = "/mount/weka/shriya/embeddings/qwen_4b_generic/TREC-CoVID"
 if os.path.exists(save_path):

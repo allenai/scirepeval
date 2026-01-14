@@ -2,7 +2,7 @@ import decimal
 from typing import Iterator, Tuple, List, Dict, Union, Any, Iterable
 import torch
 from torch.utils.data import IterableDataset, DataLoader, ChainDataset, get_worker_info
-from torch.utils.data.dataset Dataset
+from torch.utils.data.dataset import Dataset
 from typing import TypeVar
 
 from transformers import PreTrainedTokenizer, BatchEncoding, AutoTokenizer

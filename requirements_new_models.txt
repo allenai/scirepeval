@@ -35,3 +35,4 @@ torchmetrics>=1.0.0
 # NOTE: adapters package is NOT included in this environment
 # It is incompatible with transformers>=4.51
 # If you need adapter models, use requirements_old_models.txt instead
+fairseq

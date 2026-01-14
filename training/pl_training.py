@@ -11,7 +11,7 @@ import torch
 import torch.nn
 from torch.distributed import ReduceOp
 from torch.utils.data import DataLoader
-from transformers import AdamW, get_linear_schedule_with_warmup
+from transformers import get_linear_schedule_with_warmup
 from transformers import AutoTokenizer, AutoModel, AutoConfig
 
 from adapter_fusion import AdapterFactory
@@ -124,7 +124,7 @@ class SciRepTrain(pl.LightningModule):
                 "weight_decay": 0.0,
             }
         ]
-        optimizer = AdamW(
+        optimizer = torch.optim.AdamW(
             optimizer_grouped_parameters, lr=self.init_lr, eps=1e-8
         )
 

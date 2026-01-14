@@ -25,8 +25,8 @@ from tasks import TaskFamily, load_tasks
 import pytorch_lightning as pl
 from pytorch_lightning.callbacks import ModelCheckpoint
 from pytorch_lightning.loggers import TensorBoardLogger
-from pytorch_lightning.utilities.distributed import rank_zero_only
-from pytorch_lightning.utilities.distributed import sync_ddp_if_available
+from pytorch_lightning.utilities.rank_zero import rank_zero_only
+from lightning_fabric.utilities.distributed import _sync_ddp_if_available as sync_ddp_if_available
 from pytorch_lightning.utilities.types import TRAIN_DATALOADERS, EVAL_DATALOADERS, STEP_OUTPUT
 
 pl.seed_everything(42, workers=True)
@@ -310,16 +310,17 @@ if __name__ == '__main__':
                         adapter_type=args.adapter_type, log_dir=filepath, max_len=args.max_len,
                         load_adapters_as=args.adapters_chkpt)
 
-    hparams = {"gpus": args.gpu, "val_check_interval": args.val_check_interval, "num_sanity_val_steps": 4,
+    hparams = {"accelerator": "gpu" if args.gpu else "cpu", "devices": args.gpu if args.gpu else "auto",
+               "val_check_interval": args.val_check_interval, "num_sanity_val_steps": 4,
                "max_epochs": args.epochs,
-               "accumulate_grad_batches": args.grad_accum, "resume_from_checkpoint": args.checkpoint}
+               "accumulate_grad_batches": args.grad_accum}
 
     trainer = pl.Trainer(logger=logger,
-                         strategy="ddp" if hparams["gpus"] else None,
+                         strategy="ddp" if args.gpu else None,
                          enable_checkpointing=True,
                          callbacks=[checkpoint_callback],
                          precision=16,
                          **hparams)
     logger.log_hyperparams(hparams)
     logger.log_hyperparams({"tasks": {k: str(v) for k, v in tasks_dict.items()}})
-    trainer.fit(model)
+    trainer.fit(model, ckpt_path=args.checkpoint)

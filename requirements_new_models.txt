@@ -35,7 +35,3 @@ torchmetrics>=1.0.0
 # NOTE: adapters package is NOT included in this environment
 # It is incompatible with transformers>=4.51
 # If you need adapter models, use requirements_old_models.txt instead
-
-# Fairseq - install from git to avoid build issues
-# The PyPI package has a broken setup.py that's missing version.txt
-git+https://github.com/facebookresearch/fairseq.git@main

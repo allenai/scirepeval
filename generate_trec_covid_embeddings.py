@@ -11,9 +11,10 @@ import json
 logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger(__name__)
 
-task_prompts = load_prompts_from_file("instr_prompts.json", "qwen3_embedding_base_prompt")
+task_prompts = load_prompts_from_file("instr_prompts.json", "qwen3_embedding_prx_from_code_repo")
 model_name = "Qwen/Qwen3-4B"
 model = Qwen3Model(model_name, task_prompts)
+model.task_name = "TREC-CoVID"
 dataset = IRDataset(('allenai/scirepeval', 'trec_covid'), 1)
 save_path = "/mount/weka/shriya/embeddings/qwen_4b_generic/TREC-CoVID"
 if os.path.exists(save_path):
@@ -21,6 +22,8 @@ if os.path.exists(save_path):
 else:
     results = dict()
 
+existing_embeddings = len(results)
+logger.info(f"Starting from {existing_embeddings} embeddings in filex")
 try:
     for batch, batch_ids in tqdm(dataset.batches(), total=len(dataset) // dataset.batch_size):
         for paper_id in batch_ids:
@@ -40,4 +43,4 @@ finally:
     with open(save_path, 'w') as fout:
         for k, v in results.items():
             fout.write(json.dumps({"doc_id": k, "embedding": v.tolist()}) + '\n')
-logger.info(f"Generated {len(results)} embeddings")
+logger.info(f"Generated {len(results)-existing_embeddings} embeddings. {len(results)} embeddings total.")

@@ -85,7 +85,7 @@ class AbstractMultiTaskDataset(ABC, IterableDataset):
             text = ctrl_token + " " + text
         elif self.instr_prompt:
             instr_prompt = self.instr_prompt if not ctrl_token_key else self.instr_prompt[ctrl_token_key]
-            text = instr_prompt.format('content'=text)
+            text = instr_prompt.format(content=text)
         input_ids = self.tokenizer(text, padding="max_length", truncation=True, return_tensors="pt",
                                    max_length=self.max_len)
         # if self.ctrl_token:

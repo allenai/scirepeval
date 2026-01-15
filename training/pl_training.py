@@ -284,6 +284,7 @@ if __name__ == '__main__':
     parser.add_argument('--max-len', type=int, default=512, help='max sequence length')
     parser.add_argument('--val-check_interval', type=float, default=1.0, help='validation loop interval')
     parser.add_argument('--checkpoint', default=None, help='resume from checkpoint path')
+    parser.add_argument('--fast-dev-run', default=False, action='store_true', help='Do a quick testing run, not a full finetuning.')
 
     args = parser.parse_args()
     mconfig = AutoConfig.from_pretrained(args.model)
@@ -303,7 +304,10 @@ if __name__ == '__main__':
         save_top_k=4,
         verbose=True,
         monitor='avg_val_loss',  # monitors metrics logged by self.log.
-        mode='min'
+        mode='min',
+        every_n_train_steps=5000,
+        save_on_exception=True,
+        save_last=True
     )
     
     model = SciRepTrain(batch_size=args.batch_size, init_lr=args.lr,
@@ -325,6 +329,7 @@ if __name__ == '__main__':
                          enable_checkpointing=True,
                          callbacks=[checkpoint_callback],
                          precision=16,
+                         fast_dev_run=args.fast_dev_run,
                          **hparams)
     logger.log_hyperparams(hparams)
     logger.log_hyperparams({"tasks": {k: str(v) for k, v in tasks_dict.items()}})

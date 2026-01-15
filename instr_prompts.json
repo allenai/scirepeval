@@ -67,5 +67,15 @@
         "Same Author Detection": "Given a scientific paper title and abstract, retrieve papers that have the same author as the given paper. {content}",
         "Highly Influential Citations": "Given a scientific paper title and abstract, retrieve papers that are highly influential citations in the given paper. {content}",
         "RELISH": "Given a scientific paper title and abstract, retrieve papers that are relevant to the given paper. {content}"
+    },
+        "qwen3_training_prompts": {
+        "cite_pred": "Given a scientific paper title and abstract, predict the number of citations it has received. {content}",
+        "year_pred": "Given a scientific paper title and abstract, predict the year in which it was published. {content}",
+        "mesh": "Given a scientific paper title and abstract, identify the most appropriate Medical Subject Heading (MeSH) to it. {content}",
+        "fos": "Given a scientific paper title and abstract, select all applicable fields of study for it. {content}",
+        "search": {"q": "Given a query, retrieve relevant scientific papers using their title and abstract. {content}", "c": "{content}"},
+        "s2and": "Given a scientific paper title and abstract, find other scientific papers by the same author. {content}",
+        "cite_context": "Given a scientific paper title and abstract, find other scientific papers which are highly influenced by it. {content}",
+        "specter": "Given a scientific paper title and abstract, find other scientific papers which have a citation relationship with it. {content}"
     }
 }

@@ -15,6 +15,7 @@ task_prompts = load_prompts_from_file("instr_prompts.json", "qwen3_embedding_prx
 model_name = "Qwen/Qwen3-4B"
 model = Qwen3Model(model_name, task_prompts)
 model.task_name = "TREC-CoVID"
+model.task_id = {"query": "[QRY]", "candidates": "[PRX]"}
 dataset = IRDataset(('allenai/scirepeval', 'trec_covid'), 1)
 save_path = "/mount/weka/shriya/embeddings/qwen_4b_generic/TREC-CoVID"
 if os.path.exists(save_path):

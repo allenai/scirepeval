@@ -11,7 +11,8 @@
     "sample_size": {
       "train": 600000,
       "dev": 40000
-    }
+    },
+    "instr_prompt": "Given a scientific paper title and abstract, predict the number of citations it has received. {content}"
   },
     {
     "name": "year_pred",
@@ -25,7 +26,8 @@
       "sample_size": {
       "train": 600000,
       "dev": 40000
-    }
+    },
+    "instr_prompt": "Given a scientific paper title and abstract, predict the year in which it was published. {content}"
   },
 
   {
@@ -41,7 +43,8 @@
     "sample_size": {
       "train": 600000,
       "dev": 40000
-    }
+    },
+    "instr_prompt": "Given a scientific paper title and abstract, identify the most appropriate Medical Subject Heading (MeSH) to it. {content}"
   },
   {
     "name": "fos",
@@ -57,7 +60,8 @@
     "sample_size": {
       "train": 600000,
       "dev": 40000
-    }
+    },
+    "instr_prompt": "Given a scientific paper title and abstract, select all applicable fields of study for it. {content}"
   },
   {
     "name": "search",
@@ -71,7 +75,8 @@
     "sample_size": {
       "train": 600000,
       "dev": 40000
-    }
+    },
+    "instr_prompt": {"query": "Given a query, retrieve relevant scientific papers using their title and abstract. {content}", "candidates": "{content}"}
   },
   {
     "name": "s2and",
@@ -84,7 +89,8 @@
     "sample_size": {
       "train": 600000,
       "dev": 40000
-    }
+    },
+    "instr_prompt": "Given a scientific paper title and abstract, find other scientific papers by the same author. {content}"
   },
   {
     "name": "cite_context",
@@ -97,7 +103,8 @@
     "sample_size": {
       "train": 600000,
       "dev": 40000
-    }
+    },
+    "instr_prompt": "Given a scientific paper title and abstract, find other scientific papers which are highly influenced by it. {content}"
   },
     {
     "name": "specter",
@@ -110,7 +117,8 @@
       "sample_size": {
       "train": 600000,
       "dev": 40000
-    }
+    },
+    "instr_prompt": "Given a scientific paper title and abstract, find other scientific papers which have a citation relationship with it. {content}"
   }
 
 ]

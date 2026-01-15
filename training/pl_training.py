@@ -47,7 +47,7 @@ class SciRepTrain(pl.LightningModule):
                  log_dir: str,
                  use_ctrl_tokens=False,
                  task_dict: Dict[str, TaskFamily] = None,
-                 pals_cfg: str = None, adapter_type: str = None, max_len: int = 512, load_adapters_as=None):
+                 pals_cfg: str = None, adapter_type: str = None, max_len: int = 512, load_adapters_as=None, use_prompts=False):
         super().__init__()
         self.task_dict = load_tasks() if not task_dict else task_dict
         print(self.task_dict.keys())
@@ -97,6 +97,8 @@ class SciRepTrain(pl.LightningModule):
         self.peak_lr = peak_lr
         self.max_len = max_len
         self.save_hyperparameters(ignore=["task_dict"])
+        self.use_prompts = use_prompts
+
 
     def forward(self, input_ids, attention_mask=None, token_idx=0, task_id=None):
         if not self.pals:
@@ -208,12 +210,13 @@ class SciRepTrain(pl.LightningModule):
             dataset_name = (task.dataset, hf_split)
             data_src = data_file if data_file else dataset_name
             op_token = task.ctrl_token if self.use_ctrl_tokens else None
+            instr_prompt = task.instr_prompt if self.use_prompts else None
             if type(data_src) == dict:
                 data = datasets.load_dataset("json", data_files=data_src, streaming=True)[
                     next(iter(data_src.keys()))]
             else:
                 data = datasets.load_dataset(**data_src[0], split=data_src[1], streaming=True)
-            kwargs = {"data": data, "ctrl_token": op_token, "max_len": self.max_len, "task_name": t_name,
+            kwargs = {"data": data, "ctrl_token": op_token, "instr_prompt": instr_prompt, "max_len": self.max_len, "task_name": t_name,
                       "tokenizer": self.tokenizer, "fields": task.input_fields,
                       "sample_size": task.sample_size[split] if type(task.sample_size) == dict else task.sample_size}
 
@@ -263,6 +266,7 @@ if __name__ == '__main__':
     parser.add_argument('--tokenizer', help='HuggingFace tokenizer to be used (same as model name if not supplied)',
                         default=None)
     parser.add_argument('--output', help='dir to save checkpoints and finetuned model', default="./lightning_logs/")
+
     parser.add_argument('version', help='experiment version')
     parser.add_argument('--pals-config', default=None, help='path to config file for PALS architecture')
     parser.add_argument('--adapter-type', default=None, help='type of adapter architecture (single/fusion)')
@@ -275,6 +279,7 @@ if __name__ == '__main__':
     parser.add_argument('--epochs', type=int, default=2, help='number of epochs')
     parser.add_argument('--grad-accum', type=int, default=8, help='grad accumulation steps')
     parser.add_argument('--ctrl-tokens', action='store_true', default=False, help='use control codes for tasks')
+    parser.add_argument('--instr-prompts', action='store_true', default=False, help='use instruction prompts for tasks')
     parser.add_argument('--gpu', type=int, default=None, help='number of gpus')
     parser.add_argument('--max-len', type=int, default=512, help='max sequence length')
     parser.add_argument('--val-check_interval', type=float, default=1.0, help='validation loop interval')
@@ -308,7 +313,7 @@ if __name__ == '__main__':
                         warmup_steps=args.warmup,
                         use_ctrl_tokens=args.ctrl_tokens, task_dict=tasks_dict, pals_cfg=args.pals_config,
                         adapter_type=args.adapter_type, log_dir=filepath, max_len=args.max_len,
-                        load_adapters_as=args.adapters_chkpt)
+                        load_adapters_as=args.adapters_chkpt, use_prompts=args.instr_prompts)
 
     hparams = {"accelerator": "gpu" if args.gpu else "cpu", "devices": args.gpu if args.gpu else "auto",
                "val_check_interval": args.val_check_interval, "num_sanity_val_steps": 4,

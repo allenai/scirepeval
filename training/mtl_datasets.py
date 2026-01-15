@@ -24,7 +24,7 @@ T_co = TypeVar('T_co', covariant=True)
 class AbstractMultiTaskDataset(ABC, IterableDataset):
     def __init__(self, task_name: str, data: datasets.Dataset, tokenizer: PreTrainedTokenizer,
                  fields: List[str],
-                 sample_size, ctrl_token: str, max_len: int):
+                 sample_size, ctrl_token: str, max_len: int, instr_prompt: str):
         self.task_name = task_name
         self.data = data
         self.tokenizer = tokenizer
@@ -33,6 +33,7 @@ class AbstractMultiTaskDataset(ABC, IterableDataset):
         self.ctrl_token = ctrl_token
         self.max_len = max_len
         self._effective_sample_size = sample_size
+        self.instr_prompt = instr_prompt
 
     def sub_sample(self, json_parse: Iterator[Dict]) -> Iterator:
         curr_len = 0
@@ -82,6 +83,9 @@ class AbstractMultiTaskDataset(ABC, IterableDataset):
         if self.ctrl_token:
             ctrl_token = self.ctrl_token if not ctrl_token_key else self.ctrl_token[ctrl_token_key]
             text = ctrl_token + " " + text
+        elif self.instr_prompt:
+            instr_prompt = self.instr_prompt if not ctrl_token_key else self.instr_prompt[ctrl_token_key]
+            text = instr_prompt.format('content'=text)
         input_ids = self.tokenizer(text, padding="max_length", truncation=True, return_tensors="pt",
                                    max_length=self.max_len)
         # if self.ctrl_token:
@@ -171,7 +175,7 @@ class IRDataset(AbstractMultiTaskDataset):
             while len(new_pos_candidates) < num_trips:
                 new_pos_candidates.append(next(pos_candidates))
         query_ctrl_key, cand_ctrl_key = None, None
-        if type(self.ctrl_token) == dict:
+        if type(self.ctrl_token) == dict or isinstance(self.instr_prompt, dict):
             query_ctrl_key = "query"
             cand_ctrl_key = "candidates"
         tokenized_query = self.tokenized_input(query, query_ctrl_key)

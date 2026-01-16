@@ -98,7 +98,7 @@ class ClassificationDataset(AbstractMultiTaskDataset):
     def __init__(self, task_name: str, data: datasets.Dataset, tokenizer: PreTrainedTokenizer,
                  fields: List[str],
                  label_field: str, labels: Dict[str, int], sample_size=-1, ctrl_token: str = None, max_len: int = 512, instr_prompt: str = None):
-        super().__init__(task_name, data, tokenizer, fields, sample_size, ctrl_token, max_len)
+        super().__init__(task_name, data, tokenizer, fields, sample_size, ctrl_token, max_len, instr_prompt)
         self.labels = labels
         self.label_field = label_field
 
@@ -130,7 +130,7 @@ class MultiLabelClassificationDataset(ClassificationDataset):
     def __init__(self, task_name: str, data: datasets.Dataset, tokenizer: PreTrainedTokenizer,
                  fields: List[str],
                  label_field: str, labels: Dict[str, int], sample_size=-1, ctrl_token: str = None, max_len: int = 512, instr_prompt: str = None):
-        super().__init__(task_name, data, tokenizer, fields, label_field, labels, sample_size, ctrl_token, max_len)
+        super().__init__(task_name, data, tokenizer, fields, label_field, labels, sample_size, ctrl_token, max_len, instr_prompt)
         self.labels = dict(sorted(labels.items()))
         self.mlb = MultiLabelBinarizer()
         self.mlb.fit([list(self.labels.keys())])
@@ -160,7 +160,7 @@ class IRDataset(AbstractMultiTaskDataset):
     def __init__(self, task_name: str, data: datasets.Dataset, tokenizer: PreTrainedTokenizer,
                  fields: List[str],
                  sample_size=-1, ctrl_token: str = None, max_len: int = 512, instr_prompt: str = None):
-        super().__init__(task_name, data, tokenizer, fields, sample_size, ctrl_token, max_len)
+        super().__init__(task_name, data, tokenizer, fields, sample_size, ctrl_token, max_len, instr_prompt)
         self.effective_sample_size //= 5
 
     def preprocess(self, line: Dict[str, str]) -> List[Tuple[str, List[BatchEncoding]]]:
@@ -207,7 +207,7 @@ class TripletDataset(AbstractMultiTaskDataset):
     def __init__(self, task_name: str, data: datasets.Dataset, tokenizer: PreTrainedTokenizer,
                  fields: List[str],
                  sample_size=-1, ctrl_token: str = None, max_len: int = 512, instr_prompt: str = None):
-        super().__init__(task_name, data, tokenizer, fields, sample_size, ctrl_token, max_len)
+        super().__init__(task_name, data, tokenizer, fields, sample_size, ctrl_token, max_len, instr_prompt)
 
     def preprocess(self, line: Dict[str, str]) -> Union[
         Tuple[str, BatchEncoding, torch.Tensor], List[Tuple[str, List[BatchEncoding]]]]:
@@ -255,7 +255,7 @@ class RegressionDataset(AbstractMultiTaskDataset):
     def __init__(self, task_name: str, data: datasets.Dataset, tokenizer: PreTrainedTokenizer,
                  fields: List[str],
                  label_field: str, sample_size=-1, ctrl_token: str = None, max_len: int = 512, instr_prompt: str = None):
-        super().__init__(task_name, data, tokenizer, fields, sample_size, ctrl_token, max_len)
+        super().__init__(task_name, data, tokenizer, fields, sample_size, ctrl_token, max_len, instr_prompt)
         self.label_field = label_field
 
     def preprocess(self, line: Dict[str, str]) -> Tuple[str, Dict[str, BatchEncoding], Union[int, float]]:

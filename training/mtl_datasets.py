@@ -254,7 +254,7 @@ class CustomChainDataset(ChainDataset):
 class RegressionDataset(AbstractMultiTaskDataset):
     def __init__(self, task_name: str, data: datasets.Dataset, tokenizer: PreTrainedTokenizer,
                  fields: List[str],
-                 label_field: str, sample_size=-1, ctrl_token: str = None, max_len: int = 512):
+                 label_field: str, sample_size=-1, ctrl_token: str = None, max_len: int = 512, instr_prompt: str = None):
         super().__init__(task_name, data, tokenizer, fields, sample_size, ctrl_token, max_len)
         self.label_field = label_field
 

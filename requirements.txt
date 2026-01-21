@@ -27,7 +27,7 @@ pyarrow>=9.0.0,<13.0.0
 sentence-transformers>=2.2.0,<3.0.0
 
 # CRITICAL: Adapters - only compatible with transformers<4.40
-adapters==1.2.0
+adapters==0.1.0
 
 # InstructorEmbedding (legacy version)
 InstructorEmbedding==1.0.0

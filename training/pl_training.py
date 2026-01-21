@@ -323,3 +323,4 @@ if __name__ == '__main__':
     logger.log_hyperparams(hparams)
     logger.log_hyperparams({"tasks": {k: str(v) for k, v in tasks_dict.items()}})
     trainer.fit(model)
+    

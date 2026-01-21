@@ -2,6 +2,7 @@ import decimal
 from typing import Iterator, Tuple, List, Dict, Union, Any, Iterable
 import torch
 from torch.utils.data import IterableDataset, DataLoader, ChainDataset, get_worker_info
+from torch.utils.data.dataset import T_co, Dataset
 from transformers import PreTrainedTokenizer, BatchEncoding, AutoTokenizer
 import datasets
 import numpy as np
@@ -16,6 +17,7 @@ from strategies import BatchingStrategy
 import random
 
 datasets.logging.set_verbosity_error()
+
 
 class AbstractMultiTaskDataset(ABC, IterableDataset):
     def __init__(self, task_name: str, data: datasets.Dataset, tokenizer: PreTrainedTokenizer,

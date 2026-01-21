@@ -325,7 +325,7 @@ if __name__ == '__main__':
                "accumulate_grad_batches": args.grad_accum}
 
     trainer = pl.Trainer(logger=logger,
-                         strategy="ddp" if args.gpu else None,
+                         strategy="ddp_find_unused_parameters_true" if args.gpu else None,
                          enable_checkpointing=True,
                          callbacks=[checkpoint_callback],
                          precision=16,

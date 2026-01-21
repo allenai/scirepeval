@@ -6,7 +6,7 @@ Clone the repo and setup the environment as follows:
 ```bash
 git clone git@github.com:allenai/scirepeval.git
 cd scirepeval
-conda create -n scirepeval python=3.8
+conda create -n scirepeval python=3.8 pip=24.0
 conda activate scirepeval
 pip install -r requirements.txt
 ```

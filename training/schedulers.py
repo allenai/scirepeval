@@ -1,6 +1,7 @@
 from dataclasses import dataclass, field
 
 import torch.optim.optimizer
+from fairseq.dataclass import FairseqDataclass
 from omegaconf import II
 from torch.optim.optimizer import Optimizer
 
@@ -8,7 +9,7 @@ from torch.optim.optimizer import Optimizer
 
 
 @dataclass
-class InverseSquareRootScheduleConfig:
+class InverseSquareRootScheduleConfig(FairseqDataclass):
     warmup_updates: int = field(
         default=4000,
         metadata={"help": "warmup the learning rate linearly for the first N updates"},

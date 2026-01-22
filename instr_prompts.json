@@ -1,0 +1,71 @@
+{
+    "blank": {
+        "[SRCH]": {
+            "q": "{content}",
+            "c": "{content}"
+        },
+        "[CLF]": "{content}",
+        "[RGN]": "{content}",
+        "[PRX]": "{content}"
+    },
+    "gemma_base_prompts": {
+        "[SRCH]": {
+            "q": "task: search result | query: {content}",
+            "c": "title: None | text: {content}"
+        },
+        "[CLF]": "task: classification | query: {content}",
+        "[RGN]": "task: clustering | query: {content}",
+        "[PRX]": "task: sentence similarity | query: {content}",
+        "parameters": {"separate_title": false, "regression_prompt": "clustering"}
+    },
+    "gemma_base_prompt_title_separated": {
+        "base_prompt": "gemma_base_prompts",
+        "[SRCH]": {
+            "q": "task: search result | query: {content}",
+            "c": "title: {title} | text: {content}"
+        },
+        "parameters": {"separate_title": true}
+    },
+    "gemma_base_prompt_rgn_fact_checking": {
+        "base_prompt": "gemma_base_prompt_title_separated",
+        "[RGN]": "task: fact checking | query: {content}",
+        "parameters": { "regression_prompt": "fact checking"}
+    },
+        "gemma_base_prompt_rgn_clf": {
+        "base_prompt": "gemma_base_prompt_title_separated",
+        "[RGN]": "task: classification | query: {content}",
+        "parameters": { "regression_prompt": "classification"}
+    },
+    "gemma_base_prompt_rgn_ss": {
+        "base_prompt": "gemma_base_prompt_title_separated",
+        "[RGN]": "task: sentence similarity | query: {content}",
+        "parameters": { "regression_prompt": "sentence similarity"}
+    },
+    "gemma_base_prompt_rgn_qa": {
+        "base_prompt": "gemma_base_prompt_title_separated",
+        "[RGN]": "task: question answering | query: {content}",
+        "parameters": { "regression_prompt": "question answering"}
+    },
+    "qwen3_embedding_base_prompt": {
+        "[SRCH]": {
+            "q": "Instruct: Given a scientific query, identify relevant scientific documents. query: {content}",
+            "c": "{content}"
+        },
+        "[CLF]": "Instruct: Classify a given scientific document. Document: {content}",
+        "[RGN]": "Instruct: Given a scientific document, predict a metric. Document: {content}",
+        "[PRX]": "Instruct: Given a scientific document find similar scientific documents. Document: {content}"
+    },
+    "gemma_prx_title_separated": {
+        "base_prompt": "gemma_base_prompts_title_separated",
+        "[PRX]": "task: sentence similarity | title: {title} | text: {content}"
+    },
+    "qwen3_embedding_prx_from_code_repo": {
+        "base_prompt": "qwen3_embedding_base_prompt",
+        "SciDocs Cite": "Given a scientific paper title and abstract, retrieve paper abstracts that are cited by the given paper. {content}",
+        "NFCorpus": {"q": "Given a question, retrieve relevant documents that best answer the question. {content}", "c": "{content}"},
+        "TREC-CoVID": {"q": "Given a query on COVID-19, retrieve documents that answer the query. {content}", "c": "{content}"},
+        "Same Author Detection": "Given a scientific paper title and abstract, retrieve papers that have the same author as the given paper. {content}",
+        "Highly Influential Citations": "Given a scientific paper title and abstract, retrieve papers that are highly influential citations in the given paper. {content}",
+        "RELISH": "Given a scientific paper title and abstract, retrieve papers that are relevant to the given paper. {content}"
+    }
+}

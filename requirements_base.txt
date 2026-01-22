@@ -1,0 +1,68 @@
+# Base requirements shared across all environments
+# Python >= 3.9
+
+# Build dependencies
+Cython>=3.0.0
+setuptools>=60.0
+wheel>=0.38.0
+
+# Scientific computing (version-flexible)
+scipy>=1.9.0
+scikit-learn>=1.1.2
+scikit-multilearn==0.2.0
+# NOTE: sklearn-contrib-lightning removed from base requirements
+# It's incompatible with numpy>=1.24 (uses deprecated numpy.distutils)
+# Old models environment includes it; new models use sklearn's LinearSVC/LinearSVR instead
+
+# Data handling
+pandas>=1.5.0
+dill>=0.3.5
+multiprocess>=0.70.13
+joblib>=1.1.0
+
+# NLP tools
+sacrebleu==2.2.0
+sacremoses==0.0.53
+regex>=2022.8.17
+pytrec-eval==0.5
+
+# Utilities
+tqdm>=4.64.0
+click>=8.1.3
+PyYAML>=6.0
+tabulate>=0.8.10
+filelock>=3.8.0
+fsspec>=2023.5.0
+xxhash>=3.0.0
+lxml>=4.9.1
+Markdown>=3.4.1
+MarkupSafe>=2.1.1
+Pillow>=9.2.0
+portalocker>=2.5.1
+protobuf>=3.20.2,!=4.21.1,!=4.21.2,!=4.21.3,!=4.21.4,!=4.21.5,<5.0.0
+typing_extensions>=4.3.0
+importlib-metadata>=4.12.0
+
+# Cloud/AWS dependencies
+boto3>=1.24.90
+botocore>=1.27.90
+s3transfer>=0.6.0
+
+# Web and API
+requests>=2.28.1
+aiohttp>=3.8.1
+urllib3>=1.26.12
+certifi>=2022.6.15
+idna>=3.3
+
+# Logging and monitoring
+tensorboard>=2.10.0
+tensorboardX>=2.5.1
+absl-py>=1.2.0
+
+# Hydra and config
+hydra-core>=1.3.0
+omegaconf>=2.3.0
+
+# Optional: OpenAI API (if using GPT-3 embeddings)
+openai>=0.26.1

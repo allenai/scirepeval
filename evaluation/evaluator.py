@@ -1,8 +1,21 @@
 from typing import Union, Dict, Tuple
 
 import numpy as np
-from lightning.classification import LinearSVC
-from lightning.regression import LinearSVR
+
+# Conditional import for lightning - fallback to sklearn if not available
+try:
+    from lightning.classification import LinearSVC
+    from lightning.regression import LinearSVR
+    LIGHTNING_AVAILABLE = True
+except ImportError:
+    from sklearn.svm import LinearSVC, LinearSVR
+    LIGHTNING_AVAILABLE = False
+    import logging
+    logging.getLogger(__name__).warning(
+        "sklearn-contrib-lightning not available. Using sklearn.svm.LinearSVC/LinearSVR instead. "
+        "For faster training with large datasets, install sklearn-contrib-lightning in old models environment."
+    )
+
 from sklearn.metrics import f1_score, accuracy_score, precision_score, recall_score, mean_squared_error, r2_score
 from scipy.stats import kendalltau, pearsonr
 from sklearn.model_selection import GridSearchCV
@@ -92,7 +105,7 @@ class SupervisedEvaluator(Evaluator):
             split_dataset = datasets.load_dataset("csv", data_files={"train": f"{self.test_dataset}/train.csv",
                                                                      "test": f"{self.test_dataset}/test.csv"})
         else:
-            split_dataset = datasets.load_dataset(self.test_dataset[0], self.test_dataset[1])
+            split_dataset = datasets.load_dataset(self.test_dataset[0], self.test_dataset[1], trust_remote_code=False)
         logger.info(f"Loaded {len(split_dataset['train'])} training and {len(split_dataset['test'])} test documents")
         if type(embeddings) == str and os.path.isfile(embeddings):
             embeddings = EmbeddingsGenerator.load_embeddings_from_jsonl(embeddings)
@@ -120,7 +133,7 @@ class SupervisedEvaluator(Evaluator):
 
         Cs = np.logspace(-2, 2, 5)
         if self.task == SupervisedTask.MULTILABEL_CLASSIFICATION:
-            estimator = LinearSVC(max_iter=10000)
+            estimator = LinearSVC(max_iter=10000, loss="hinge")
             svm = GridSearchCV(estimator=estimator, cv=cv, param_grid={'C': Cs}, n_jobs=10)
             svm = OneVsRestClassifier(svm, n_jobs=1)
         else:
@@ -204,7 +217,7 @@ class IREvaluator(Evaluator):
         if type(self.test_dataset) == str and os.path.isdir(self.test_dataset):
             split_dataset = datasets.load_dataset("json", data_files={"test": f"{self.test_dataset}/test_qrel.jsonl"})
         else:
-            split_dataset = datasets.load_dataset(self.test_dataset[0], self.test_dataset[1])
+            split_dataset = datasets.load_dataset(self.test_dataset[0], self.test_dataset[1], trust_remote_code=False)
         logger.info(f"Loaded {len(split_dataset['test'])} test query-candidate pairs")
         if type(embeddings) == str and os.path.isfile(embeddings):
             embeddings = EmbeddingsGenerator.load_embeddings_from_jsonl(embeddings)

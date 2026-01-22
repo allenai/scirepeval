@@ -2,12 +2,31 @@ from typing import Dict, Union, List
 
 from transformers import AutoModel, AutoTokenizer
 import os
-from bert_pals import BertPalsEncoder, BertPalConfig, BertModel
-from adapter_fusion import AdapterEncoder, AdapterFusion
 import torch
 import logging
 
 logger = logging.getLogger(__name__)
+
+ADAPTERS_NOT_AVAILABLE_MSG = "{variant} variant requires adapters package    with transformers<4.40.\n"
+"Current environment does not support adapters.\n"
+"Please create a separate environment:\n"
+"  conda env create -f environment_old_models.yml\n"
+"  or: pip install transformers<4.40 adapters==1.2.0 datasets<2.19"
+
+# Conditional imports for optional dependencies
+try:
+    from bert_pals import BertPalsEncoder, BertPalConfig, BertModel
+    PALS_AVAILABLE = True
+except ImportError:
+    PALS_AVAILABLE = False
+    logger.warning("bert_pals not available. PALS models will not work.")
+
+try:
+    from adapter_fusion import AdapterEncoder, AdapterFusion
+    ADAPTERS_AVAILABLE = True
+except ImportError:
+    ADAPTERS_AVAILABLE = False
+    logger.warning("adapters library not available. Adapter and Fusion models will not work.")
 
 
 class EncoderFactory:
@@ -23,7 +42,13 @@ class EncoderFactory:
     def get_encoder(self, variant: str):
         if variant == "default":
             return AutoModel.from_pretrained(self.base_checkpoint)
+
         elif variant == "pals":
+            if not PALS_AVAILABLE:
+                raise ImportError(
+                    "PALS variant requires bert_pals package. "
+                    "Please install: pip install bert-pals"
+                )
             # needs all task names and a local checkpoint path
             if os.path.isdir(self.base_checkpoint):
                 return BertPalsEncoder(config=f"{self.base_checkpoint}/config.json", task_ids=self.all_tasks,
@@ -33,14 +58,25 @@ class EncoderFactory:
                 pals_model = BertModel.from_pretrained(self.base_checkpoint)
                 return BertPalsEncoder(config=pals_config, task_ids=self.all_tasks,
                                        checkpoint=pals_model)
+
         elif variant == "adapters":
+            if not ADAPTERS_AVAILABLE:
+                raise ImportError(
+                    ADAPTERS_NOT_AVAILABLE_MSG.format(variant=variant)
+                )
             # needs a base model checkpoint and the adapters to be loaded from local path or dict of (task_id,
             # adapter) from adapters hub
             return AdapterEncoder(self.base_checkpoint, self.all_tasks, load_as=self.adapters_load_from)
+
         elif variant == "fusion":
+            if not ADAPTERS_AVAILABLE:
+                raise ImportError(
+                    ADAPTERS_NOT_AVAILABLE_MSG.format(variant=variant)
+                )
             # needs a base model and list of adapters/local adapter checkpoint paths to be fused
             return AdapterFusion(self.base_checkpoint, self.all_tasks, load_adapters_as=self.adapters_load_from,
                                  fusion_dir=self.fusion_load_from, inference=True)
+
         else:
             raise ValueError("Unknown encoder type: {}".format(variant))
 

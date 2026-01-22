@@ -35,7 +35,7 @@ class EmbeddingsGenerator:
                     torch.cuda.empty_cache()
             results = {k: v/len(self.models) for k, v in results.items()}
         except Exception as e:
-            print(e)
+            logger.error("Exception in generating embeddings", exc_info=e)
         finally:
             if save_path:
                 pathlib.Path(save_path).parent.mkdir(parents=True, exist_ok=True)

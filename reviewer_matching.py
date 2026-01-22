@@ -30,7 +30,7 @@ class ReviewerMatchingEvaluator(IREvaluator):
                                                   data_files={"test_hard": f"{self.test_dataset}/test_hard_qrel.jsonl",
                                                               "test_soft": f"{self.test_dataset}/test_soft_qrel.jsonl"})
         else:
-            split_dataset = datasets.load_dataset(self.test_dataset[0], self.test_dataset[1])
+            split_dataset = datasets.load_dataset(self.test_dataset[0], self.test_dataset[1], trust_remote_code=False)
         logger.info(f"Loaded {len(split_dataset['test_hard'])} test query-candidate pairs for hard and soft tests")
         if type(embeddings) == str and os.path.isfile(embeddings):
             embeddings = EmbeddingsGenerator.load_embeddings_from_jsonl(embeddings)

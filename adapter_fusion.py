@@ -1,15 +1,56 @@
 from typing import List, Optional, Union, Dict
-from adapters import SeqBnConfig, AutoAdapterModel
-from adapters.composition import Fuse
 from abc import ABC, abstractmethod
 import torch
 import os
+import logging
+
+logger = logging.getLogger(__name__)
+
+# Conditional import for adapters - only available with transformers<4.40
+try:
+    from adapters import SeqBnConfig, AutoAdapterModel
+    from adapters.composition import Fuse
+    ADAPTERS_AVAILABLE = True
+except ImportError:
+    ADAPTERS_AVAILABLE = False
+    logger.warning("adapters library not available. Adapter and Fusion models will not work.")
+
+    # Create stub classes to prevent NameError during import
+    class AutoAdapterModel:
+        @staticmethod
+        def from_pretrained(*args, **kwargs):
+            raise ImportError(
+                "Adapters variant requires adapters package with transformers<4.40. "
+                "Please create a separate environment:\n"
+                "  conda env create -f environment_old_models.yml\n"
+                "  or: pip install transformers<4.40 adapters==1.2.0"
+            )
+
+    class Fuse:
+        def __init__(self, *args, **kwargs):
+            raise ImportError(
+                "Fusion variant requires adapters package with transformers<4.40. "
+                "Please create a separate environment:\n"
+                "  conda env create -f environment_old_models.yml\n"
+                "  or: pip install transformers<4.40 adapters==1.2.0"
+            )
+
+    class SeqBnConfig:
+        pass
 
 
 class AdapterFactory:
     @staticmethod
     def get_adapter(checkpoint_name: str, task_ids: List[str], fuse_adapters: bool,
                     adapters_dir: Union[str, Dict] = None):
+        if not ADAPTERS_AVAILABLE:
+            raise ImportError(
+                "Adapter models require adapters package with transformers<4.40. "
+                "Current environment does not support adapters.\n"
+                "Please create a separate environment:\n"
+                "  conda env create -f environment_old_models.yml\n"
+                "  or: pip install transformers<4.40 adapters==1.2.0"
+            )
         print(task_ids)
         if not fuse_adapters:
             return AdapterEncoder(checkpoint_name, task_ids)

@@ -1,0 +1,64 @@
+[
+    {
+    "name": "year_pred",
+    "type": "regression",
+    "dataset": {
+      "path": "allenai/scirepeval",
+      "name": "pub_year"
+    },
+    "labels_field": "scaled_year",
+    "ctrl_token": "[RGN]",
+      "sample_size": {
+      "train": 100000,
+      "dev": 40000
+    },
+    "instr_prompt": "Given a scientific paper title and abstract, predict the year in which it was published. {content}"
+  },
+  {
+    "name": "fos",
+    "type": "classification",
+    "multi_label": true,
+     "dataset": {
+      "path": "allenai/scirepeval",
+      "name": "fos"
+    },
+    "labels": "sample_data/fos_labels.txt",
+    "labels_field": "labels_text",
+    "ctrl_token": "[CLF]",
+    "sample_size": {
+      "train": 100000,
+      "dev": 40000
+    },
+    "instr_prompt": "Given a scientific paper title and abstract, select all applicable fields of study for it. {content}"
+  },
+  {
+    "name": "search",
+    "type": "ir",
+     "dataset": {
+      "path": "allenai/scirepeval",
+      "name": "search"
+    },
+    "input_fields": ["title", "abstract", "venue", "year"],
+    "ctrl_token": {"query": "[QRY]", "candidates": "[PRX]"},
+    "sample_size": {
+      "train": 100000,
+      "dev": 40000
+    },
+    "instr_prompt": {"query": "Given a query, retrieve relevant scientific papers using their title and abstract. {content}", "candidates": "{content}"}
+  },
+    {
+    "name": "specter",
+    "type": "triplet",
+    "dataset": {
+      "path": "allenai/scirepeval",
+      "name": "cite_prediction"
+    },
+    "ctrl_token": "[PRX]",
+      "sample_size": {
+      "train": 100000,
+      "dev": 40000
+    },
+    "instr_prompt": "Given a scientific paper title and abstract, find other scientific papers which have a citation relationship with it. {content}"
+  }
+
+]

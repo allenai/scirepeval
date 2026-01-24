@@ -9,8 +9,8 @@
     "labels_field": "log_citations",
     "ctrl_token": "[RGN]",
     "sample_size": {
-      "train": 600000,
-      "dev": 40000
+      "train": 50000,
+      "dev": 20000
     },
     "instr_prompt": "Given a scientific paper title and abstract, predict the number of citations it has received. {content}"
   },
@@ -24,8 +24,8 @@
     "labels_field": "scaled_year",
     "ctrl_token": "[RGN]",
       "sample_size": {
-      "train": 600000,
-      "dev": 40000
+      "train": 50000,
+      "dev": 20000
     },
     "instr_prompt": "Given a scientific paper title and abstract, predict the year in which it was published. {content}"
   },
@@ -41,8 +41,8 @@
     "labels_field": "descriptor",
     "ctrl_token": "[CLF]",
     "sample_size": {
-      "train": 600000,
-      "dev": 40000
+      "train": 50000,
+      "dev": 20000
     },
     "instr_prompt": "Given a scientific paper title and abstract, identify the most appropriate Medical Subject Heading (MeSH) to it. {content}"
   },
@@ -58,8 +58,8 @@
     "labels_field": "labels_text",
     "ctrl_token": "[CLF]",
     "sample_size": {
-      "train": 600000,
-      "dev": 40000
+      "train": 50000,
+      "dev": 20000
     },
     "instr_prompt": "Given a scientific paper title and abstract, select all applicable fields of study for it. {content}"
   },
@@ -73,8 +73,8 @@
     "input_fields": ["title", "abstract", "venue", "year"],
     "ctrl_token": {"query": "[QRY]", "candidates": "[PRX]"},
     "sample_size": {
-      "train": 600000,
-      "dev": 40000
+      "train": 50000,
+      "dev": 20000
     },
     "instr_prompt": {"query": "Given a query, retrieve relevant scientific papers using their title and abstract. {content}", "candidates": "{content}"}
   },
@@ -87,8 +87,8 @@
     },
     "ctrl_token": "[PRX]",
     "sample_size": {
-      "train": 600000,
-      "dev": 40000
+      "train": 50000,
+      "dev": 20000
     },
     "instr_prompt": "Given a scientific paper title and abstract, find other scientific papers by the same author. {content}"
   },
@@ -101,8 +101,8 @@
     },
     "ctrl_token": "[PRX]",
     "sample_size": {
-      "train": 600000,
-      "dev": 40000
+      "train": 50000,
+      "dev": 20000
     },
     "instr_prompt": "Given a scientific paper title and abstract, find other scientific papers which are highly influenced by it. {content}"
   },
@@ -115,8 +115,8 @@
     },
     "ctrl_token": "[PRX]",
       "sample_size": {
-      "train": 600000,
-      "dev": 40000
+      "train": 50000,
+      "dev": 20000
     },
     "instr_prompt": "Given a scientific paper title and abstract, find other scientific papers which have a citation relationship with it. {content}"
   }

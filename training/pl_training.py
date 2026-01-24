@@ -28,6 +28,7 @@ from pytorch_lightning.loggers import TensorBoardLogger
 from pytorch_lightning.utilities.rank_zero import rank_zero_only
 from lightning_fabric.utilities.distributed import _sync_ddp_if_available as sync_ddp_if_available
 from pytorch_lightning.utilities.types import TRAIN_DATALOADERS, EVAL_DATALOADERS, STEP_OUTPUT
+from pytorch_lightning.callbacks import BatchSizeFinder
 
 pl.seed_everything(42, workers=True)
 
@@ -183,7 +184,7 @@ class SciRepTrain(pl.LightningModule):
     def training_step(self, train_batch, batch_idx):
         loss_per_task = self.calc_loss(train_batch, batch_idx)
         loss = torch.sum(loss_per_task)
-        self.log("train_loss", loss, prog_bar=True, on_step=True, on_epoch=True, batch_size=self.batch_size)
+        self.log("train_loss", loss, prog_bar=True, on_step=True, on_epoch=True, batch_size=self.batch_size, sync_dist=True)
         self.log("lr", self.lr_schedulers().get_last_lr()[-1], on_step=True, on_epoch=False, prog_bar=True, logger=True)
         return {"loss": loss}
 
@@ -258,7 +259,6 @@ class SciRepTrain(pl.LightningModule):
         except:
             print("Exception encountered while saving, try agin from checkpoint")
 
-
 if __name__ == '__main__':
     parser = argparse.ArgumentParser()
     parser.add_argument('--tasks-config', help='path to the task config file', default="sample_data/tasks_config.json")
@@ -285,6 +285,8 @@ if __name__ == '__main__':
     parser.add_argument('--val-check_interval', type=float, default=1.0, help='validation loop interval')
     parser.add_argument('--checkpoint', default=None, help='resume from checkpoint path')
     parser.add_argument('--fast-dev-run', default=False, action='store_true', help='Do a quick testing run, not a full finetuning.')
+    parser.add_argument('--limit-train-batches', default=None, type=int, help='Number of training batches to limit to.')
+    parser.add_argument('--limit-val-batches', default=None, type=int, help='Number of validation batches to limit to.')
 
     args = parser.parse_args()
     mconfig = AutoConfig.from_pretrained(args.model)
@@ -298,16 +300,20 @@ if __name__ == '__main__':
 
     # second part of the path shouldn't be f-string
     filepath = f'{log_dir}/{logger.name}/{logger.version}/checkpoints/'
-    checkpoint_callback = ModelCheckpoint(
+    checkpoint_callback_val_loss = ModelCheckpoint(
         dirpath=filepath,
-        filename='ep-{epoch}_avg_val_loss-{avg_val_loss:.3f}',
+        filename='ep-{epoch}_st-{step}_avg_val_loss-{avg_val_loss:.3f}',
         save_top_k=4,
         verbose=True,
         monitor='avg_val_loss',  # monitors metrics logged by self.log.
         mode='min',
-        every_n_train_steps=5000,
         save_on_exception=True,
         save_last=True
+    )
+    checkpoint_callback_steps = ModelCheckpoint(
+        dirpath=filepath,
+        filename='ep-{epoch}_st-{step}',
+        verbose=True
     )
     
     model = SciRepTrain(batch_size=args.batch_size, init_lr=args.lr,
@@ -325,11 +331,14 @@ if __name__ == '__main__':
                "accumulate_grad_batches": args.grad_accum}
 
     trainer = pl.Trainer(logger=logger,
-                         strategy="ddp_find_unused_parameters_true" if args.gpu else None,
+                         strategy="ddp_find_unused_parameters_true" if args.gpu > 1 else "auto",
                          enable_checkpointing=True,
-                         callbacks=[checkpoint_callback],
+                         callbacks=[checkpoint_callback_val_loss, checkpoint_callback_steps],
                          precision=16,
                          fast_dev_run=args.fast_dev_run,
+                         log_every_n_steps=10,
+                         limit_train_batches=args.limit_train_batches,
+                         limit_val_batches=args.limit_val_batches,
                          **hparams)
     logger.log_hyperparams(hparams)
     logger.log_hyperparams({"tasks": {k: str(v) for k, v in tasks_dict.items()}})

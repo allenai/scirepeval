@@ -313,7 +313,8 @@ if __name__ == '__main__':
     checkpoint_callback_steps = ModelCheckpoint(
         dirpath=filepath,
         filename='ep-{epoch}_st-{step}',
-        verbose=True
+        verbose=True,
+        every_n_train_steps=500
     )
     
     model = SciRepTrain(batch_size=args.batch_size, init_lr=args.lr,

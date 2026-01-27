@@ -182,25 +182,37 @@ class SciRepTrain(pl.LightningModule):
         return loss_per_task
 
     def training_step(self, train_batch, batch_idx):
-        loss_per_task = self.calc_loss(train_batch, batch_idx)
-        loss = torch.sum(loss_per_task)
-        self.log("train_loss", loss, prog_bar=True, on_step=True, on_epoch=True, batch_size=self.batch_size, sync_dist=True)
-        self.log("lr", self.lr_schedulers().get_last_lr()[-1], on_step=True, on_epoch=False, prog_bar=True, logger=True)
-        return {"loss": loss}
+        try:
+            loss_per_task = self.calc_loss(train_batch, batch_idx)
+            loss = torch.sum(loss_per_task)
+            self.log("train_loss", loss, prog_bar=True, on_step=True, on_epoch=True, batch_size=self.batch_size, sync_dist=True)
+            self.log("lr", self.lr_schedulers().get_last_lr()[-1], on_step=True, on_epoch=False, prog_bar=True, logger=True)
+            return {"loss": loss}
+        except Exception as e:
+            import traceback
+            print(f"[RANK {self.trainer.global_rank}] Exception in training_step at batch {batch_idx}: {e}")
+            print(traceback.format_exc())
+            raise
 
     def validation_step(self, train_batch, batch_idx) -> Optional[STEP_OUTPUT]:
-        loss_per_task = self.calc_loss(train_batch, batch_idx)
-        # loss_per_task = torch.mul(self.loss_wt.cuda(), loss_per_task)
-        loss = torch.sum(loss_per_task)
-        dist_loss_per_task = loss_per_task.clone().data
-        dist_loss_per_task = sync_ddp_if_available(dist_loss_per_task, reduce_op=ReduceOp.SUM)
-        for task in self.task_dict:
-            self.log(f"val_loss_{task}", dist_loss_per_task[self.task_idx[task]], on_step=True, on_epoch=True,
-                     prog_bar=False,
-                     batch_size=self.batch_size, rank_zero_only=True)
-        self.log("val_loss", loss, on_step=True, on_epoch=False, prog_bar=True)
-        self.log("avg_val_loss", loss, on_epoch=True, prog_bar=True, sync_dist=True, batch_size=self.batch_size)
-        return {"val_loss": loss}
+        try:
+            loss_per_task = self.calc_loss(train_batch, batch_idx)
+            # loss_per_task = torch.mul(self.loss_wt.cuda(), loss_per_task)
+            loss = torch.sum(loss_per_task)
+            dist_loss_per_task = loss_per_task.clone().data
+            dist_loss_per_task = sync_ddp_if_available(dist_loss_per_task, reduce_op=ReduceOp.SUM)
+            for task in self.task_dict:
+                self.log(f"val_loss_{task}", dist_loss_per_task[self.task_idx[task]], on_step=True, on_epoch=True,
+                         prog_bar=False,
+                         batch_size=self.batch_size, rank_zero_only=True)
+            self.log("val_loss", loss, on_step=True, on_epoch=False, prog_bar=True)
+            self.log("avg_val_loss", loss, on_epoch=True, prog_bar=True, sync_dist=True, batch_size=self.batch_size)
+            return {"val_loss": loss}
+        except Exception as e:
+            import traceback
+            print(f"[RANK {self.trainer.global_rank}] Exception in validation_step at batch {batch_idx}: {e}")
+            print(traceback.format_exc())
+            raise
 
     def load_data(self, split) -> CustomChainDataset:
         hf_split = "validation" if split == "dev" else "train"
@@ -307,7 +319,7 @@ if __name__ == '__main__':
         verbose=True,
         monitor='avg_val_loss',  # monitors metrics logged by self.log.
         mode='min',
-        save_on_exception=True,
+        save_on_exception=False,
         save_last=True
     )
     checkpoint_callback_steps = ModelCheckpoint(

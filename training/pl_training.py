@@ -299,6 +299,7 @@ if __name__ == '__main__':
     parser.add_argument('--fast-dev-run', default=False, action='store_true', help='Do a quick testing run, not a full finetuning.')
     parser.add_argument('--limit-train-batches', default=None, type=int, help='Number of training batches to limit to.')
     parser.add_argument('--limit-val-batches', default=None, type=int, help='Number of validation batches to limit to.')
+    parser.add_argument('--checkpoint-n-steps', default=100, type=int, help='How often to save checkpoints in number of effective batches.')
 
     args = parser.parse_args()
     mconfig = AutoConfig.from_pretrained(args.model)
@@ -326,7 +327,7 @@ if __name__ == '__main__':
         dirpath=filepath,
         filename='ep-{epoch}_st-{step}',
         verbose=True,
-        every_n_train_steps=500
+        every_n_train_steps=args.checkpoint_n_steps
     )
     
     model = SciRepTrain(batch_size=args.batch_size, init_lr=args.lr,

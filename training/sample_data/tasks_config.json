@@ -115,7 +115,7 @@
     },
     "ctrl_token": "[PRX]",
       "sample_size": {
-      "train": 250000,
+      "train": 25000,
       "dev": 20000
     },
     "instr_prompt": "Given a scientific paper title and abstract, find other scientific papers which have a citation relationship with it. {content}"

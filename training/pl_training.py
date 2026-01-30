@@ -348,7 +348,7 @@ if __name__ == '__main__':
                          strategy="ddp_find_unused_parameters_true" if args.gpu > 1 else "auto",
                          enable_checkpointing=True,
                          callbacks=[checkpoint_callback_val_loss, checkpoint_callback_steps],
-                         precision=16,
+                         precision="bf16-mixed",
                          fast_dev_run=args.fast_dev_run,
                          log_every_n_steps=10,
                          limit_train_batches=args.limit_train_batches,

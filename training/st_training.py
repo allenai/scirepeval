@@ -6,105 +6,16 @@ import sys
 sys.path.append('../')
 
 import argparse
-import random
-import warnings
-import datasets
 from datasets import DatasetDict
 from transformers import AutoConfig
 from sentence_transformers import SentenceTransformer, SentenceTransformerTrainer, SentenceTransformerTrainingArguments, models
-from sentence_transformers.evaluation import SequentialEvaluator
+from sentence_transformers.evaluation import SequentialEvaluator, InformationRetrievalEvaluator
 from sentence_transformers.losses import CachedGISTEmbedLoss
 from sentence_transformers.training_args import BatchSamplers, MultiDatasetBatchSamplers  # type: ignore[import]
 
-from tasks import load_tasks, TaskFamily
-from triplet_loss_evaluator import TripletLossEvaluator
-
-
-def build_st_dataset(
-    task: TaskFamily,
-    split: str,
-    num_negatives: int = 1,
-    num_positives: int = 2,
-    queries_per_dataset: int = 25000,
-) -> datasets.Dataset:
-    """Load a triplet/IR task dataset and return an HF Dataset with anchor/positive/negative_1/.../negative_K columns.
-
-    Sampling is query-first for consistency across all K values:
-      1. Sample min(queries_per_dataset, n_queries) unique queries.
-      2. For each query, sample min(num_positives, n_pos) positives.
-      3. For each positive, emit one row with the same K negatives drawn from the query's negative pool.
-    """
-    hf_split = "validation" if split == "dev" else "train"
-    if task.data_files:
-        data = datasets.load_dataset("json", data_files={hf_split: task.data_files[split]})[hf_split]
-    else:
-        data = datasets.load_dataset(**task.dataset, split=hf_split)
-
-    sep = "\n\n"
-    fields = task.input_fields
-
-    def _text(doc: dict) -> str:
-        if isinstance(doc, dict):
-            parts = [str(doc[f]) for f in fields if doc.get(f)]
-        else:
-            parts = [doc]
-        return sep.join(parts)
-
-    def _neg_cols(neg_texts: list[str]) -> dict:
-        if len(neg_texts) == 1:
-            return {"negative": neg_texts[0]}
-        return {f"negative_{i+1}": t for i, t in enumerate(neg_texts)}
-
-    # --- Build per-query groups -------------------------------------------------
-    # Each group: {"query": str, "positives": [str, ...], "negatives": [str, ...]}
-    groups: list[dict] = []
-
-    if task.type == "triplet":
-        # cite_prediction: rows are (query, pos, neg) triplets; group by query text
-        query_map: dict[str, dict] = {}
-        for ex in data:
-            q = _text(ex["query"])
-            if q not in query_map:
-                query_map[q] = {"query": q, "positives": [], "negatives": []}
-            query_map[q]["positives"].append(_text(ex["pos"]))
-            query_map[q]["negatives"].append(_text(ex["neg"]))
-        groups = list(query_map.values())
-    else:
-        # IR format: {query: {...}, candidates: [{score, ...}, ...]}
-        for ex in data:
-            candidates = ex["candidates"]
-            pos_texts = [_text(c) for c in candidates if c["score"]]
-            neg_texts = [_text(c) for c in candidates if not c["score"]]
-            if not pos_texts or not neg_texts:
-                continue
-            groups.append({"query": _text(ex["query"]), "positives": pos_texts, "negatives": neg_texts})
-
-    # --- Subsample queries -------------------------------------------------------
-    n_queries = len(groups)
-    if queries_per_dataset > n_queries:
-        warnings.warn(
-            f"queries_per_dataset={queries_per_dataset} exceeds available queries ({n_queries}) "
-            f"for task '{task.name}' split='{split}'. Using all {n_queries} queries.",
-            stacklevel=2,
-        )
-        sampled = groups
-    else:
-        sampled = random.sample(groups, queries_per_dataset)
-
-    # --- Expand into rows --------------------------------------------------------
-    rows = []
-    for g in sampled:
-        pos_pool = g["positives"]
-        neg_pool = g["negatives"]
-        n_pos = min(num_positives, len(pos_pool))
-        chosen_pos = random.sample(pos_pool, n_pos)
-        chosen_neg = random.sample(neg_pool, num_negatives) if len(neg_pool) >= num_negatives else random.choices(neg_pool, k=num_negatives)
-        for pos_text in chosen_pos:
-            row = {"anchor": g["query"], "positive": pos_text}
-            row.update(_neg_cols(chosen_neg))
-            rows.append(row)
-
-    return datasets.Dataset.from_list(rows)
+from tasks import load_tasks
+from training.infonce_evaluator import InfoNCEEvaluator
+from st_datasets import build_st_dataset, build_triplet_eval_dataset, build_ir_infonce_eval_dataset, build_ir_eval_data
 
 
 def build_loss(
@@ -187,15 +98,32 @@ def main():
     model = SentenceTransformer(modules=[encoder, pooling], trust_remote_code=True)
     model.max_seq_length = args.max_len
 
-    train_datasets, evaluators, losses = {}, [], {}
+    train_datasets, infonce_evaluators, ir_evaluators, losses = {}, [], [], {}
     for name, task in ir_tasks.items():
         train_datasets[name] = build_st_dataset(task, "train", args.num_negatives, args.num_positives, args.queries_per_dataset)
-        eval_ds = build_st_dataset(task, "dev", args.num_negatives, args.num_positives, args.queries_per_dataset)
-        if args.max_eval_samples is not None:
-            eval_ds = eval_ds.select(range(min(args.max_eval_samples, len(eval_ds))))
-        evaluators.append(TripletLossEvaluator(eval_ds=eval_ds, name=name))
+        if task.type == "triplet":
+            eval_ds = build_triplet_eval_dataset(task, max_samples=args.max_eval_samples)
+            infonce_evaluators.append(InfoNCEEvaluator(eval_ds=eval_ds, name=name, temperature=args.temperature))
+        else:
+            eval_ds = build_ir_infonce_eval_dataset(task, max_samples=args.max_eval_samples)
+            infonce_evaluators.append(InfoNCEEvaluator(eval_ds=eval_ds, name=name, temperature=args.temperature))
+            queries, corpus, relevant_docs = build_ir_eval_data(task, max_samples=args.max_eval_samples)
+            ir_evaluators.append(InformationRetrievalEvaluator(queries=queries, corpus=corpus, relevant_docs=relevant_docs, name=f"{name}_ir", show_progress_bar=False))
         losses[name] = build_loss(model, args.temperature, args.mini_batch_size, guide_model, not args.no_contrast_anchors, not args.no_contrast_positives)
-    evaluator = SequentialEvaluator(evaluators, main_score_function=lambda scores: sum(scores) / len(scores))
+    if infonce_evaluators and ir_evaluators:
+        # infonce_seq score = mean InfoNCE loss (lower=better); used as primary metric
+        # IR evaluators follow; outer sequential score is not used for model selection
+        infonce_seq = SequentialEvaluator(infonce_evaluators, main_score_function=lambda scores: sum(scores) / len(scores))
+        evaluator = SequentialEvaluator([infonce_seq] + ir_evaluators, main_score_function=lambda scores: scores[0])
+        best_metric, greater_is_better = "eval_infonce_sequential_score", False
+    elif infonce_evaluators:
+        evaluator = SequentialEvaluator(infonce_evaluators, main_score_function=lambda scores: sum(scores) / len(scores))
+        best_metric, greater_is_better = "eval_sequential_score", False
+    elif ir_evaluators:
+        evaluator = SequentialEvaluator(ir_evaluators, main_score_function=lambda scores: sum(scores) / len(scores))
+        best_metric, greater_is_better = "eval_sequential_score", True
+    else:
+        raise ValueError("No evaluators built — check tasks config")
 
 
     lr_scheduler = "cosine" if args.use_cosine_schedule else "linear"
@@ -219,8 +147,8 @@ def main():
         save_steps=args.checkpoint_n_steps,
         save_total_limit=4,
         load_best_model_at_end=True,
-        metric_for_best_model="eval_sequential_score",
-        greater_is_better=False,
+        metric_for_best_model=best_metric,
+        greater_is_better=greater_is_better,
         logging_steps=10,
         dataloader_num_workers=1,
         dataloader_pin_memory=True,

@@ -115,7 +115,7 @@ def main():
         # IR evaluators follow; outer sequential score is not used for model selection
         infonce_seq = SequentialEvaluator(infonce_evaluators, main_score_function=lambda scores: sum(scores) / len(scores))
         evaluator = SequentialEvaluator([infonce_seq] + ir_evaluators, main_score_function=lambda scores: scores[0])
-        best_metric, greater_is_better = "eval_infonce_sequential_score", False
+        best_metric, greater_is_better = "eval_sequential_score", False
     elif infonce_evaluators:
         evaluator = SequentialEvaluator(infonce_evaluators, main_score_function=lambda scores: sum(scores) / len(scores))
         best_metric, greater_is_better = "eval_sequential_score", False

@@ -22,10 +22,12 @@ class InfoNCEEvaluator(SentenceEvaluator):
         name: str = "",
         batch_size: int = 64,
         temperature: float = 0.01,
+        query_prompt: str | None = None,
     ):
         self.name = name
         self.batch_size = batch_size
         self.temperature = temperature
+        self.query_prompt = query_prompt
 
         self.anchors = eval_ds["anchor"]
         self.positives = eval_ds["positive"]
@@ -77,10 +79,10 @@ class InfoNCEEvaluator(SentenceEvaluator):
         epoch: int = -1,
         steps: int = -1,
     ) -> float:
-        encode = lambda texts: torch.tensor(
-            model.encode(texts, batch_size=self.batch_size, show_progress_bar=False)
+        encode = lambda texts, prompt=None: torch.tensor(
+            model.encode(texts, batch_size=self.batch_size, show_progress_bar=False, prompt=prompt)
         )
-        q_emb = encode(self.anchors)   # (N, D)
+        q_emb = encode(self.anchors, prompt=self.query_prompt)   # (N, D)
         p_emb = encode(self.positives)  # (N, D)
         neg_embs = [encode(negs) for negs in self.neg_cols]  # K x (N, D)
 

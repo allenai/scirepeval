@@ -36,6 +36,11 @@ def build_loss(
     )
 
 
+def _clean_prompt(prompt: str) -> str:
+    """Remove {content} placeholder — ST prepends the prompt string directly to the text."""
+    return prompt.replace("{content}", "").rstrip()
+
+
 def build_prompts(ir_tasks: dict, num_negatives: int = 1) -> dict | None:
     """Build nested {task_name: {col_name: prompt}} dict for SentenceTransformerTrainingArguments."""
     training_prompts = {}
@@ -44,12 +49,13 @@ def build_prompts(ir_tasks: dict, num_negatives: int = 1) -> dict | None:
             continue
         if isinstance(task.instr_prompt, dict):
             # asymmetric task (e.g. search): different prompts for query vs candidates
-            cand_prompt = task.instr_prompt.get("candidates", "")
+            cand_prompt = _clean_prompt(task.instr_prompt.get("candidates", ""))
+            anchor_prompt = _clean_prompt(task.instr_prompt["query"])
             neg_cols = {"negative": cand_prompt} if num_negatives == 1 else {f"negative_{i+1}": cand_prompt for i in range(num_negatives)}
-            training_prompts[name] = {"anchor": task.instr_prompt["query"], "positive": cand_prompt, **neg_cols}
+            training_prompts[name] = {"anchor": anchor_prompt, "positive": cand_prompt, **neg_cols}
         else:
             # symmetric task: apply prompt to anchor only (candidates get no prompt, matches legacy behaviour)
-            training_prompts[name] = {"anchor": task.instr_prompt}
+            training_prompts[name] = {"anchor": _clean_prompt(task.instr_prompt)}
     return training_prompts if training_prompts else None
 
 
@@ -93,7 +99,7 @@ def main():
     guide_model = SentenceTransformer(modules=[encoder, pooling], trust_remote_code=True)
     guide_model.max_seq_length = args.max_len
 
-    encoder = models.Transformer(args.model, model_args={"trust_remote_code": True})
+    encoder = models.Transformer(args.model, model_args={"trust_remote_code": True}, tokenizer_args={"padding_side": "left"})
     pooling = models.Pooling(encoder.get_word_embedding_dimension(), pooling_mode=args.model_pooling)
     model = SentenceTransformer(modules=[encoder, pooling], trust_remote_code=True)
     model.max_seq_length = args.max_len
@@ -101,14 +107,16 @@ def main():
     train_datasets, infonce_evaluators, ir_evaluators, losses = {}, [], [], {}
     for name, task in ir_tasks.items():
         train_datasets[name] = build_st_dataset(task, "train", args.num_negatives, args.num_positives, args.queries_per_dataset)
+        instr = task.instr_prompt
+        query_prompt = _clean_prompt(instr["query"] if isinstance(instr, dict) else instr) if instr else None
         if task.type == "triplet":
             eval_ds = build_triplet_eval_dataset(task, max_samples=args.max_eval_samples)
-            infonce_evaluators.append(InfoNCEEvaluator(eval_ds=eval_ds, name=name, temperature=args.temperature))
+            infonce_evaluators.append(InfoNCEEvaluator(eval_ds=eval_ds, name=name, temperature=args.temperature, query_prompt=query_prompt))
         else:
             eval_ds = build_ir_infonce_eval_dataset(task, max_samples=args.max_eval_samples)
-            infonce_evaluators.append(InfoNCEEvaluator(eval_ds=eval_ds, name=name, temperature=args.temperature))
+            infonce_evaluators.append(InfoNCEEvaluator(eval_ds=eval_ds, name=name, temperature=args.temperature, query_prompt=query_prompt))
             queries, corpus, relevant_docs = build_ir_eval_data(task, max_samples=args.max_eval_samples)
-            ir_evaluators.append(InformationRetrievalEvaluator(queries=queries, corpus=corpus, relevant_docs=relevant_docs, name=f"{name}_ir", show_progress_bar=False))
+            ir_evaluators.append(InformationRetrievalEvaluator(queries=queries, corpus=corpus, relevant_docs=relevant_docs, name=f"{name}_ir", show_progress_bar=False, query_prompt=query_prompt))
         losses[name] = build_loss(model, args.temperature, args.mini_batch_size, guide_model, not args.no_contrast_anchors, not args.no_contrast_positives)
     if infonce_evaluators and ir_evaluators:
         # infonce_seq score = mean InfoNCE loss (lower=better); used as primary metric

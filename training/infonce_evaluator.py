@@ -3,6 +3,7 @@ import torch
 import torch.nn.functional as F
 from sentence_transformers import SentenceTransformer
 from sentence_transformers.evaluation import SentenceEvaluator
+from infonce_loss import hard_negative_infonce
 
 
 class InfoNCEEvaluator(SentenceEvaluator):
@@ -86,13 +87,10 @@ class InfoNCEEvaluator(SentenceEvaluator):
         p_emb = encode(self.positives)  # (N, D)
         neg_embs = [encode(negs) for negs in self.neg_cols]  # K x (N, D)
 
-        # logits shape: (N, 1+K)
-        sims = [F.cosine_similarity(q_emb, p_emb).unsqueeze(1)] + [
-            F.cosine_similarity(q_emb, n_emb).unsqueeze(1) for n_emb in neg_embs
-        ]
-        logits = torch.cat(sims, dim=1) / self.temperature  # (N, 1+K)
-        labels = torch.zeros(len(q_emb), dtype=torch.long)  # positive is always index 0
-        loss = F.cross_entropy(logits, labels).item()
+        q_emb = F.normalize(q_emb, p=2, dim=1)
+        p_emb = F.normalize(p_emb, p=2, dim=1)
+        neg_embs = [F.normalize(n, p=2, dim=1) for n in neg_embs]
+        loss = hard_negative_infonce(q_emb, p_emb, neg_embs, self.temperature).item()
 
         print(f"[{self.name}] infonce_loss={loss:.4f} (epoch={epoch}, steps={steps})")
         self.primary_metric = f"{self.name}_infonce_loss"

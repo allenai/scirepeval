@@ -16,16 +16,20 @@ from sentence_transformers.training_args import BatchSamplers, MultiDatasetBatch
 from tasks import load_tasks
 from training.infonce_evaluator import InfoNCEEvaluator
 from st_datasets import build_st_dataset, build_triplet_eval_dataset, build_ir_infonce_eval_dataset, build_ir_eval_data
+from infonce_loss import HardNegativeInfoNCELoss
 
 
 def build_loss(
     model: SentenceTransformer,
+    loss_type: str,
     temperature: float,
     mini_batch_size: int,
     guide_model: SentenceTransformer,
     contrast_anchors: bool,
     contrast_positives: bool,
-) -> CachedGISTEmbedLoss:
+):
+    if loss_type == "hard_infonce":
+        return HardNegativeInfoNCELoss(model=model, temperature=temperature)
     return CachedGISTEmbedLoss(
         model=model,
         guide=guide_model,
@@ -68,6 +72,7 @@ def main():
     parser.add_argument("--temperature", type=float, default=0.01, help="Temperature for CachedGISTEmbedLoss")
     parser.add_argument("--no-contrast-anchors", action="store_true", default=False, help="Disable anchor-anchor contrastive signal in CachedGISTEmbedLoss")
     parser.add_argument("--no-contrast-positives", action="store_true", default=False, help="Disable positive-positive contrastive signal in CachedGISTEmbedLoss")
+    parser.add_argument("--loss-type", choices=["gist", "hard_infonce"], default="gist", help="gist: CachedGISTEmbedLoss (in-batch + hard negatives); hard_infonce: InfoNCE over explicit hard negatives only")
     parser.add_argument("--num-negatives", type=int, default=1, help="Hard negatives per sample (K); use negative_1..negative_K columns")
     parser.add_argument("--num-positives", type=int, default=2, help="Positives per query to expand into samples (P)")
     parser.add_argument("--queries-per-dataset", type=int, default=25000, help="Unique queries to sample per dataset; warns if > dataset size")
@@ -116,8 +121,8 @@ def main():
             eval_ds = build_ir_infonce_eval_dataset(task, max_samples=args.max_eval_samples)
             infonce_evaluators.append(InfoNCEEvaluator(eval_ds=eval_ds, name=name, temperature=args.temperature, query_prompt=query_prompt))
             queries, corpus, relevant_docs = build_ir_eval_data(task, max_samples=args.max_eval_samples)
-            ir_evaluators.append(InformationRetrievalEvaluator(queries=queries, corpus=corpus, relevant_docs=relevant_docs, name=f"{name}_ir", show_progress_bar=False, query_prompt=query_prompt))
-        losses[name] = build_loss(model, args.temperature, args.mini_batch_size, guide_model, not args.no_contrast_anchors, not args.no_contrast_positives)
+            ir_evaluators.append(InformationRetrievalEvaluator(queries=queries, corpus=corpus, relevant_docs=relevant_docs, name=f"{name}_ir", show_progress_bar=False, query_prompt=query_prompt, accuracy_at_k=[10], precision_recall_at_k=[10], mrr_at_k=[10], ndcg_at_k=[10], map_at_k=[100]))
+        losses[name] = build_loss(model, args.loss_type, args.temperature, args.mini_batch_size, guide_model, not args.no_contrast_anchors, not args.no_contrast_positives)
     if infonce_evaluators and ir_evaluators:
         # infonce_seq score = mean InfoNCE loss (lower=better); used as primary metric
         # IR evaluators follow; outer sequential score is not used for model selection

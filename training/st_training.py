@@ -10,7 +10,7 @@ from datasets import DatasetDict
 from transformers import AutoConfig
 from sentence_transformers import SentenceTransformer, SentenceTransformerTrainer, SentenceTransformerTrainingArguments, models
 from sentence_transformers.evaluation import SequentialEvaluator, InformationRetrievalEvaluator
-from sentence_transformers.losses import CachedGISTEmbedLoss
+from sentence_transformers.losses import CachedGISTEmbedLoss, TripletLoss, TripletDistanceMetric
 from sentence_transformers.training_args import BatchSamplers, MultiDatasetBatchSamplers  # type: ignore[import]
 
 from tasks import load_tasks
@@ -30,6 +30,8 @@ def build_loss(
 ):
     if loss_type == "hard_infonce":
         return HardNegativeInfoNCELoss(model=model, temperature=temperature)
+    if loss_type == "triplet":
+        return TripletLoss(model=model, distance_metric=TripletDistanceMetric.COSINE, triplet_margin=1.0)
     return CachedGISTEmbedLoss(
         model=model,
         guide=guide_model,
@@ -72,7 +74,7 @@ def main():
     parser.add_argument("--temperature", type=float, default=0.01, help="Temperature for CachedGISTEmbedLoss")
     parser.add_argument("--no-contrast-anchors", action="store_true", default=False, help="Disable anchor-anchor contrastive signal in CachedGISTEmbedLoss")
     parser.add_argument("--no-contrast-positives", action="store_true", default=False, help="Disable positive-positive contrastive signal in CachedGISTEmbedLoss")
-    parser.add_argument("--loss-type", choices=["gist", "hard_infonce"], default="gist", help="gist: CachedGISTEmbedLoss (in-batch + hard negatives); hard_infonce: InfoNCE over explicit hard negatives only")
+    parser.add_argument("--loss-type", choices=["gist", "hard_infonce", "triplet"], default="gist", help="gist: CachedGISTEmbedLoss (in-batch + hard negatives); hard_infonce: InfoNCE over explicit hard negatives only; triplet: margin triplet loss (cosine distance, margin=1.0, matches pl_training.py)")
     parser.add_argument("--num-negatives", type=int, default=1, help="Hard negatives per sample (K); use negative_1..negative_K columns")
     parser.add_argument("--num-positives", type=int, default=2, help="Positives per query to expand into samples (P)")
     parser.add_argument("--queries-per-dataset", type=int, default=25000, help="Unique queries to sample per dataset; warns if > dataset size")

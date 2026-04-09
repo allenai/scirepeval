@@ -1,0 +1,4 @@
+{"name":"search","type":"adhoc_search","data":{"source":"s3://ai2-s2-aps/scirepeval_v2/cleaned/search/test_in.parquet","split":"dev"},"metrics":["ndcg","map","recall_5","recall_10","auc"]}
+{"name":"MDCR","type":"adhoc_search","data":{"source":"s3://ai2-s2-aps/scirepeval_v2/cleaned/mdcr/mdcr_test.parquet","split":"dev"},"metrics":["ndcg","map","recall_5","recall_10","auc"]}
+{"name":"MeSH","type":"proximity","data":{"source":"s3://ai2-s2-aps/scirepeval_v2/cleaned/mesh/test_in.parquet","split":"dev"},"metrics":["ndcg","map","recall_5","recall_10","auc"]}
+{"name":"RELISH","type":"proximity","data":{"source":"s3://ai2-s2-aps/scirepeval_v2/cleaned/relish/relish.parquet","split":"dev"},"metrics":["ndcg","map","recall_5","recall_10","auc"]}

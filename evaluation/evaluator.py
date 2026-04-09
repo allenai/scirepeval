@@ -185,10 +185,11 @@ class SupervisedEvaluator(Evaluator):
 
 class IREvaluator(Evaluator):
     def __init__(self, name: str, meta_dataset: Union[str, tuple], test_dataset: Union[str, tuple], model: Model,
-                 metrics: tuple, dataset_class=IRDataset, batch_size: int = 16, fields: list = None, key=None):
-        super(IREvaluator, self).__init__(name, meta_dataset, dataset_class, model, batch_size, fields, key)
+                 metrics: tuple, dataset_class=IRDataset, batch_size: int = 16, fields: list = None, key=None, processing_fn=None, prebuilt_qrels=None):
+        super(IREvaluator, self).__init__(name, meta_dataset, dataset_class, model, batch_size, fields, key, processing_fn)
         self.test_dataset = test_dataset
         self.metrics = metrics
+        self.prebuilt_qrels = prebuilt_qrels
 
     def get_qc_pairs(self, dataset):
         pairs = dict()
@@ -216,15 +217,18 @@ class IREvaluator(Evaluator):
 
     def evaluate(self, embeddings, **kwargs):
         logger.info(f"Loading labelled data from {self.test_dataset}")
-        if type(self.test_dataset) == str and os.path.isdir(self.test_dataset):
+        if self.prebuilt_qrels is not None:
+            split_dataset = None
+        elif type(self.test_dataset) == str and os.path.isdir(self.test_dataset):
             split_dataset = datasets.load_dataset("json", data_files={"test": f"{self.test_dataset}/test_qrel.jsonl"})
         else:
             split_dataset = datasets.load_dataset(self.test_dataset[0], self.test_dataset[1], trust_remote_code=False)
-        logger.info(f"Loaded {len(split_dataset['test'])} test query-candidate pairs")
+        if split_dataset is not None:
+            logger.info(f"Loaded {len(split_dataset['test'])} test query-candidate pairs")
         if type(embeddings) == str and os.path.isfile(embeddings):
             embeddings = EmbeddingsGenerator.load_embeddings_from_jsonl(embeddings)
 
-        qrels = self.get_qc_pairs(split_dataset["test"])
+        qrels = self.prebuilt_qrels if self.prebuilt_qrels is not None else self.get_qc_pairs(split_dataset["test"])
         preds = self.retrieval(embeddings, qrels)
         results = self.calc_metrics(qrels, preds)
         self.print_results(results)

@@ -108,6 +108,14 @@ class ParquetBinaryDataset(IRDataset):
         import s3fs, pandas as pd
         fs = s3fs.S3FileSystem(anon=False)
         files = fs.glob(data_path.replace("s3://", ""))
+        if not files:
+            # Fall back to flat layout: <dir>/*_val.parquet (or any .parquet in parent dir)
+            parent = data_path.replace("s3://", "").rsplit("/split=", 1)[0]
+            files = fs.glob(f"{parent}/*_val.parquet") or fs.glob(f"{parent}/*.parquet")
+            if files:
+                logger.info(f"No files at {data_path}, falling back to flat layout at {parent}/")
+            else:
+                raise FileNotFoundError(f"No Parquet files found at {data_path} or flat layout under {parent}/")
         raw = datasets.Dataset.from_pandas(pd.concat([pd.read_parquet(fs.open(f)) for f in files], ignore_index=True))
         logger.info(f"Loaded {len(raw)} rows")
 

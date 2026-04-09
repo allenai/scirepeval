@@ -42,6 +42,45 @@ else:
 
 from reviewer_matching import ReviewerMatchingEvaluator
 from evaluation.eval_datasets import SimpleDataset, IRDataset
+
+
+def _load_s3_parquet_ir(s3_glob: str):
+    """Load S3 parquet files into an HF Dataset with the IRDataset row schema.
+
+    Each parquet row must have: doc_id, query (dict with corpus_id), candidates
+    (list of dicts with corpus_id and score).
+    Returns (dataset, qrels) where qrels is {query_corpus_id: {cand_corpus_id: score}}.
+    """
+    import s3fs
+    import pandas as pd
+    import datasets as hf_datasets
+
+    fs = s3fs.S3FileSystem(anon=False)
+    files = fs.glob(s3_glob.replace("s3://", ""))
+    if not files:
+        raise FileNotFoundError(f"No Parquet files found at {s3_glob}")
+    df = pd.concat([pd.read_parquet(fs.open(f)) for f in files], ignore_index=True)
+    raw = hf_datasets.Dataset.from_pandas(df)
+
+    # Normalize to IRDataset schema: promote id fields to top-level doc_id
+    # Two query shapes:
+    #   - search: query.id + query.text
+    #   - others: query.corpus_id + query.title + query.abstract
+    normalized = []
+    qrels = {}
+    for row in raw:
+        q = row["query"]
+        if "id" in q:
+            qid = str(q["id"])
+            query = {"doc_id": qid, "title": q["text"]}
+        else:
+            qid = str(q["corpus_id"])
+            query = {"doc_id": qid, "title": q.get("title", ""), "abstract": q.get("abstract", "")}
+        candidates = [{**c, "doc_id": str(c["corpus_id"])} for c in row["candidates"]]
+        normalized.append({"doc_id": qid, "query": query, "candidates": candidates})
+        qrels[qid] = {str(c["corpus_id"]): c["score"] for c in row["candidates"]}
+
+    return hf_datasets.Dataset.from_list(normalized), qrels
 import os
 os.environ["TOKENIZERS_PARALLELISM"] = "false"
 
@@ -57,7 +96,7 @@ pl.seed_everything(42, workers=True)
 class SciRepEval:
 
     def __init__(self, tasks_config: str = "scirepeval_tasks.jsonl", task_list: List[str] = None,
-                 task_formats: List[str] = None, batch_size: int = 32, embedding_save_path = None, excluded_tasks: List[str] = None, task_specific_prompts: bool = False, s3_base_path: str = None, max_samples: int = None):
+                 task_formats: List[str] = None, batch_size: int = 32, embedding_save_path = None, excluded_tasks: List[str] = None, task_specific_prompts: bool = False, max_samples: int = None):
         tasks_dict = dict()
         task_by_formats = dict()
         with open(tasks_config, encoding="utf-8") as f:
@@ -79,7 +118,6 @@ class SciRepEval:
         self.batch_size = batch_size
         self.embedding_save_path = embedding_save_path
         self.task_specifc_prompts = task_specific_prompts
-        self.s3_base_path = s3_base_path
         self.max_samples = max_samples
 
     def evaluate(self, model: Union[Model, List[Model]], output: str):
@@ -94,7 +132,9 @@ class SciRepEval:
                         m.task_name = task_name
                 kwargs = dict()
                 task_data = task["data"]
-                if task["type"] != "binary_retrieval":
+                use_s3 = (task_data.get("source")
+                          and task["type"] in {"proximity", "adhoc_search"})
+                if task["type"] != "binary_retrieval" and not use_s3:
                     if not task_data.get("meta"):
                         raise ValueError(f"Task {task_name} has no test metadata")
                     if task_data.get("meta"):
@@ -140,15 +180,13 @@ class SciRepEval:
                                                  **kwargs))
                 else:
                     if task["type"] == "binary_retrieval":
-                        if not self.s3_base_path:
-                            raise ValueError(f"Task {task_name} requires --s3-base-path to be set")
                         source = task_data.get("source")
-                        split = task_data.get("split", "test")
-                        s3_glob = f"{self.s3_base_path.rstrip('/')}/{source}/split={split}/*.parquet"
+                        if not source:
+                            raise ValueError(f"Task {task_name} requires a 'source' S3 glob in the task config")
                         evaluator = ParquetBinaryIREvaluator(
                             task_name,
-                            meta_dataset=s3_glob,
-                            test_dataset=s3_glob,
+                            meta_dataset=source,
+                            test_dataset=source,
                             model=model,
                             metrics=kwargs["metrics"],
                             batch_size=kwargs["batch_size"],
@@ -165,6 +203,13 @@ class SciRepEval:
                         evaluator = ReviewerMatchingEvaluator(task_name, model=model, **kwargs)
                     else:
                         data_class = SimpleDataset if task_data.get("simple_format") else IRDataset
+                        if use_s3:
+                            source = task_data["source"]
+                            s3_dataset, s3_qrels = _load_s3_parquet_ir(source)
+                            kwargs["processing_fn"] = lambda _: s3_dataset
+                            kwargs["meta_dataset"] = source
+                            kwargs["test_dataset"] = source
+                            kwargs["prebuilt_qrels"] = s3_qrels
                         evaluator = IREvaluator(task_name, model=model, dataset_class=data_class, **kwargs)
                 embeddings = evaluator.generate_embeddings(save_path) if not load_path else load_path
                 results = evaluator.evaluate(embeddings)
@@ -219,7 +264,7 @@ if __name__ == "__main__":
     # Voyage4 API-specific arguments
     parser.add_argument('--voyage-api', action='store_true', default=False, help='Use Voyage API for docs (local nano for queries). Requires VOYAGE_API_KEY env var')
     parser.add_argument('--truncate-dim', type=int, default=None, help='Embedding truncation dimension for instructor models that support it (e.g. qwen3)')
-    parser.add_argument('--s3-base-path', type=str, default=None, help='S3 base path for binary_retrieval tasks (e.g. s3://bucket/prefix/). pf/sqa sub-paths are appended automatically.')
+
     parser.add_argument('--max-samples', type=int, default=None, help='Cap number of queries for binary_retrieval tasks (useful for quick tests).')
     parser.add_argument('--trust-remote-code', action='store_true', default=False, help='Pass trust_remote_code=True to SentenceTransformer')
     parser.add_argument('--prompt-name-map', type=json.loads, default=None, help='JSON mapping of task IDs to model preset prompt names, e.g. \'{"[CLF]": "Classification", "[SRCH]": {"q": "Retrieval-query", "c": "Retrieval-document"}}\'')
@@ -273,5 +318,5 @@ if __name__ == "__main__":
             pooling_mode=args.pooling_mode,
             use_fp16=args.fp16
         )
-    evaluator = SciRepEval(tasks_config=args.tasks_config, batch_size=args.batch_size, embedding_save_path=args.embeddings_save_path, excluded_tasks=args.excluded_tasks, task_formats=args.task_formats, task_list=args.task_list, task_specific_prompts=args.task_specific_prompts, s3_base_path=args.s3_base_path, max_samples=args.max_samples)
+    evaluator = SciRepEval(tasks_config=args.tasks_config, batch_size=args.batch_size, embedding_save_path=args.embeddings_save_path, excluded_tasks=args.excluded_tasks, task_formats=args.task_formats, task_list=args.task_list, task_specific_prompts=args.task_specific_prompts, max_samples=args.max_samples)
     evaluator.evaluate(model, args.output)

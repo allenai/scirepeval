@@ -230,7 +230,26 @@ class IREvaluator(Evaluator):
 
         qrels = self.prebuilt_qrels if self.prebuilt_qrels is not None else self.get_qc_pairs(split_dataset["test"])
         preds = self.retrieval(embeddings, qrels)
-        results = self.calc_metrics(qrels, preds)
+
+        compute_auc = "auc" in self.metrics
+        pytrec_metrics = tuple(m for m in self.metrics if m != "auc")
+        results = self.calc_metrics(qrels, preds, pytrec_metrics)
+
+        if compute_auc:
+            y_true, y_score = [], []
+            for qid, cands in qrels.items():
+                if qid not in preds:
+                    continue
+                for cid, label in cands.items():
+                    if cid in preds[qid]:
+                        y_true.append(label)
+                        y_score.append(preds[qid][cid])
+            if not y_true:
+                logger.warning("AUC skipped: no overlapping IDs between embeddings and qrels.")
+                results["auc"] = None
+            else:
+                results["auc"] = np.round(100 * roc_auc_score(y_true, y_score), 2)
+
         self.print_results(results)
         return results
 

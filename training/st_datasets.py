@@ -33,7 +33,7 @@ def build_st_dataset(
     split: str,
     num_negatives: int = 1,
     num_positives: int = 2,
-    queries_per_dataset: int = 25000,
+    queries_per_dataset: int | None = 25000,
 ) -> datasets.Dataset:
     """Load a triplet/IR task dataset and return an HF Dataset with anchor/positive/negative_1/.../negative_K columns.
 
@@ -70,12 +70,13 @@ def build_st_dataset(
             groups.append({"query": _text(ex["query"]), "positives": pos_texts, "negatives": neg_texts})
 
     n_queries = len(groups)
-    if queries_per_dataset > n_queries:
-        warnings.warn(
-            f"queries_per_dataset={queries_per_dataset} exceeds available queries ({n_queries}) "
-            f"for task '{task.name}' split='{split}'. Using all {n_queries} queries.",
-            stacklevel=2,
-        )
+    if queries_per_dataset is None or queries_per_dataset >= n_queries:
+        if queries_per_dataset is not None and queries_per_dataset > n_queries:
+            warnings.warn(
+                f"queries_per_dataset={queries_per_dataset} exceeds available queries ({n_queries}) "
+                f"for task '{task.name}' split='{split}'. Using all {n_queries} queries.",
+                stacklevel=2,
+            )
         sampled = groups
     else:
         sampled = random.sample(groups, queries_per_dataset)

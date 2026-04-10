@@ -77,7 +77,7 @@ def main():
     parser.add_argument("--loss-type", choices=["gist", "hard_infonce", "triplet"], default="gist", help="gist: CachedGISTEmbedLoss (in-batch + hard negatives); hard_infonce: InfoNCE over explicit hard negatives only; triplet: margin triplet loss (cosine distance, margin=1.0, matches pl_training.py)")
     parser.add_argument("--num-negatives", type=int, default=1, help="Hard negatives per sample (K); use negative_1..negative_K columns")
     parser.add_argument("--num-positives", type=int, default=2, help="Positives per query to expand into samples (P)")
-    parser.add_argument("--queries-per-dataset", type=int, default=25000, help="Unique queries to sample per dataset; warns if > dataset size")
+    parser.add_argument("--queries-per-dataset", type=int, default=25000, help="Unique queries to sample per dataset; warns if > dataset size. Pass -1 to use all queries without subsampling.")
     parser.add_argument("--batch-size", type=int, default=16)
     parser.add_argument("--mini-batch-size", type=int, default=32, help="Mini-batch size for CachedGISTEmbedLoss embedding computation")
     parser.add_argument("--lr", type=float, default=2e-5)
@@ -113,7 +113,7 @@ def main():
 
     train_datasets, infonce_evaluators, ir_evaluators, losses = {}, [], [], {}
     for name, task in ir_tasks.items():
-        train_datasets[name] = build_st_dataset(task, "train", args.num_negatives, args.num_positives, args.queries_per_dataset)
+        train_datasets[name] = build_st_dataset(task, "train", args.num_negatives, args.num_positives, None if args.queries_per_dataset == -1 else args.queries_per_dataset)
         instr = task.instr_prompt
         query_prompt = _clean_prompt(instr["query"] if isinstance(instr, dict) else instr) if instr else None
         if task.type == "triplet":

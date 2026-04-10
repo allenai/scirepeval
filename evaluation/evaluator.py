@@ -248,7 +248,8 @@ class IREvaluator(Evaluator):
                 logger.warning("AUC skipped: no overlapping IDs between embeddings and qrels.")
                 results["auc"] = None
             else:
-                results["auc"] = np.round(100 * roc_auc_score(y_true, y_score), 2)
+                auc_kwargs = {"multi_class": "ovr"} if len(set(y_true)) > 2 else {}
+                results["auc"] = np.round(100 * roc_auc_score(y_true, y_score, **auc_kwargs), 2)
 
         self.print_results(results)
         return results
@@ -309,7 +310,8 @@ class ParquetBinaryIREvaluator(IREvaluator):
                 logger.warning("AUC skipped: no overlapping IDs between embeddings and qrels.")
                 results["auc"] = None
             else:
-                results["auc"] = np.round(100 * roc_auc_score(y_true, y_score), 2)
+                auc_kwargs = {"multi_class": "ovr"} if len(set(y_true)) > 2 else {}
+                results["auc"] = np.round(100 * roc_auc_score(y_true, y_score, **auc_kwargs), 2)
 
         self.print_results(results)
         return results

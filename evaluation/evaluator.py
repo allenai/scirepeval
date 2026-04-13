@@ -184,8 +184,8 @@ class SupervisedEvaluator(Evaluator):
 
 
 class IREvaluator(Evaluator):
-    def __init__(self, name: str, meta_dataset: Union[str, tuple], test_dataset: Union[str, tuple], model: Model,
-                 metrics: tuple, dataset_class=IRDataset, batch_size: int = 16, fields: list = None, key=None, processing_fn=None, prebuilt_qrels=None):
+    def __init__(self, name: str, meta_dataset: Union[str, tuple], test_dataset: Union[str, tuple] = None, model: Model = None,
+                 metrics: tuple = (), dataset_class=IRDataset, batch_size: int = 16, fields: list = None, key=None, processing_fn=None, prebuilt_qrels=None):
         super(IREvaluator, self).__init__(name, meta_dataset, dataset_class, model, batch_size, fields, key, processing_fn)
         self.test_dataset = test_dataset
         self.metrics = metrics

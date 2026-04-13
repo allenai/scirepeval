@@ -208,7 +208,6 @@ class SciRepEval:
                             s3_dataset, s3_qrels = _load_s3_parquet_ir(source)
                             kwargs["processing_fn"] = lambda _: s3_dataset
                             kwargs["meta_dataset"] = source
-                            kwargs["test_dataset"] = source
                             kwargs["prebuilt_qrels"] = s3_qrels
                         evaluator = IREvaluator(task_name, model=model, dataset_class=data_class, **kwargs)
                 embeddings = evaluator.generate_embeddings(save_path) if not load_path else load_path

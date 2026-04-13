@@ -248,8 +248,7 @@ class IREvaluator(Evaluator):
                 logger.warning("AUC skipped: no overlapping IDs between embeddings and qrels.")
                 results["auc"] = None
             else:
-                auc_kwargs = {"multi_class": "ovr"} if len(set(y_true)) > 2 else {}
-                results["auc"] = np.round(100 * roc_auc_score(y_true, y_score, **auc_kwargs), 2)
+                results["auc"] = np.round(100 * roc_auc_score([int(v > 0) for v in y_true], y_score), 2)
 
         self.print_results(results)
         return results
@@ -260,7 +259,9 @@ class IREvaluator(Evaluator):
             if qid in embeddings:
                 query = np.array([embeddings[qid]])
                 cids = [cid for cid in qrels[qid] if cid in embeddings]
-                cands = np.array([embeddings[cid] for cid in qrels[qid] if cid in embeddings])
+                if not cids:
+                    continue
+                cands = np.array([embeddings[cid] for cid in cids])
                 scores = euclidean_distances(cands, query).flatten()
                 run[qid] = dict()
                 for i, cid in enumerate(cids):
@@ -310,8 +311,7 @@ class ParquetBinaryIREvaluator(IREvaluator):
                 logger.warning("AUC skipped: no overlapping IDs between embeddings and qrels.")
                 results["auc"] = None
             else:
-                auc_kwargs = {"multi_class": "ovr"} if len(set(y_true)) > 2 else {}
-                results["auc"] = np.round(100 * roc_auc_score(y_true, y_score, **auc_kwargs), 2)
+                results["auc"] = np.round(100 * roc_auc_score([int(v > 0) for v in y_true], y_score), 2)
 
         self.print_results(results)
         return results

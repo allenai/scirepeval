@@ -81,6 +81,43 @@ def _load_s3_parquet_ir(s3_glob: str):
         qrels[qid] = {str(c["corpus_id"]): c["score"] for c in row["candidates"]}
 
     return hf_datasets.Dataset.from_list(normalized), qrels
+
+
+def _load_s3_parquet_clf(s3_glob: str):
+    """Load a flat S3 classification parquet using label_type for train/test split.
+
+    Each row must have: corpus_id, title, abstract, class (int label), label_type.
+    'Gold Standard' rows become the test set; all others become train.
+    Returns (meta_dataset, split_dataset) where:
+      - meta_dataset: HF Dataset with doc_id/title/abstract for embedding generation
+      - split_dataset: DatasetDict with train/test splits, each row has paper_id and label
+    """
+    import s3fs
+    import pandas as pd
+    import datasets as hf_datasets
+
+    fs = s3fs.S3FileSystem(anon=False)
+    files = fs.glob(s3_glob.replace("s3://", ""))
+    if not files:
+        raise FileNotFoundError(f"No Parquet files found at {s3_glob}")
+    df = pd.concat([pd.read_parquet(fs.open(f)) for f in files], ignore_index=True)
+
+    def normalize(row):
+        return {"doc_id": str(row["corpus_id"]), "title": row.get("title", ""),
+                "abstract": row.get("abstract", ""), "paper_id": str(row["corpus_id"]),
+                "label": int(row["class"])}
+
+    train_rows = [normalize(row) for _, row in df.iterrows() if row["label_type"] != "Gold Standard"]
+    test_rows = [normalize(row) for _, row in df.iterrows() if row["label_type"] == "Gold Standard"]
+    all_rows = train_rows + test_rows
+
+    meta_dataset = hf_datasets.Dataset.from_list(all_rows)
+    split_dataset = hf_datasets.DatasetDict({
+        "train": hf_datasets.Dataset.from_list(train_rows),
+        "test": hf_datasets.Dataset.from_list(test_rows),
+    })
+    return meta_dataset, split_dataset
+
 import os
 os.environ["TOKENIZERS_PARALLELISM"] = "false"
 
@@ -133,7 +170,7 @@ class SciRepEval:
                 kwargs = dict()
                 task_data = task["data"]
                 use_s3 = (task_data.get("source")
-                          and task["type"] in {"proximity", "adhoc_search"})
+                          and task["type"] in {"proximity", "adhoc_search", "classification", "regression"})
                 if task["type"] != "binary_retrieval" and not use_s3:
                     if not task_data.get("meta"):
                         raise ValueError(f"Task {task_name} has no test metadata")
@@ -170,6 +207,12 @@ class SciRepEval:
                                                                    "type"] == "classification" else SupervisedTask.REGRESSION
                     if task.get("multi_label"):
                         subtype = SupervisedTask.MULTILABEL_CLASSIFICATION
+                    if use_s3:
+                        source = task_data["source"]
+                        s3_meta, s3_splits = _load_s3_parquet_clf(source)
+                        kwargs["processing_fn"] = lambda _: s3_meta
+                        kwargs["meta_dataset"] = source
+                        kwargs["prebuilt_split_dataset"] = s3_splits
                     evaluator = SupervisedEvaluator(task_name, subtype, model=model,
                                                     **kwargs)
                     if task.get("few_shot"):

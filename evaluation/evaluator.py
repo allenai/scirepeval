@@ -92,20 +92,25 @@ SUPERVISED_TASK_METRICS = {
 
 class SupervisedEvaluator(Evaluator):
     def __init__(self, name: str, task: SupervisedTask, meta_dataset: Union[str, tuple],
-                 test_dataset: Union[str, tuple],
-                 model: Model, metrics: tuple, batch_size: int = 16, fields: list = None):
-        super(SupervisedEvaluator, self).__init__(name, meta_dataset, SimpleDataset, model, batch_size, fields)
+                 test_dataset: Union[str, tuple] = None,
+                 model: Model = None, metrics: tuple = (), batch_size: int = 16, fields: list = None,
+                 processing_fn=None, prebuilt_split_dataset=None):
+        super(SupervisedEvaluator, self).__init__(name, meta_dataset, SimpleDataset, model, batch_size, fields, process_fn=processing_fn)
         self.test_dataset = test_dataset
         self.metrics = metrics
         self.task = task
+        self.prebuilt_split_dataset = prebuilt_split_dataset
 
     def evaluate(self, embeddings, **kwargs):
-        logger.info(f"Loading labelled data from {self.test_dataset}")
-        if type(self.test_dataset) == str and os.path.isdir(self.test_dataset):
-            split_dataset = datasets.load_dataset("csv", data_files={"train": f"{self.test_dataset}/train.csv",
-                                                                     "test": f"{self.test_dataset}/test.csv"})
+        if self.prebuilt_split_dataset is not None:
+            split_dataset = self.prebuilt_split_dataset
         else:
-            split_dataset = datasets.load_dataset(self.test_dataset[0], self.test_dataset[1], trust_remote_code=False)
+            logger.info(f"Loading labelled data from {self.test_dataset}")
+            if type(self.test_dataset) == str and os.path.isdir(self.test_dataset):
+                split_dataset = datasets.load_dataset("csv", data_files={"train": f"{self.test_dataset}/train.csv",
+                                                                         "test": f"{self.test_dataset}/test.csv"})
+            else:
+                split_dataset = datasets.load_dataset(self.test_dataset[0], self.test_dataset[1], trust_remote_code=False)
         logger.info(f"Loaded {len(split_dataset['train'])} training and {len(split_dataset['test'])} test documents")
         if type(embeddings) == str and os.path.isfile(embeddings):
             embeddings = EmbeddingsGenerator.load_embeddings_from_jsonl(embeddings)

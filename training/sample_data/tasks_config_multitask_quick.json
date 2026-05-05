@@ -1,0 +1,35 @@
+[
+  {
+    "name": "quote",
+    "type": "triplet",
+    "dataset_format": "s3_parquet",
+    "s3_prefix": "s3://ai2-s2-analytics/danyh/data_share/quote_2026_02",
+    "sources": ["pf", "sqa"],
+    "instr_prompt": "Given a research query, retrieve relevant quote snippets from scientific papers. {content}"
+  },
+  {
+    "name": "paper",
+    "type": "triplet",
+    "dataset_format": "s3_parquet",
+    "s3_prefix": "s3://ai2-s2-analytics/danyh/data_share/paper_2026_02",
+    "sources": ["pf", "sqa"],
+    "instr_prompt": "Given a research query, retrieve the most relevant scientific paper. {content}"
+  },
+  {
+    "name": "statement",
+    "type": "triplet",
+    "dataset_format": "s3_parquet",
+    "s3_prefix": "s3://ai2-s2-analytics/danyh/data_share/statement_2026_02",
+    "sources": ["pf", "sqa"],
+    "instr_prompt": "Given a research query, retrieve similar scientific statements or claims. {content}"
+  },
+  {
+    "name": "search",
+    "type": "triplet",
+    "dataset_format": "legacy",
+    "data_files": {
+      "train": "s3://ai2-s2-aps/scirepeval_v2/cleaned/search/train.parquet"
+    },
+    "instr_prompt": "Given a research query, retrieve relevant scientific papers. {content}"
+  }
+]

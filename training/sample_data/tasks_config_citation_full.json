@@ -1,0 +1,12 @@
+[
+  {
+    "name": "citation",
+    "type": "triplet",
+    "dataset_format": "pkl",
+    "pkl_path": "/tmp/scirepeval_cache/train_mined_threshold.pkl",
+    "paper_texts_path": "/tmp/scirepeval_cache/paper_texts.pkl",
+    "eval_pkl_path": "s3://ai2-s2-aps/scirepeval_v2/citation_triplets/checkpoints/eval_test_in.pkl",
+    "neg_type": "all",
+    "instr_prompt": "Given a scientific paper title and abstract, find other scientific papers which have a citation relationship with it. {content}"
+  }
+]

@@ -6,6 +6,7 @@ import sys
 sys.path.append('../')
 
 import argparse
+import time
 from datasets import DatasetDict
 from transformers import AutoConfig
 from sentence_transformers import SentenceTransformer, SentenceTransformerTrainer, SentenceTransformerTrainingArguments, models
@@ -15,7 +16,7 @@ from sentence_transformers.training_args import BatchSamplers, MultiDatasetBatch
 
 from tasks import load_tasks
 from training.infonce_evaluator import InfoNCEEvaluator
-from st_datasets import build_st_dataset, build_triplet_eval_dataset, build_ir_infonce_eval_dataset, build_ir_eval_data
+from st_datasets import build_st_dataset, build_triplet_eval_dataset, build_ir_infonce_eval_dataset, build_ir_eval_data, build_s3_dataset, build_s3_triplet_eval_dataset, build_citation_dataset, build_citation_eval_dataset
 from infonce_loss import HardNegativeInfoNCELoss
 
 
@@ -78,6 +79,8 @@ def main():
     parser.add_argument("--num-negatives", type=int, default=1, help="Hard negatives per sample (K); use negative_1..negative_K columns")
     parser.add_argument("--num-positives", type=int, default=2, help="Positives per query to expand into samples (P)")
     parser.add_argument("--queries-per-dataset", type=int, default=25000, help="Unique queries to sample per dataset; warns if > dataset size. Pass -1 to use all queries without subsampling.")
+    parser.add_argument("--max-rows", type=int, default=500_000, help="Reservoir size for streaming S3 parquet datasets: max rows kept in memory before grouping. Pass -1 for no limit.")
+    parser.add_argument("--no-easy-only", action="store_true", default=False, help="Include hard-difficulty rows from S3 parquet datasets (default: easy only)")
     parser.add_argument("--batch-size", type=int, default=16)
     parser.add_argument("--mini-batch-size", type=int, default=32, help="Mini-batch size for CachedGISTEmbedLoss embedding computation")
     parser.add_argument("--lr", type=float, default=2e-5)
@@ -89,6 +92,7 @@ def main():
     parser.add_argument("--checkpoint-n-steps", type=int, default=500)
     parser.add_argument("--max-steps", type=int, default=-1, help="Cap total training steps; -1 means no limit")
     parser.add_argument("--max-eval-samples", type=int, default=None, help="Truncate each eval dataset to N samples for quick runs")
+    parser.add_argument("--dataloader-num-workers", type=int, default=1, help="DataLoader worker processes (use 0 on MPS/local dev)")
     parser.add_argument("--use-cosine-schedule", action="store_true", default=False)
     parser.add_argument('--guide-model-pooling', type=str, choices=['cls', 'lasttoken', 'max', 'mean'], default="cls")
     parser.add_argument('--model-pooling', type=str, choices=['cls', 'lasttoken', 'max', 'mean'], default="lasttoken")
@@ -112,11 +116,27 @@ def main():
     model.max_seq_length = args.max_len
 
     train_datasets, infonce_evaluators, ir_evaluators, losses = {}, [], [], {}
+    max_rows = None if args.max_rows == -1 else args.max_rows
+    easy_only = not args.no_easy_only
+
+    dataset_load_start = time.time()
     for name, task in ir_tasks.items():
-        train_datasets[name] = build_st_dataset(task, "train", args.num_negatives, args.num_positives, None if args.queries_per_dataset == -1 else args.queries_per_dataset)
+        qpd = None if args.queries_per_dataset == -1 else args.queries_per_dataset
+        if task.dataset_format == "s3_parquet":
+            train_datasets[name] = build_s3_dataset(task, "train", args.num_negatives, args.num_positives, qpd, max_rows=max_rows, easy_only=easy_only)
+        elif task.dataset_format == "pkl":
+            train_datasets[name] = build_citation_dataset(task, "train", args.num_negatives, args.num_positives, qpd)
+        else:
+            train_datasets[name] = build_st_dataset(task, "train", args.num_negatives, args.num_positives, qpd)
         instr = task.instr_prompt
         query_prompt = _clean_prompt(instr["query"] if isinstance(instr, dict) else instr) if instr else None
-        if task.type == "triplet":
+        if task.dataset_format == "s3_parquet":
+            eval_ds = build_s3_triplet_eval_dataset(task, max_samples=args.max_eval_samples, max_rows=max_rows, easy_only=easy_only)
+            infonce_evaluators.append(InfoNCEEvaluator(eval_ds=eval_ds, name=name, temperature=args.temperature, query_prompt=query_prompt))
+        elif task.dataset_format == "pkl":
+            eval_ds = build_citation_eval_dataset(task, max_samples=args.max_eval_samples)
+            infonce_evaluators.append(InfoNCEEvaluator(eval_ds=eval_ds, name=name, temperature=args.temperature, query_prompt=query_prompt))
+        elif task.type == "triplet":
             eval_ds = build_triplet_eval_dataset(task, max_samples=args.max_eval_samples)
             infonce_evaluators.append(InfoNCEEvaluator(eval_ds=eval_ds, name=name, temperature=args.temperature, query_prompt=query_prompt))
         else:
@@ -125,6 +145,17 @@ def main():
             queries, corpus, relevant_docs = build_ir_eval_data(task, max_samples=args.max_eval_samples)
             ir_evaluators.append(InformationRetrievalEvaluator(queries=queries, corpus=corpus, relevant_docs=relevant_docs, name=f"{name}_ir", show_progress_bar=False, query_prompt=query_prompt, accuracy_at_k=[10], precision_recall_at_k=[10], mrr_at_k=[10], ndcg_at_k=[10], map_at_k=[100]))
         losses[name] = build_loss(model, args.loss_type, args.temperature, args.mini_batch_size, guide_model, not args.no_contrast_anchors, not args.no_contrast_positives)
+
+    dataset_load_time = time.time() - dataset_load_start
+    total_train_rows = sum(len(ds) for ds in train_datasets.values())
+    print(f"\n=== Dataset Loading ===")
+    print(f"Total time: {dataset_load_time:.2f}s")
+    print(f"Total rows assembled: {total_train_rows:,}")
+    print(f"Rows per second: {total_train_rows / dataset_load_time:.0f}")
+    for name, ds in train_datasets.items():
+        print(f"  {name}: {len(ds):,} rows")
+    print()
+
     if infonce_evaluators and ir_evaluators:
         # infonce_seq score = mean InfoNCE loss (lower=better); used as primary metric
         # IR evaluators follow; outer sequential score is not used for model selection
@@ -165,7 +196,7 @@ def main():
         metric_for_best_model=best_metric,
         greater_is_better=greater_is_better,
         logging_steps=10,
-        dataloader_num_workers=1,
+        dataloader_num_workers=args.dataloader_num_workers,
         dataloader_pin_memory=True,
         batch_sampler=BatchSamplers.NO_DUPLICATES,
         multi_dataset_batch_sampler=MultiDatasetBatchSamplers.PROPORTIONAL,

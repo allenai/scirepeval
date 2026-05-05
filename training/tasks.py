@@ -9,13 +9,17 @@ import json
 class TaskFamily:
     def __init__(self, name, loss, type, dataset=None, data_files=None, multi_label=False, input_fields=None,
                  labels_field=None, labels=None, ctrl_token=None, head=None, contrastive_loss=None, sample_size=-1,
-                 instr_prompt=None):
+                 instr_prompt=None, dataset_format="legacy", s3_prefix=None, sources=None,
+                 pkl_path=None, paper_texts_path=None, eval_pkl_path=None, neg_type="all"):
         if input_fields is None:
             input_fields = ["title", "abstract"]
         self.name = name
         self.dataset = dataset
         self.data_files = data_files
         self.type = type
+        self.dataset_format = dataset_format  # "legacy", "s3_parquet", or "pkl"
+        self.s3_prefix = s3_prefix  # e.g. "s3://bucket/path/dataset_name"
+        self.sources = sources or []  # e.g. ["pf", "sqa"]
         self.multi_label = multi_label
         self.loss = loss
         self.contrastive_loss = contrastive_loss
@@ -26,8 +30,15 @@ class TaskFamily:
         self.input_fields = input_fields
         self.sample_size = sample_size
         self.instr_prompt = instr_prompt
-        if not self.dataset and not self.data_files:
+        # pkl-format citation dataset fields
+        self.pkl_path = pkl_path              # S3 or local path to train_mined_threshold.pkl
+        self.paper_texts_path = paper_texts_path  # S3 or local path to paper_texts.pkl
+        self.eval_pkl_path = eval_pkl_path    # S3 or local path to eval_test_in.pkl
+        self.neg_type = neg_type              # "all" | "hard" | "easy"
+        if dataset_format == "legacy" and not self.dataset and not self.data_files:
             raise ValueError("Either dataset or data_files must be provided")
+        if dataset_format == "pkl" and (not self.pkl_path or not self.paper_texts_path):
+            raise ValueError("pkl_path and paper_texts_path must be provided for dataset_format='pkl'")
 
     def __str__(self):
         obj_dict = self.__dict__.copy()

@@ -1,0 +1,36 @@
+[
+  {
+    "name": "citation",
+    "type": "triplet",
+    "dataset_format": "pkl",
+    "pkl_path": "/tmp/scirepeval_cache/train_mined_threshold.pkl",
+    "paper_texts_path": "/tmp/scirepeval_cache/paper_texts.pkl",
+    "eval_pkl_path": "s3://ai2-s2-aps/scirepeval_v2/citation_triplets/checkpoints/eval_test_in.pkl",
+    "neg_type": "all",
+    "instr_prompt": "Given a scientific paper title and abstract, find other scientific papers which have a citation relationship with it. {content}"
+  },
+  {
+    "name": "quote",
+    "type": "triplet",
+    "dataset_format": "s3_parquet",
+    "s3_prefix": "s3://ai2-s2-analytics/danyh/data_share/quote_2026_02",
+    "sources": ["pf", "sqa"],
+    "instr_prompt": "Given a research query, retrieve relevant quote snippets from scientific papers. {content}"
+  },
+  {
+    "name": "paper",
+    "type": "triplet",
+    "dataset_format": "s3_parquet",
+    "s3_prefix": "s3://ai2-s2-analytics/danyh/data_share/paper_2026_02",
+    "sources": ["pf", "sqa"],
+    "instr_prompt": "Given a research query, retrieve the most relevant scientific paper. {content}"
+  },
+  {
+    "name": "statement",
+    "type": "triplet",
+    "dataset_format": "s3_parquet",
+    "s3_prefix": "s3://ai2-s2-analytics/danyh/data_share/statement_2026_02",
+    "sources": ["pf", "sqa"],
+    "instr_prompt": "Given a research query, retrieve similar scientific statements or claims. {content}"
+  }
+]
